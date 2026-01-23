@@ -1,4 +1,4 @@
-/* eslint-disable react/prop-types */
+
 import { createContext, useContext, useState } from 'react';
 import { differenceInDays } from 'date-fns';
 import { INITIAL_USERS, INITIAL_OTS } from '../data/mockData';
@@ -120,4 +120,5 @@ export const DataProvider = ({ children }) => {
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useData = () => useContext(DataContext);
