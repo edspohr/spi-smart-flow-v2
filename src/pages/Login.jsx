@@ -52,12 +52,12 @@ export default function Login() {
         <div className="hidden md:flex flex-col justify-between w-1/2 bg-primary p-12 text-white relative">
           <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-400 via-primary to-primary"></div>
           
-          <div className="relative z-10">
+          <div className="relative z-10 flex flex-col justify-center h-full">
             <div className="mb-6">
-              <img src="/spi-logo.png" alt="SPI Americas" className="h-16 w-auto bg-white/10 p-2 rounded-lg backdrop-blur-sm" />
+              <img src="/spi-logo.png" alt="SPI Americas" className="h-24 w-auto bg-white p-4 rounded-xl shadow-lg" />
             </div>
-            <h1 className="text-4xl font-bold mb-4">SPI Americas</h1>
-            <p className="text-lg text-slate-300">Gestión inteligente de Propiedad Intelectual y Asuntos Regulatorios.</p>
+            {/* <h1 className="text-4xl font-bold mb-4">SPI Americas</h1> removed as requested */}
+            <p className="text-xl text-slate-200 font-light">Gestión inteligente de Propiedad Intelectual y Asuntos Regulatorios.</p>
           </div>
 
           <div className="relative z-10 text-sm text-slate-400">
