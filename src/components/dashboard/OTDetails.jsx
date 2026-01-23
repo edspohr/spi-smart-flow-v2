@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
 import { CheckCircle, Upload, PenTool, X, UserPlus, User } from 'lucide-react';
 
