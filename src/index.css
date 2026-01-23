@@ -1,9 +1,37 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #0f172a; /* Slate 900 */
+  --color-primary-foreground: #ffffff;
+
+  --color-secondary: #f1f5f9; /* Slate 100 */
+  --color-secondary-foreground: #0f172a;
+
+  --color-accent: #3b82f6; /* Blue 500 */
+  --color-accent-foreground: #ffffff;
+
+  --color-destructive: #ef4444; /* Red 500 */
+  --color-destructive-foreground: #ffffff;
+
+  --color-success: #22c55e; /* Green 500 */
+  --color-success-foreground: #ffffff;
+
+  --color-muted: #f8fafc; /* Slate 50 */
+  --color-muted-foreground: #64748b; /* Slate 500 */
+
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+
+  --font-sans: "Inter", system-ui, sans-serif;
+}
 
 @layer base {
   body {
+    /* Using variables directly often safer in v4 mixed modes, 
+       but @apply should work if configured correctly. 
+       If bg-slate-50 fails, use hex or var. 
+       bg-slate-50 is standard, should work. 
+    */
     @apply bg-slate-50 text-slate-900 antialiased;
   }
 }
