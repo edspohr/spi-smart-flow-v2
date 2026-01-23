@@ -205,7 +205,7 @@ export default function OTDetails({ ot, onClose }) {
                <button 
                   disabled={processingId === 'payment'}
                   onClick={() => handlePay('cierre')}
-                  className="bg-gradient-to-r from-slate-900 to-slate-800 text-white px-8 py-4 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all w-full disabled:opacity-50"
+                  className="bg-linear-to-r from-slate-900 to-slate-800 text-white px-8 py-4 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all w-full disabled:opacity-50"
                >
                  {processingId === 'payment' ? 'Procesando Pago...' : 'Pagar y Finalizar'}
                </button>

@@ -50,7 +50,7 @@ export default function Login() {
         
         {/* Left Side - Hero */}
         <div className="hidden md:flex flex-col justify-between w-1/2 bg-primary p-12 text-white relative">
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-400 via-primary to-primary"></div>
+          <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(ellipse_at_top_right,var(--tw-gradient-stops))] from-blue-400 via-primary to-primary"></div>
           
           <div className="relative z-10 flex flex-col justify-center h-full">
             <div className="mb-6">
