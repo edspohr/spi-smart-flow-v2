@@ -1,14 +1,11 @@
 import { Outlet, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import WhatsAppButton from './WhatsAppButton';
-import { LogOut, User as UserIcon, Menu } from 'lucide-react';
-import { useState } from 'react';
-import { cn } from '../../lib/utils';
+import { LogOut } from 'lucide-react';
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -18,8 +15,6 @@ export default function Layout() {
     logout();
     navigate('/login');
   };
-
-  const isClient = user.role === 'client';
   
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -27,7 +22,7 @@ export default function Layout() {
       <header className="bg-primary text-white shadow-md">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-             <img src="/spi-logo.png" alt="SPI Americas" className="h-10 w-auto" />
+             <img src="/spi-logo.png" alt="SPI Americas" className="h-10 w-auto brightness-0 invert" />
              {/* <span className="text-xl font-bold tracking-tight">SPI Americas</span> */}
           </div>
 
