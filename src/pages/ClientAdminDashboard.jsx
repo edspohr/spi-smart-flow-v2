@@ -4,11 +4,13 @@ import { useData } from '../context/DataContext';
 import { Users, Plus, Calendar } from 'lucide-react';
 import KanbanBoard from '../components/dashboard/KanbanBoard';
 import OTDetails from '../components/dashboard/OTDetails';
+import CreateOTModal from '../components/dashboard/CreateOTModal';
 
 export default function ClientAdminDashboard() {
   const { user } = useAuth();
   const { ots } = useData();
   const [selectedOt, setSelectedOt] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Client Admin sees *all* OTs for their company
   // In our mock, 'userId' is linked to 'companyId' implicitly or explicitly.
@@ -26,7 +28,10 @@ export default function ClientAdminDashboard() {
           <h1 className="text-3xl font-bold text-slate-900">Panel Administrativo</h1>
           <p className="text-slate-500">Gestión de equipo y solicitudes de {user.companyId || 'mi empresa'}.</p>
         </div>
-        <button className="bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors">
+        <button 
+          onClick={() => setIsCreateModalOpen(true)}
+          className="bg-slate-900 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-slate-800 transition-colors"
+        >
           <Plus size={18} />
           Nueva Solicitud
         </button>
@@ -66,6 +71,10 @@ export default function ClientAdminDashboard() {
 
       {selectedOt && (
         <OTDetails ot={selectedOt} onClose={() => setSelectedOt(null)} />
+      )}
+
+      {isCreateModalOpen && (
+        <CreateOTModal onClose={() => setIsCreateModalOpen(false)} />
       )}
     </div>
   )

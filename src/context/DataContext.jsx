@@ -1,6 +1,6 @@
 
 import { createContext, useContext, useState } from 'react';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, addDays } from 'date-fns';
 import { INITIAL_USERS, INITIAL_OTS } from '../data/mockData';
 
 const DataContext = createContext();
@@ -33,12 +33,55 @@ export const DataProvider = ({ children }) => {
   };
 
   // Actions
-  const addComment = (otId, user, text) => {
+  const createOt = (serviceType, title, description, clientId) => { 
+    const newId = `ot-${ots.length + 1}`;
+    const newOt = {
+      id: newId,
+      clientId: clientId || 'client-1', // Default to provided client or fallback
+
+      title,
+      description, // Add description
+      stage: 'solicitud',
+      createdAt: new Date().toISOString(),
+      serviceType, // Track service type
+      deadline30: addDays(new Date(), 30).toISOString(),
+      deadline90: addDays(new Date(), 90).toISOString(),
+      paymentStatus: { adelanto: false, cierre: false },
+      documents: [
+        // Default docs based on generic flow for now
+        { id: 'doc-poder', name: "Poder Simple", type: "sign", status: "pending", url: null },
+        { id: 'doc-logo', name: "Logo de la Marca", type: "upload", status: "pending", url: null },
+        { id: 'doc-desc', name: "Descripción Actividad", type: "text", status: "pending", content: description || "" },
+        { id: 'doc-color', name: "Pantones de Colores", type: "text", status: "pending", content: "" },
+      ],
+      assignedTo: [],
+      comments: [],
+      history: [
+        { id: Date.now(), type: 'system', text: `Solicitud creada: ${title}`, date: new Date().toISOString() }
+      ],
+    };
+
+    setOts(prev => [newOt, ...prev]);
+    return newOt;
+  };
+
+  const addComment = (otId, user, text, type = 'comment') => {
     setOts(prev => prev.map(ot => {
       if (ot.id === otId) {
+        const newEntry = { 
+          id: Date.now(), 
+          user: type === 'system' ? { name: 'Sistema' } : user, 
+          text, 
+          date: new Date().toISOString(),
+          type 
+        };
+        // Merge comments into history for unified view if needed, or keep separate. 
+        // For "Bitácora", we likely want a unified feed.
+        // Let's use 'history' as the master record for now.
         return {
           ...ot,
-          comments: [...ot.comments, { id: Date.now(), user, text, date: new Date().toISOString() }]
+          history: [newEntry, ...(ot.history || [])],
+          comments: [...(ot.comments || []), newEntry] 
         };
       }
       return ot;
@@ -52,7 +95,19 @@ export const DataProvider = ({ children }) => {
           d.id === docId ? { ...d, status, ...(content && { content }) } : d
         );
         
-        return { ...ot, documents: newDocs };
+        const docName = ot.documents.find(d => d.id === docId)?.name || 'Documento';
+        const historyEntry = {
+          id: Date.now(),
+          type: 'system',
+          text: `Documento actualizado: ${docName} -> ${status}`,
+          date: new Date().toISOString()
+        };
+
+        return { 
+          ...ot, 
+          documents: newDocs,
+          history: [historyEntry, ...(ot.history || [])]
+        };
       }
       return ot;
     }));
@@ -68,7 +123,18 @@ export const DataProvider = ({ children }) => {
       else if (ot.stage === 'gestion') nextStage = 'pago_cierre';
       else if (ot.stage === 'pago_cierre') nextStage = 'finalizado';
 
-      return { ...ot, stage: nextStage };
+      const historyEntry = {
+        id: Date.now(),
+        type: 'system',
+        text: `Avance de etapa: ${ot.stage} -> ${nextStage}`,
+        date: new Date().toISOString()
+      };
+
+      return { 
+        ...ot, 
+        stage: nextStage,
+        history: [historyEntry, ...(ot.history || [])]
+      };
     }));
   };
 
@@ -82,10 +148,18 @@ export const DataProvider = ({ children }) => {
       if (type === 'adelanto' && ot.stage === 'pago_adelanto') nextStage = 'gestion';
       if (type === 'cierre' && ot.stage === 'pago_cierre') nextStage = 'finalizado';
 
+      const historyEntry = {
+        id: Date.now(),
+        type: 'system',
+        text: `Pago confirmado: ${type}. Nueva etapa: ${nextStage}`,
+        date: new Date().toISOString()
+      };
+
       return { 
         ...ot, 
         paymentStatus: newPayment,
-        stage: nextStage
+        stage: nextStage,
+        history: [historyEntry, ...(ot.history || [])]
       };
     }));
   };
@@ -94,11 +168,23 @@ export const DataProvider = ({ children }) => {
     setOts(prev => prev.map(ot => {
       if (ot.id === otId) {
         const currentAssigned = ot.assignedTo || [];
-        const newAssigned = currentAssigned.includes(userId) 
+        const isRemoving = currentAssigned.includes(userId);
+        const newAssigned = isRemoving
           ? currentAssigned.filter(id => id !== userId)
           : [...currentAssigned, userId];
         
-        return { ...ot, assignedTo: newAssigned };
+        const historyEntry = {
+          id: Date.now(),
+          type: 'system',
+          text: `Usuario ${isRemoving ? 'removido' : 'asignado'}: ${userId}`, // In real app use name lookup
+          date: new Date().toISOString()
+        };
+
+        return { 
+          ...ot, 
+          assignedTo: newAssigned,
+          history: [historyEntry, ...(ot.history || [])]
+        };
       }
       return ot;
     }));
@@ -109,6 +195,7 @@ export const DataProvider = ({ children }) => {
       users, 
       ots, 
       getTimeStatus, 
+      createOt,
       addComment, 
       updateDocumentStatus,
       advanceStage,
