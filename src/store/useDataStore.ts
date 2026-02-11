@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, addDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, orderBy } from 'firebase/firestore';
 
 // --- Types ---
 export type OTStage = 'solicitud' | 'pago_adelanto' | 'gestion' | 'pago_cierre' | 'finalizado';
@@ -53,6 +53,8 @@ interface DataState {
   // Actions
   subscribeToCompanyData: (companyId: string) => () => void;
   subscribeToClientData: (clientId: string) => () => void;
+  subscribeToAllOTs: () => () => void;
+  subscribeToOTLogs: (otId: string) => () => void;
   
   // Vault Logic
   checkVaultForReuse: (documentType: string) => Document | undefined;
@@ -189,6 +191,43 @@ const useDataStore = create<DataState>((set, get) => ({
         unsubscribeDocs();
         unsubscribeOTs();
     };
+  },
+
+  subscribeToAllOTs: () => {
+      console.log("Subscribing to ALL OTs (SPI Admin)");
+      const q = query(collection(db, "ots"), orderBy("createdAt", "desc"));
+      return onSnapshot(q, (snapshot) => {
+          const ots: OT[] = [];
+          snapshot.forEach((doc) => {
+              ots.push({ id: doc.id, ...doc.data() } as OT);
+          });
+          set({ ots, loading: false });
+      }, (error) => {
+          console.error("Error fetching all OTs:", error);
+      });
+  },
+
+  subscribeToOTLogs: (otId) => {
+      console.log(`Subscribing to logs for OT: ${otId}`);
+      // Note: This requires a composite index if we mix where and orderBy. 
+      // For now, let's just get them and sort in memory if index is missing, 
+      // OR rely on client-side filtering if volume is low.
+      // But let's try the query first.
+      const qLogs = query(
+          collection(db, "logs"), 
+          where("otId", "==", otId), 
+          orderBy("timestamp", "asc")
+      );
+      
+      return onSnapshot(qLogs, (snapshot) => {
+          const logs: Log[] = [];
+          snapshot.forEach((doc) => {
+              logs.push({ id: doc.id, ...doc.data() } as Log);
+          });
+          set({ logs });
+      }, (error) => {
+          console.error("Error processing logs query (check indexes):", error);
+      });
   },
 
   checkVaultForReuse: (documentType) => {
