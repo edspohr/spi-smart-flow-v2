@@ -29,14 +29,15 @@ const CountdownBanner = ({ deadline }: { deadline: string }) => {
 
 const ClientDashboard = () => {
     const { user } = useAuthStore();
-    const { ots, loading, loadMockData } = useDataStore();
+    const { ots, loading } = useDataStore();
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (user) {
-            loadMockData(user.role, user.uid);
+        if (user?.uid) {
+            const unsubscribe = useDataStore.getState().subscribeToClientData(user.uid);
+            return () => unsubscribe();
         }
-    }, [user, loadMockData]);
+    }, [user]);
 
     if (loading) return <div className="p-10 text-center">Cargando dashboard...</div>;
 

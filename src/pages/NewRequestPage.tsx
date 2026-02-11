@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useDataStore, { Document } from '../store/useDataStore';
+import useAuthStore from '../store/useAuthStore';
 import TimelineStepper from '@/components/TimelineStepper';
 import DocumentUpload from '@/components/DocumentUpload';
 import SmartVaultModal from '@/components/SmartVaultModal';
@@ -42,14 +43,38 @@ const NewRequestPage = () => {
         }
     }, [currentStep, uploadedDocs, checkVaultForReuse]);
 
-    const handleNext = () => {
+    const handleNext = async () => {
         if (currentStep < STEPS.length - 1) {
             setCurrentStep(prev => prev + 1);
             if (currentStep + 1 === STEPS.length - 1) {
                  triggerConfetti();
+                 
+                 // Create OT in Firestore when reaching the final (payment/confirmation) step
+                 // Or better, when clicking 'Finalizar' on the last step?
+                 // User said: "when the user clicks 'Finalizar' on the last step"
             }
         } else {
-            navigate('/client');
+            // Final Step - Create OT
+            try {
+                // Determine service type from local state or hardcode for now if not fully tracking selection
+                // In a real app, 'Propiedad Intelectual' selection in step 0 should be stored in state
+                const { user } = useAuthStore.getState();
+                if (user) {
+                     await useDataStore.getState().createOT({
+                        clientId: user.uid,
+                        companyId: user.companyId || 'unknown',
+                        title: 'Nueva Solicitud Web', // Should be dynamic
+                        serviceType: 'Propiedad Intelectual', // Should be dynamic based on Step 0
+                        stage: 'solicitud',
+                        amount: 0, // Pending quote
+                        createdAt: new Date().toISOString()
+                    });
+                }
+                navigate('/client');
+            } catch (error) {
+                console.error("Failed to create OT", error);
+                // Handle error (show toast?)
+            }
         }
     };
 

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { analyzeDocumentMock, ExtractedData } from '@/lib/gemini';
+import { analyzeDocument, ExtractedData } from '@/lib/gemini';
 import useDataStore from '@/store/useDataStore';
 import useAuthStore from '@/store/useAuthStore';
 
@@ -66,7 +66,7 @@ const DocumentUpload = ({ documentLabel, onUploadComplete }: DocumentUploadProps
     }, 200);
 
     try {
-        const data = await analyzeDocumentMock(uploadedFile);
+        const data = await analyzeDocument(uploadedFile);
         
         clearInterval(interval);
         setProgress(100);

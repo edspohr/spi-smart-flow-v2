@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+// GoogleGenerativeAI import removed (unused)
 
 // Initialize Gemini SDK
 // In production, this should NOT be used directly in frontend if using an API key.
@@ -20,7 +20,7 @@ export interface ExtractedData {
 import { functions } from "./firebase";
 import { httpsCallable } from "firebase/functions";
 
-export async function analyzeDocumentMock(file: File): Promise<ExtractedData> {
+export async function analyzeDocument(file: File): Promise<ExtractedData> {
     console.log("Gemini: Analyzing document via Cloud Function...", file.name);
 
     return new Promise((resolve, reject) => {

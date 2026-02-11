@@ -1,18 +1,19 @@
 import { useEffect } from 'react';
 import useDataStore from '../store/useDataStore';
 import useAuthStore from '../store/useAuthStore';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, TrendingUp, AlertTriangle, Users } from 'lucide-react';
 
 const ClientAdminDashboard = () => {
     const { user } = useAuthStore();
-    const { loadMockData } = useDataStore();
+    // const { loadMockData } = useDataStore(); // No longer needed
 
     useEffect(() => {
-        if (user) {
-            loadMockData(user.role, user.uid);
+        if (user?.companyId) {
+            const unsubscribe = useDataStore.getState().subscribeToCompanyData(user.companyId);
+            return () => unsubscribe();
         }
-    }, [user, loadMockData]);
+    }, [user]);
 
     return (
         <div className="space-y-6">

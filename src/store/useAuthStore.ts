@@ -89,7 +89,7 @@ const useAuthStore = create<AuthState>((set) => ({
   devLogin: (role: UserRole) => {
     set({
       user: {
-        uid: `mock-${role}-123`,
+        uid: role === 'client' ? 'mock-client-123' : `mock-${role}-123`,
         email: `${role}@example.com`,
         displayName: `Mock ${role.toUpperCase()}`,
         role: role,

@@ -9,13 +9,14 @@ import { Badge } from '@/components/ui/badge';
 
 const ClientVault = () => {
     const { user } = useAuthStore();
-    const { vaultDocuments, loading, loadMockData } = useDataStore();
+    const { vaultDocuments, loading } = useDataStore();
 
     useEffect(() => {
-        if (user) {
-            loadMockData(user.role, user.uid);
+        if (user?.uid) {
+            const unsubscribe = useDataStore.getState().subscribeToClientData(user.uid);
+            return () => unsubscribe();
         }
-    }, [user, loadMockData]);
+    }, [user]);
 
     if (loading) return <div className="p-10 text-center">Cargando bóveda...</div>;
 

@@ -57,6 +57,7 @@ interface DataState {
   // Vault Logic
   checkVaultForReuse: (documentType: string) => Document | undefined;
   addToVault: (doc: Document) => void; 
+  createOT: (otData: Partial<OT>) => Promise<void>;
   logAction: (userId: string, otId: string, action: string) => Promise<void>; 
 
   // Mock Data Generators for Dev
@@ -214,6 +215,24 @@ const useDataStore = create<DataState>((set, get) => ({
 
       } catch (e) {
           console.error("Error adding to vault:", e);
+      }
+  },
+
+  createOT: async (otData: Partial<OT>) => {
+      try {
+          await addDoc(collection(db, "ots"), {
+            ...otData,
+            createdAt: new Date().toISOString(),
+            status: 'solicitud', // Default status? Or comes in otData?
+            stage: 'solicitud'
+          });
+          console.log("OT Created in Firestore");
+          if (otData.clientId) {
+            get().logAction(otData.clientId, 'new-ot', `Nueva Solicitud Creada: ${otData.title}`);
+          }
+      } catch (e) {
+          console.error("Error creating OT:", e);
+          throw e; // Re-throw so component knows it failed
       }
   },
 
