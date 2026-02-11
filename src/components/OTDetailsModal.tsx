@@ -75,30 +75,48 @@ const OTDetailsModal = ({ isOpen, onClose, ot }: OTDetailsModalProps) => {
                         ) : (
                             logs.map((log) => (
                                 <div key={log.id} className={cn(
-                                    "flex gap-3 text-sm p-3 rounded-lg border transition-all hover:bg-white hover:shadow-sm",
-                                    log.type === 'system' 
-                                        ? "bg-blue-50/50 border-blue-100" 
-                                        : "bg-white border-slate-100"
+                                    "flex gap-3 mb-4 w-full",
+                                    log.type === 'system' ? "justify-start" : "justify-end"
                                 )}>
+                                    {log.type === 'system' && (
+                                        <div className="mt-1 p-2 rounded-full h-fit bg-blue-100 text-blue-600 shrink-0">
+                                            {getIconForType(log.type)}
+                                        </div>
+                                    )}
+                                    
                                     <div className={cn(
-                                        "mt-1 p-1.5 rounded-full h-fit",
-                                        log.type === 'system' ? "bg-blue-100 text-blue-600" : "bg-slate-100 text-slate-600"
+                                        "max-w-[80%] rounded-2xl p-3 shadow-sm border",
+                                        log.type === 'system' 
+                                            ? "bg-white border-slate-200 rounded-tl-none text-slate-700" 
+                                            : "bg-blue-600 border-blue-600 text-white rounded-tr-none"
                                     )}>
-                                        {getIconForType(log.type)}
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="flex justify-between items-start">
-                                            <span className="font-semibold text-slate-700 text-xs uppercase tracking-wide">
+                                        <div className="flex justify-between items-center gap-4 mb-1">
+                                            <span className={cn(
+                                                "text-[10px] font-bold uppercase tracking-wider",
+                                                log.type === 'system' ? "text-slate-400" : "text-blue-200"
+                                            )}>
                                                 {log.type === 'system' ? 'Sistema / IA' : `Usuario (${log.userId.slice(0,6)}...)`}
                                             </span>
-                                            <span className="text-[10px] text-slate-400">
+                                            <span className={cn(
+                                                "text-[10px]",
+                                                log.type === 'system' ? "text-slate-400" : "text-blue-100"
+                                            )}>
                                                 {new Date(log.timestamp).toLocaleString()}
                                             </span>
                                         </div>
-                                        <p className="mt-1 text-slate-600 leading-relaxed">
+                                        <p className={cn(
+                                            "text-sm leading-relaxed",
+                                            log.type === 'system' ? "text-slate-600" : "text-white"
+                                        )}>
                                             {log.action}
                                         </p>
                                     </div>
+
+                                    {log.type !== 'system' && (
+                                        <div className="mt-1 p-2 rounded-full h-fit bg-slate-100 text-slate-600 shrink-0">
+                                            {getIconForType(log.type)}
+                                        </div>
+                                    )}
                                 </div>
                             ))
                         )}
