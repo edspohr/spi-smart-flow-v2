@@ -67,7 +67,7 @@ const OTDetailsModal = ({ isOpen, onClose, ot }: OTDetailsModalProps) => {
                         Bitácora de Actividad
                     </h3>
                     
-                    <div className="flex-1 overflow-y-auto pr-2 space-y-4 p-2 bg-slate-50/50 rounded-lg border border-slate-100">
+                    <div className="flex-1 overflow-y-auto pr-2 space-y-4 p-2 bg-slate-50/50 rounded-lg border border-slate-100 min-h-0">
                         {logs.length === 0 ? (
                              <div className="text-center py-10 text-slate-400 text-sm">
                                 No hay actividad registrada aún.

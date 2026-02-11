@@ -17,6 +17,7 @@ export interface OT {
   discountPercentage?: number;
   createdAt: string; // ISO String
   deadline: string; // ISO String
+  status?: string;
 }
 
 export interface Document {
@@ -216,7 +217,7 @@ const useDataStore = create<DataState>((set, get) => ({
       const qLogs = query(
           collection(db, "logs"), 
           where("otId", "==", otId), 
-          orderBy("timestamp", "asc")
+          orderBy("timestamp", "desc")
       );
       
       return onSnapshot(qLogs, (snapshot) => {
