@@ -145,80 +145,75 @@
   }
 }
 
-@layer utilities {
-  /* ── Glassmorphism ─────────────────────────────────────── */
-  .glass {
-    @apply backdrop-blur-xl bg-white/95 border border-white/20 shadow-xl;
-  }
-  .glass-card {
-    @apply backdrop-blur-md bg-white/90 border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300;
-  }
-  .glass-header {
-    @apply backdrop-blur-lg bg-white/95 border-b border-slate-200/80 sticky top-0 z-50 supports-[backdrop-filter]:bg-white/60;
-  }
-  .glass-modal {
-    @apply backdrop-blur-2xl bg-white/[0.92] border border-white/30 shadow-2xl ring-1 ring-black/5;
-  }
+/* ── Custom Utilities (v4 Standard) ───────────────────────── */
 
-  /* ── Gradient Backgrounds ──────────────────────────────── */
-  .bg-royal-gradient {
-    @apply bg-gradient-to-r from-slate-900 to-slate-800 text-white;
-  }
-  .text-royal-blue {
-    @apply text-blue-900;
-  }
+@utility glass {
+  @apply backdrop-blur-xl bg-white/95 border border-white/20 shadow-xl;
+}
+@utility glass-card {
+  @apply backdrop-blur-md bg-white/90 border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300;
+}
+@utility glass-header {
+  @apply backdrop-blur-lg bg-white/95 border-b border-slate-200/80 sticky top-0 z-50 supports-[backdrop-filter]:bg-white/60;
+}
+@utility glass-modal {
+  @apply backdrop-blur-2xl bg-white/[0.92] border border-white/30 shadow-2xl ring-1 ring-black/5;
+}
 
-  /* ── Status Badge Palette ──────────────────────────────── */
-  .badge-solicitud {
-    @apply bg-amber-50 text-amber-700 border-amber-200;
-  }
-  .badge-pago_adelanto {
-    @apply bg-sky-50 text-sky-700 border-sky-200;
-  }
-  .badge-gestion {
-    @apply bg-indigo-50 text-indigo-700 border-indigo-200;
-  }
-  .badge-pago_cierre {
-    @apply bg-purple-50 text-purple-700 border-purple-200;
-  }
-  .badge-finalizado {
-    @apply bg-emerald-50 text-emerald-700 border-emerald-200;
-  }
-  .badge-archivo {
-    @apply bg-slate-100 text-slate-600 border-slate-200;
-  }
+@utility bg-royal-gradient {
+  @apply bg-gradient-to-r from-slate-900 to-slate-800 text-white;
+}
+@utility text-royal-blue {
+  @apply text-blue-900;
+}
 
-  /* ── Document Status Colors ────────────────────────────── */
-  .doc-pending {
-    @apply bg-slate-100 text-slate-600 border-slate-200;
-  }
-  .doc-validating_ai {
-    @apply bg-violet-50 text-violet-700 border-violet-200;
-  }
-  .doc-ocr_processed {
-    @apply bg-cyan-50 text-cyan-700 border-cyan-200;
-  }
-  .doc-awaiting_signature {
-    @apply bg-amber-50 text-amber-700 border-amber-200;
-  }
-  .doc-validated {
-    @apply bg-emerald-50 text-emerald-700 border-emerald-200;
-  }
-  .doc-vault_matched {
-    @apply bg-teal-50 text-teal-700 border-teal-200;
-  }
-  .doc-uploaded {
-    @apply bg-blue-50 text-blue-700 border-blue-200;
-  }
-  .doc-rejected {
-    @apply bg-rose-50 text-rose-700 border-rose-200;
-  }
+@utility badge-solicitud {
+  @apply bg-amber-50 text-amber-700 border-amber-200;
+}
+@utility badge-pago_adelanto {
+  @apply bg-sky-50 text-sky-700 border-sky-200;
+}
+@utility badge-gestion {
+  @apply bg-indigo-50 text-indigo-700 border-indigo-200;
+}
+@utility badge-pago_cierre {
+  @apply bg-purple-50 text-purple-700 border-purple-200;
+}
+@utility badge-finalizado {
+  @apply bg-emerald-50 text-emerald-700 border-emerald-200;
+}
+@utility badge-archivo {
+  @apply bg-slate-100 text-slate-600 border-slate-200;
+}
 
-  /* ── AI Analysis Micro-Animations ──────────────────────── */
-  .ai-analyzing {
-    @apply relative overflow-hidden;
-  }
-  .ai-analyzing::after {
+@utility doc-pending {
+  @apply bg-slate-100 text-slate-600 border-slate-200;
+}
+@utility doc-validating_ai {
+  @apply bg-violet-50 text-violet-700 border-violet-200;
+}
+@utility doc-ocr_processed {
+  @apply bg-cyan-50 text-cyan-700 border-cyan-200;
+}
+@utility doc-awaiting_signature {
+  @apply bg-amber-50 text-amber-700 border-amber-200;
+}
+@utility doc-validated {
+  @apply bg-emerald-50 text-emerald-700 border-emerald-200;
+}
+@utility doc-vault_matched {
+  @apply bg-teal-50 text-teal-700 border-teal-200;
+}
+@utility doc-uploaded {
+  @apply bg-blue-50 text-blue-700 border-blue-200;
+}
+@utility doc-rejected {
+  @apply bg-rose-50 text-rose-700 border-rose-200;
+}
+
+@utility ai-analyzing {
+  @apply relative overflow-hidden;
+  &::after {
     content: "";
     @apply absolute inset-0 rounded-lg;
     background: linear-gradient(
@@ -230,87 +225,90 @@
     background-size: 200% 100%;
     animation: shimmer 1.5s ease-in-out infinite;
   }
-  .ai-pulse {
-    animation: pulse-glow 2s ease-in-out infinite;
-  }
-  .spin-slow {
-    animation: spin-slow 3s linear infinite;
-  }
+}
 
-  /* ── Typing Dots (AI Chatbot) ──────────────────────────── */
-  .typing-dot {
-    @apply inline-block w-1.5 h-1.5 rounded-full bg-indigo-400;
-    animation: typing-dots 1.4s infinite;
-  }
-  .typing-dot:nth-child(2) {
+@utility ai-pulse {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+@utility spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+@utility typing-dot {
+  @apply inline-block w-1.5 h-1.5 rounded-full bg-indigo-400;
+  animation: typing-dots 1.4s infinite;
+  &:nth-child(2) {
     animation-delay: 0.2s;
   }
-  .typing-dot:nth-child(3) {
+  &:nth-child(3) {
     animation-delay: 0.4s;
   }
+}
 
-  /* ── Skeleton Loading ──────────────────────────────────── */
-  .skeleton {
-    @apply rounded-md bg-slate-200/60;
-    background-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      rgba(255, 255, 255, 0.6) 50%,
-      transparent 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s ease-in-out infinite;
+@utility skeleton {
+  @apply rounded-md bg-slate-200/60;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@utility surface-card {
+  @apply bg-white border border-slate-100 rounded-2xl shadow-sm
+         hover:shadow-md transition-shadow duration-200;
+}
+@utility surface-glass {
+  @apply backdrop-blur-xl bg-white/80 border border-white/40
+         shadow-xl ring-1 ring-black/5 rounded-2xl;
+}
+@utility badge-status {
+  @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
+         text-[11px] font-semibold uppercase tracking-wide;
+}
+@utility btn-primary {
+  @apply bg-gradient-to-r from-blue-700 to-indigo-600 text-white
+         shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40
+         hover:brightness-110 active:scale-[0.98]
+         transition-all duration-150 rounded-xl font-semibold;
+}
+
+@utility stat-card {
+  @apply surface-card p-5 flex items-center gap-4;
+}
+
+@utility icon-badge {
+  @apply flex items-center justify-center rounded-xl w-11 h-11 shrink-0;
+}
+
+@utility animate-slide-in-right {
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
   }
-  /* ── Global Design Tokens ──────────────────────────────── */
-  @utility surface-card {
-    @apply bg-white border border-slate-100 rounded-2xl shadow-sm
-           hover:shadow-md transition-shadow duration-200;
+  to {
+    transform: translateX(0);
+    opacity: 1;
   }
-  @utility surface-glass {
-    @apply backdrop-blur-xl bg-white/80 border border-white/40
-           shadow-xl ring-1 ring-black/5 rounded-2xl;
+}
+
+@utility animate-fade-scale {
+  animation: fadeScale 0.25s ease-out;
+}
+@keyframes fadeScale {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
   }
-  @utility badge-status {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
-           text-[11px] font-semibold uppercase tracking-wide;
-  }
-  @utility btn-primary {
-    @apply bg-gradient-to-r from-blue-700 to-indigo-600 text-white
-           shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40
-           hover:brightness-110 active:scale-[0.98]
-           transition-all duration-150 rounded-xl font-semibold;
-  }
-  .stat-card {
-    @apply surface-card p-5 flex items-center gap-4;
-  }
-  @utility icon-badge {
-    @apply flex items-center justify-center rounded-xl w-11 h-11 shrink-0;
-  }
-  .animate-slide-in-right {
-    animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  @keyframes slideInRight {
-    from {
-      transform: translateX(100%);
-      opacity: 0;
-    }
-    to {
-      transform: translateX(0);
-      opacity: 1;
-    }
-  }
-  .animate-fade-scale {
-    animation: fadeScale 0.25s ease-out;
-  }
-  @keyframes fadeScale {
-    from {
-      transform: scale(0.96);
-      opacity: 0;
-    }
-    to {
-      transform: scale(1);
-      opacity: 1;
-    }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
