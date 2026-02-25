@@ -53,7 +53,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-slate-50 text-slate-800;
   }
   html {
     font-family:
@@ -67,10 +67,10 @@
 
 @layer utilities {
   .glass {
-    @apply backdrop-blur-xl bg-white/95 border border-white/20 shadow-xl;
+    @apply backdrop-blur-xl bg-white border border-slate-200 shadow-xl;
   }
   .glass-card {
-    @apply backdrop-blur-md bg-white/90 border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300;
+    @apply backdrop-blur-md bg-white border border-slate-200/60 shadow-md hover:shadow-xl hover:border-blue-200/50 transition-all duration-300;
   }
   .glass-header {
     @apply backdrop-blur-lg bg-white/95 border-b border-slate-200/80 sticky top-0 z-50 supports-[backdrop-filter]:bg-white/60;
@@ -85,46 +85,46 @@
     @apply text-blue-900;
   }
   .badge-solicitud {
-    @apply bg-amber-50 text-amber-700 border-amber-200;
+    @apply bg-amber-100 text-amber-800 border-amber-300;
   }
   .badge-pago_adelanto {
-    @apply bg-sky-50 text-sky-700 border-sky-200;
+    @apply bg-sky-100 text-sky-800 border-sky-300;
   }
   .badge-gestion {
-    @apply bg-indigo-50 text-indigo-700 border-indigo-200;
+    @apply bg-indigo-100 text-indigo-800 border-indigo-300;
   }
   .badge-pago_cierre {
-    @apply bg-purple-50 text-purple-700 border-purple-200;
+    @apply bg-purple-100 text-purple-800 border-purple-300;
   }
   .badge-finalizado {
-    @apply bg-emerald-50 text-emerald-700 border-emerald-200;
+    @apply bg-emerald-100 text-emerald-800 border-emerald-300;
   }
   .badge-archivo {
-    @apply bg-slate-100 text-slate-600 border-slate-200;
+    @apply bg-slate-100 text-slate-700 border-slate-300;
   }
   .doc-pending {
-    @apply bg-slate-100 text-slate-600 border-slate-200;
+    @apply bg-slate-100 text-slate-700 border-slate-300;
   }
   .doc-validating_ai {
-    @apply bg-violet-50 text-violet-700 border-violet-200;
+    @apply bg-violet-100 text-violet-800 border-violet-300;
   }
   .doc-ocr_processed {
-    @apply bg-cyan-50 text-cyan-700 border-cyan-200;
+    @apply bg-cyan-100 text-cyan-800 border-cyan-300;
   }
   .doc-awaiting_signature {
-    @apply bg-amber-50 text-amber-700 border-amber-200;
+    @apply bg-amber-100 text-amber-800 border-amber-300;
   }
   .doc-validated {
-    @apply bg-emerald-50 text-emerald-700 border-emerald-200;
+    @apply bg-emerald-100 text-emerald-800 border-emerald-300;
   }
   .doc-vault_matched {
-    @apply bg-teal-50 text-teal-700 border-teal-200;
+    @apply bg-teal-100 text-teal-800 border-teal-300;
   }
   .doc-uploaded {
-    @apply bg-blue-50 text-blue-700 border-blue-200;
+    @apply bg-blue-100 text-blue-800 border-blue-300;
   }
   .doc-rejected {
-    @apply bg-rose-50 text-rose-700 border-rose-200;
+    @apply bg-rose-100 text-rose-800 border-rose-300;
   }
   .ai-analyzing {
     position: relative;
@@ -176,10 +176,10 @@
     animation: shimmer 1.5s ease-in-out infinite;
   }
   .surface-card {
-    @apply bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200;
+    @apply bg-white border border-slate-200/80 rounded-2xl shadow-md hover:shadow-xl hover:border-slate-300 transition-all duration-300;
   }
   .surface-glass {
-    @apply backdrop-blur-xl bg-white/80 border border-white/40 shadow-xl ring-1 ring-black/5 rounded-2xl;
+    @apply backdrop-blur-xl bg-white/90 border border-slate-200 shadow-xl ring-1 ring-slate-900/5 rounded-2xl;
   }
   .badge-status {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wide;
@@ -188,7 +188,7 @@
     @apply bg-gradient-to-r from-blue-700 to-indigo-600 text-white shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 hover:brightness-110 active:scale-[0.98] transition-all duration-150 rounded-xl font-semibold;
   }
   .stat-card {
-    @apply bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow duration-200 p-5 flex items-center gap-4;
+    @apply bg-white border border-slate-200/80 rounded-2xl shadow-md hover:shadow-lg hover:border-blue-200/50 transition-all duration-300 p-5 flex items-center gap-4;
   }
   .icon-badge {
     @apply flex items-center justify-center rounded-xl w-11 h-11 shrink-0;

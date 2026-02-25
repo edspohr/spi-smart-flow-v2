@@ -153,7 +153,7 @@ const ClientAdminDashboard = () => {
                     </CardHeader>
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse">
-                            <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 text-left">
+                            <thead className="bg-slate-50 text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] border-b border-slate-200 text-left">
                                 <tr>
                                     <th className="px-8 py-4">Referencia / ID</th>
                                     <th className="px-8 py-4">Descripción del Servicio</th>
@@ -195,7 +195,7 @@ const ClientAdminDashboard = () => {
                                                 variant="ghost" 
                                                 size="sm" 
                                                 onClick={() => { setSelectedOT(ot); setModalOpen(true); }}
-                                                className="rounded-2xl h-10 px-4 hover:bg-blue-600 hover:text-white transition-all font-bold group/btn shadow-sm bg-white border border-slate-100"
+                                                className="rounded-2xl h-10 px-4 hover:bg-blue-600 hover:text-white transition-all font-bold group/btn shadow-sm bg-white border border-slate-200 hover:border-blue-400"
                                             >
                                                 <Eye className="h-4 w-4 mr-2" /> Ver Detalles
                                             </Button>

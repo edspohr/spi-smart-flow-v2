@@ -44,8 +44,8 @@ export default function KanbanBoard({ userOts, onSelectOt }) {
       {COLUMNS.map(col => (
         <div key={col.id} className="min-w-[300px] w-[300px] bg-slate-50/80 border border-slate-200/60 rounded-2xl flex flex-col h-full overflow-hidden">
           {/* Column Header */}
-          <div className={`px-4 py-3 border-t-4 ${col.color} bg-white flex justify-between items-center shrink-0 shadow-sm`}>
-            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-widest">{col.title}</h3>
+          <div className={`px-4 py-3 border-t-4 ${col.color} bg-white flex justify-between items-center shrink-0 shadow-sm border-b border-slate-100`}>
+            <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">{col.title}</h3>
             <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-black", col.chip || "bg-slate-200 text-slate-600")}>
               {otsByStage[col.id].length}
             </span>
@@ -60,7 +60,7 @@ export default function KanbanBoard({ userOts, onSelectOt }) {
                   key={ot.id}
                   onClick={() => onSelectOt(ot)}
                   className={cn(
-                    "bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-200 cursor-pointer active:scale-[0.99] group border-b-[3px]",
+                    "bg-white p-4 rounded-xl border-x border-t border-slate-200/80 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 cursor-pointer active:scale-[0.99] group border-b-[4px]",
                     STAGE_BORDER_COLORS[ot.stage]
                   )}
                 >

@@ -267,7 +267,7 @@ const SPIAdminDashboard = () => {
                          </CardHeader>
                          <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
-                                 <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">
+                                 <thead className="bg-slate-50 text-[10px] font-black text-slate-600 uppercase tracking-[0.2em] border-b border-slate-200">
                                     <tr>
                                         <th className="px-8 py-4 text-left">Referencia</th>
                                         <th className="px-8 py-4 text-left">Cliente / Empresa</th>
@@ -315,7 +315,7 @@ const SPIAdminDashboard = () => {
                                                  <Button 
                                                     variant="ghost" 
                                                     onClick={() => setSelectedOT(ot)}
-                                                    className="rounded-2xl hover:bg-blue-600 hover:text-white transition-all font-bold group/btn shadow-sm bg-white border border-slate-100"
+                                                    className="rounded-2xl hover:bg-blue-600 hover:text-white transition-all font-bold group/btn shadow-sm bg-white border border-slate-200 hover:border-blue-400"
                                                 >
                                                      <Eye className="h-4 w-4 mr-2" /> Detalle
                                                  </Button>

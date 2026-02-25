@@ -49,7 +49,7 @@ export default function SPIDashboard() {
         <StatCard title="Total OTs" value={ots.length} icon={Filter} color="bg-slate-100 text-slate-600" />
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="surface-card overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex gap-2 overflow-x-auto">
           {['all', 'solicitud', 'pago_adelanto', 'gestion', 'pago_cierre', 'finalizado'].map(f => (
             <button 
@@ -65,7 +65,7 @@ export default function SPIDashboard() {
         </div>
 
         <table className="w-full text-left">
-          <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
+          <thead className="bg-slate-50 text-slate-700 text-[11px] font-bold uppercase tracking-widest border-b border-slate-200">
             <tr>
               <th className="px-6 py-4">ID</th>
               <th className="px-6 py-4">Cliente</th>
@@ -98,7 +98,7 @@ export default function SPIDashboard() {
                 <td className="px-6 py-4">
                   <button 
                     onClick={() => setSelectedOt(ot)}
-                    className="text-accent hover:text-blue-700 font-medium text-sm"
+                    className="px-4 py-1.5 text-xs font-bold bg-white border border-slate-200 text-slate-700 hover:text-blue-700 hover:border-blue-400 hover:shadow-md rounded-xl transition-all duration-200 active:scale-95"
                   >
                     Gestionar
                   </button>
