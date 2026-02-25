@@ -26,3 +26,4 @@ dist-ssr
 # Trash and temporary
 node_modules_trash
 .firebase
+fresh-repo
