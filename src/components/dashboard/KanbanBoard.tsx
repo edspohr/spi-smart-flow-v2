@@ -1,6 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useMemo } from 'react';
-import { Clock, CheckCircle } from 'lucide-react';
+import { Clock } from 'lucide-react';
+// @ts-ignore
 import { useData } from '../../context/DataContext';
 import { cn } from '../../lib/utils';
 
@@ -12,7 +13,7 @@ const COLUMNS = [
   { id: 'finalizado', title: 'Finalizado', color: 'border-t-emerald-500', chip: 'bg-emerald-100 text-emerald-700' },
 ];
 
-const STAGE_BORDER_COLORS = {
+const STAGE_BORDER_COLORS: Record<string, string> = {
   solicitud: 'border-b-amber-500',
   pago_adelanto: 'border-b-sky-500',
   gestion: 'border-b-indigo-500',
@@ -20,7 +21,7 @@ const STAGE_BORDER_COLORS = {
   finalizado: 'border-b-emerald-500'
 };
 
-const DOT_COLORS = {
+const DOT_COLORS: Record<string, string> = {
   solicitud: 'bg-amber-500',
   pago_adelanto: 'bg-sky-500',
   gestion: 'bg-indigo-500',
@@ -28,12 +29,17 @@ const DOT_COLORS = {
   finalizado: 'bg-emerald-500'
 };
 
-export default function KanbanBoard({ userOts, onSelectOt }) {
+interface KanbanBoardProps {
+  userOts: any[];
+  onSelectOt: (ot: any) => void;
+}
+
+export default function KanbanBoard({ userOts, onSelectOt }: KanbanBoardProps) {
   const { getTimeStatus } = useData();
 
   const otsByStage = useMemo(() => {
-    const groups = COLUMNS.reduce((acc, col) => ({ ...acc, [col.id]: [] }), {});
-    userOts.forEach(ot => {
+    const groups: Record<string, any[]> = COLUMNS.reduce((acc, col) => ({ ...acc, [col.id]: [] }), {});
+    userOts.forEach((ot: any) => {
       if (groups[ot.stage]) groups[ot.stage].push(ot);
     });
     return groups;
@@ -52,7 +58,7 @@ export default function KanbanBoard({ userOts, onSelectOt }) {
           </div>
           
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
-            {otsByStage[col.id].map(ot => {
+            {otsByStage[col.id].map((ot: any) => {
                const { discount, surcharge } = getTimeStatus(ot);
                
                return (
