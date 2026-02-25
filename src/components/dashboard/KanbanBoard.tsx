@@ -2,6 +2,7 @@
 import { useMemo } from 'react';
 import { Clock, CheckCircle } from 'lucide-react';
 import { useData } from '../../context/DataContext';
+import { cn } from '../../lib/utils';
 
 const COLUMNS = [
   { id: 'solicitud', title: 'Solicitud', color: 'border-t-amber-500', chip: 'bg-amber-100 text-amber-700' },
