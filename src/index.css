@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 @theme {
   --color-border: var(--border);
@@ -36,40 +37,40 @@
   --animate-accordion-up: accordion-up 0.2s ease-out;
   --animate-fade-in: fade-in 0.3s ease-out;
   --animate-slide-up: slide-up 0.4s ease-out;
+  --animate-pulse-glow: pulse-glow 2s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.5s ease-in-out infinite;
 
   @keyframes accordion-down {
-    from {
-      height: 0;
-    }
-    to {
-      height: var(--radix-accordion-content-height);
-    }
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
   }
   @keyframes accordion-up {
-    from {
-      height: var(--radix-accordion-content-height);
-    }
-    to {
-      height: 0;
-    }
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
   }
   @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
   @keyframes slide-up {
-    from {
-      transform: translateY(20px);
-      opacity: 0;
-    }
-    to {
-      transform: translateY(0);
-      opacity: 1;
-    }
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 8px 0 rgba(99, 102, 241, 0.3); }
+    50% { box-shadow: 0 0 24px 4px rgba(99, 102, 241, 0.6); }
+  }
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes typing-dots {
+    0%, 60%, 100% { opacity: 0; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-4px); }
+  }
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 }
 
@@ -92,11 +93,18 @@
   ::file-selector-button {
     border-color: var(--border, currentColor);
   }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
 }
 
 @layer utilities {
+  /* ── Glassmorphism ─────────────────────────────────────── */
   .glass {
-    /* INCREASED OPACITY FOR READABILITY */
     @apply backdrop-blur-xl bg-white/95 border border-white/20 shadow-xl;
   }
   .glass-card {
@@ -105,21 +113,152 @@
   .glass-header {
     @apply backdrop-blur-lg bg-white/95 border-b border-slate-200/80 sticky top-0 z-50 supports-[backdrop-filter]:bg-white/60;
   }
+  .glass-modal {
+    @apply backdrop-blur-2xl bg-white/[0.92] border border-white/30 shadow-2xl ring-1 ring-black/5;
+  }
 
-  /* Utility for "Royal" gradients if needed */
+  /* ── Gradient Backgrounds ──────────────────────────────── */
   .bg-royal-gradient {
     @apply bg-gradient-to-r from-slate-900 to-slate-800 text-white;
   }
-
   .text-royal-blue {
     @apply text-blue-900;
+  }
+
+  /* ── Status Badge Palette ──────────────────────────────── */
+  .badge-solicitud {
+    @apply bg-amber-50 text-amber-700 border-amber-200;
+  }
+  .badge-pago_adelanto {
+    @apply bg-sky-50 text-sky-700 border-sky-200;
+  }
+  .badge-gestion {
+    @apply bg-indigo-50 text-indigo-700 border-indigo-200;
+  }
+  .badge-pago_cierre {
+    @apply bg-purple-50 text-purple-700 border-purple-200;
+  }
+  .badge-finalizado {
+    @apply bg-emerald-50 text-emerald-700 border-emerald-200;
+  }
+  .badge-archivo {
+    @apply bg-slate-100 text-slate-600 border-slate-200;
+  }
+
+  /* ── Document Status Colors ────────────────────────────── */
+  .doc-pending {
+    @apply bg-slate-100 text-slate-600 border-slate-200;
+  }
+  .doc-validating_ai {
+    @apply bg-violet-50 text-violet-700 border-violet-200;
+  }
+  .doc-ocr_processed {
+    @apply bg-cyan-50 text-cyan-700 border-cyan-200;
+  }
+  .doc-awaiting_signature {
+    @apply bg-amber-50 text-amber-700 border-amber-200;
+  }
+  .doc-validated {
+    @apply bg-emerald-50 text-emerald-700 border-emerald-200;
+  }
+  .doc-vault_matched {
+    @apply bg-teal-50 text-teal-700 border-teal-200;
+  }
+  .doc-uploaded {
+    @apply bg-blue-50 text-blue-700 border-blue-200;
+  }
+  .doc-rejected {
+    @apply bg-rose-50 text-rose-700 border-rose-200;
+  }
+
+  /* ── AI Analysis Micro-Animations ──────────────────────── */
+  .ai-analyzing {
+    @apply relative overflow-hidden;
+  }
+  .ai-analyzing::after {
+    content: "";
+    @apply absolute inset-0 rounded-lg;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(99, 102, 241, 0.08) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+  .ai-pulse {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  .spin-slow {
+    animation: spin-slow 3s linear infinite;
+  }
+
+  /* ── Typing Dots (AI Chatbot) ──────────────────────────── */
+  .typing-dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full bg-indigo-400;
+    animation: typing-dots 1.4s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+  /* ── Skeleton Loading ──────────────────────────────────── */
+  .skeleton {
+    @apply rounded-md bg-slate-200/60;
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.6) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+  /* ── Global Design Tokens ──────────────────────────────── */
+  .surface-card {
+    @apply bg-white border border-slate-100 rounded-2xl shadow-sm
+           hover:shadow-md transition-shadow duration-200;
+  }
+  .surface-glass {
+    @apply backdrop-blur-xl bg-white/80 border border-white/40
+           shadow-xl ring-1 ring-black/5 rounded-2xl;
+  }
+  .badge-status {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full
+           text-[11px] font-semibold uppercase tracking-wide;
+  }
+  .btn-primary {
+    @apply bg-gradient-to-r from-blue-700 to-indigo-600 text-white
+           shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40
+           hover:brightness-110 active:scale-[0.98]
+           transition-all duration-150 rounded-xl font-semibold;
+  }
+  .stat-card {
+    @apply surface-card p-5 flex items-center gap-4;
+  }
+  .icon-badge {
+    @apply flex items-center justify-center rounded-xl w-11 h-11 shrink-0;
+  }
+  .animate-slide-in-right {
+    animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+  }
+  .animate-fade-scale {
+    animation: fadeScale 0.25s ease-out;
+  }
+  @keyframes fadeScale {
+    from { transform: scale(0.96); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
   }
 }
 
 :root {
   /* ROYAL THEME PALETTE */
-  --background: 210 40% 98%; /* Slate-50 (Cool White) */
-  --foreground: 222 47% 11%; /* Slate-900 (Deep Text) */
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
 
   --card: 0 0% 100%;
   --card-foreground: 222 47% 11%;
@@ -128,14 +267,14 @@
   --popover-foreground: 222 47% 11%;
 
   /* DEEP ROYAL BLUE (Authority) */
-  --primary: 221 84% 33%; /* #0f3f9e approx - Much darker */
+  --primary: 221 84% 33%;
   --primary-foreground: 210 40% 98%;
 
   --secondary: 210 40% 96%;
   --secondary-foreground: 222 47% 11%;
 
   --muted: 210 40% 96.1%;
-  --muted-foreground: 215 25% 35%; /* Significantly darker (approx Slate-600/700) for readability */
+  --muted-foreground: 215 25% 27%;
 
   /* VIBRANT INDIGO ACCENT */
   --accent: 243 75% 59%;
@@ -144,9 +283,9 @@
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 
-  --border: 214 32% 75%; /* Darker border (approx Slate-300) for card definition */
+  --border: 214 32% 75%;
   --input: 214 32% 75%;
-  --ring: 221 83% 53%; /* Brighter ring for focus states */
+  --ring: 221 83% 53%;
 
   --radius: 0.75rem;
 }
@@ -161,7 +300,7 @@
   --popover: 222 47% 11%;
   --popover-foreground: 210 40% 98%;
 
-  --primary: 217 91% 60%;
+  --primary: 221 84% 60%;
   --primary-foreground: 222 47% 11%;
 
   --secondary: 217 19% 27%;

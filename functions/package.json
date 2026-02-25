@@ -2,6 +2,7 @@
   "name": "functions",
   "version": "1.0.0",
   "description": "",
+  "type": "commonjs",
   "main": "lib/index.js",
   "scripts": {
     "lint": "eslint --ext .js,.ts .",

@@ -35,7 +35,7 @@ export const analyzeDocument = onCall({ secrets: [geminiApiKey] }, async (reques
     const key = geminiApiKey.value();
     const genAI = new GoogleGenerativeAI(key);
     // Use a model that supports vision/multimodal, e.g., gemini-1.5-flash
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // 3. Prepare the prompt
     const prompt = `

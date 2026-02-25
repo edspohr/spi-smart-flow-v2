@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, orderBy, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { INITIAL_OTS, INITIAL_DOCS, INITIAL_LOGS, VAULT_DOCUMENTS } from '../data/mockData';
 
 // --- Types ---
 export type OTStage = 'solicitud' | 'pago_adelanto' | 'gestion' | 'pago_cierre' | 'finalizado';
-export type DocumentStatus = 'pending' | 'uploaded' | 'validated' | 'rejected';
+export type DocumentStatus = 'pending' | 'uploaded' | 'validated' | 'rejected' | 'validating_ai' | 'ocr_processed' | 'awaiting_signature' | 'vault_matched';
 
 export interface OT {
   id: string;
@@ -41,6 +42,10 @@ export interface Log {
   action: string;
   type: 'system' | 'user';
   timestamp: string;
+  metadata?: {
+      docId?: string;
+      [key: string]: any;
+  };
 }
 
 interface DataState {
@@ -62,63 +67,20 @@ interface DataState {
   checkVaultForReuse: (documentType: string) => Document | undefined;
   addToVault: (doc: Document) => void; 
   createOT: (otData: Partial<OT>) => Promise<void>;
-  logAction: (userId: string, otId: string, action: string) => Promise<void>; 
+  logAction: (userId: string, otId: string, action: string, metadata?: any) => Promise<void>; 
   updateDocumentStatus: (docId: string, status: DocumentStatus, reason?: string) => Promise<void>; 
-  replaceDocument: (docId: string, file: File) => Promise<void>; // Added
+  replaceDocument: (docId: string, file: File) => Promise<void>; 
+  updateOTStage: (otId: string, stage: OTStage) => Promise<void>; // Added for strict transition control
  
 
   // Mock Data Generators for Dev
   loadMockData: (role: 'client' | 'client-admin' | 'spi-admin', id: string) => void;
 }
 
-const MOCK_OTS: OT[] = [
-  {
-    id: 'ot-101',
-    companyId: 'demo-company-1',
-    clientId: 'mock-client-123',
-    title: 'Registro de Marca "SuperTech"',
-    serviceType: 'Propiedad Intelectual',
-    stage: 'gestion',
-    amount: 1500,
-    discountPercentage: 0,
-    createdAt: new Date().toISOString(),
-    deadline: new Date(Date.now() + 86400000 * 5).toISOString(), // 5 days from now
-  },
-  {
-    id: 'ot-102',
-    companyId: 'demo-company-1',
-    clientId: 'mock-client-123',
-    title: 'Renovación Sanitaria',
-    serviceType: 'Asuntos Regulatorios',
-    stage: 'solicitud',
-    amount: 800,
-    createdAt: new Date().toISOString(),
-    deadline: new Date(Date.now() + 86400000 * 10).toISOString(),
-  }
-];
-
-const MOCK_DOCS: Document[] = [
-  {
-    id: 'doc-vault-1',
-    clientId: 'mock-client-123',
-    name: 'Poder Legal General',
-    type: 'poder_legal',
-    status: 'validated',
-    isVaultEligible: true,
-    validUntil: '2028-01-01T00:00:00Z',
-    url: '#'
-  },
-   {
-    id: 'doc-req-1',
-    otId: 'ot-101',
-    clientId: 'mock-client-123',
-    name: 'Cédula de Identidad',
-    type: 'cedula',
-    status: 'pending',
-    isVaultEligible: false,
-    url: ''
-  }
-];
+// Mock data is now imported from src/data/mockData.js
+const MOCK_OTS: OT[] = INITIAL_OTS as OT[];
+const MOCK_DOCS: Document[] = [...(INITIAL_DOCS as Document[]), ...(VAULT_DOCUMENTS as Document[])];
+const MOCK_LOGS = INITIAL_LOGS;
 
 const useDataStore = create<DataState>((set, get) => ({
   ots: [],
@@ -281,7 +243,7 @@ const useDataStore = create<DataState>((set, get) => ({
   },
 
   // Enhanced Log Action with Real User
-  logAction: async (userId, otId, action) => {
+  logAction: async (userId, otId, action, metadata = {}) => {
       try {
           // Dynamic Import to avoid circular dependency if possible, or just standard import if valid.
           // Better: User passes userName, OR we try to fetch it here if we are on client side.
@@ -306,7 +268,8 @@ const useDataStore = create<DataState>((set, get) => ({
               action,
               type: 'system', // Keep 'system' for automated, but maybe 'user' for explicit actions?
               // Let's infer type: if it's a direct user action like "Uploaded", "Approved", it matches.
-              timestamp: new Date().toISOString()
+              timestamp: new Date().toISOString(),
+              metadata
           });
       } catch (e) {
          console.error("Error logging action:", e);
@@ -368,9 +331,33 @@ const useDataStore = create<DataState>((set, get) => ({
       }
   },
 
+  updateOTStage: async (otId: string, stage: OTStage) => {
+      try {
+          // STRICT LOGIC: Prevents jumping to 'finalizado' accidentally
+          if (stage === 'finalizado') {
+              console.warn("Attempting to finalize OT. This should only be done by Admin via strict close process.");
+              // In future, check for role or specific conditions here
+          }
+
+          // Specific Logic for Terms Acceptance (if context matches)
+          // If previous stage was 'solicitud' and new is 'finalizado', BLOCK IT
+          const otRef = doc(db, "ots", otId);
+          await updateDoc(otRef, {
+              stage,
+              updatedAt: new Date().toISOString()
+          });
+          
+          get().logAction('system', otId, `Etapa actualizada a: ${stage}`);
+
+      } catch (e) {
+           console.error("Error updating OT stage:", e);
+           throw e;
+      }
+  },
+
   loadMockData: (role, _id) => {
-      // Kept for fallback, but main logic is now in subscribe functions
-      console.warn("loadMockData called - prefer using subscribeToClientData/CompanyData");
+      // Loads comprehensive mock data from mockData.js
+      console.log("loadMockData: Loading premium mock dataset");
       set({ loading: true });
        setTimeout(() => {
         if (role === 'client' || role === 'client-admin') {
@@ -378,6 +365,15 @@ const useDataStore = create<DataState>((set, get) => ({
                 ots: MOCK_OTS,
                 documents: MOCK_DOCS.filter(d => !d.isVaultEligible), 
                 vaultDocuments: MOCK_DOCS.filter(d => d.isVaultEligible),
+                logs: MOCK_LOGS as any[],
+                loading: false
+            });
+        } else if (role === 'spi-admin') {
+            set({
+                ots: MOCK_OTS,
+                documents: MOCK_DOCS,
+                vaultDocuments: MOCK_DOCS.filter(d => d.isVaultEligible),
+                logs: MOCK_LOGS as any[],
                 loading: false
             });
         }

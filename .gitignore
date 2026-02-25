@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Trash and temporary
+node_modules_trash
+.firebase

@@ -46,10 +46,14 @@ export const createOTFromPipefy = functions.https.onRequest(async (req, res) => 
     const amount = parseFloat(getFieldValue("monto") || "0");
     const deadlineStr = getFieldValue("fecha límite");
 
+    const fees = parseFloat(getFieldValue("honorarios") || "0");
+    const paymentTerms = getFieldValue("condiciones de pago") || "Contado";
+
     // Try to find client by email
     let clientId = "pipefy-guest";
     let companyId = "default-company";
     
+    // ... (existing client lookup)
     const userSnapshot = await db.collection("users").where("email", "==", clientEmail).limit(1).get();
     if (!userSnapshot.empty) {
         const userDoc = userSnapshot.docs[0];
@@ -62,10 +66,12 @@ export const createOTFromPipefy = functions.https.onRequest(async (req, res) => 
       title: card.title,
       serviceType: serviceType,
       amount: amount,
+      fees: fees,
+      paymentTerms: paymentTerms,
       stage: 'solicitud', // Initial stage
       status: 'pending',
       createdAt: new Date().toISOString(),
-      deadline: deadlineStr ? new Date(deadlineStr).toISOString() : new Date(Date.now() + 86400000 * 7).toISOString(), // Default 7 days
+      deadline: deadlineStr ? new Date(deadlineStr).toISOString() : new Date(Date.now() + 86400000 * 7).toISOString(), 
       companyId: companyId,
       clientId: clientId,
       source: 'pipefy'

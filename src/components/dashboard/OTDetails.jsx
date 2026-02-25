@@ -1,7 +1,20 @@
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useData } from '../../context/DataContext';
-import { CheckCircle, Upload, PenTool, X, UserPlus, User, MessageSquare, Send, FileText, BrainCircuit } from 'lucide-react';
+import { 
+  CheckCircle, Upload, PenTool, X, UserPlus, User, 
+  MessageSquare, Send, FileText, BrainCircuit, 
+  Clock, CreditCard, ChevronRight, Check, Loader2 
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+const STAGE_CONFIG = {
+    solicitud: { label: 'Solicitud', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+    pago_adelanto: { label: 'Pago Inicial', color: 'bg-sky-100 text-sky-700 border-sky-200' },
+    gestion: { label: 'En Gestión', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+    pago_cierre: { label: 'Pago Final', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+    finalizado: { label: 'Finalizado', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' }
+};
 
 export default function OTDetails({ ot, onClose }) {
   const { user } = useAuth();
@@ -12,23 +25,15 @@ export default function OTDetails({ ot, onClose }) {
   const [activeTab, setActiveTab] = useState('details'); // 'details' | 'bitacora'
 
   const { discount, surcharge } = getTimeStatus(ot);
-
-  // Filter team members (mock: everyone except SPI admins)
   const teamMembers = users.filter(u => u.role !== 'spi-admin');
   const isClientAdmin = user.role === 'client-admin';
 
-  // Auto-Validation simulation
   const handleUpload = (docId) => {
     setProcessingId(docId);
     setAiAnalysis(null);
-    
-    // Step 1: Simulating Upload
     setTimeout(() => {
-        // Step 2: Simulating AI Analysis
         setAiAnalysis({ docId, status: 'analyzing' });
-        
         setTimeout(() => {
-            // Step 3: Result
             setAiAnalysis({ 
                 docId, 
                 status: 'complete', 
@@ -38,16 +43,13 @@ export default function OTDetails({ ot, onClose }) {
                     "ℹ️ Coincidencia de fecha: 100%"
                 ] 
             });
-            
-            // Finalize
             setTimeout(() => {
                 updateDocumentStatus(ot.id, docId, 'approved'); 
                 setProcessingId(null);
                 setAiAnalysis(null);
             }, 2500);
-            
         }, 2000);
-    }, 1500);
+    }, 1200);
   };
 
   const handlePay = (type) => {
@@ -65,192 +67,233 @@ export default function OTDetails({ ot, onClose }) {
       setCommentText("");
   };
 
-  // Logic to check if we can advance from Gestíon
   const allDocsApproved = ot.documents.every(d => d.status === 'approved');
-  
-  // Combine history and comments, sort by date desc
   const feed = [...(ot.history || []), ...(ot.comments || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-end z-50 transition-all">
-      <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col animate-slide-in-right relative">
-        {/* Header Fixed */}
-        <div className="p-6 border-b border-slate-100 flex justify-between items-start bg-white z-10">
-           <div>
-             <div className="text-sm font-bold text-accent uppercase tracking-wider mb-1">OT-{ot.id.split('-')[1]}</div>
-             <h2 className="text-2xl font-bold text-slate-900 leading-tight">{ot.title}</h2>
-             <div className="flex gap-4 mt-4 text-sm text-slate-500 font-medium">
-                 <button 
-                    onClick={() => setActiveTab('details')}
-                    className={`pb-1 border-b-2 transition-colors ${activeTab === 'details' ? 'border-slate-900 text-slate-900' : 'border-transparent hover:text-slate-700'}`}
-                 >
-                     Detalles y Gestión
-                 </button>
-                 <button 
-                    onClick={() => setActiveTab('bitacora')}
-                    className={`pb-1 border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'bitacora' ? 'border-slate-900 text-slate-900' : 'border-transparent hover:text-slate-700'}`}
-                 >
-                     <MessageSquare size={16} /> Bitácora
-                 </button>
+    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-end z-50">
+      <div className="bg-white w-full max-w-xl h-full shadow-[0_0_50px_rgba(0,0,0,0.1)] flex flex-col animate-slide-in-right relative">
+        {/* Top Gradient Strip */}
+        <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-indigo-500 to-purple-600" />
+
+        {/* Header */}
+        <div className="p-6 pb-2 border-b border-slate-100 flex justify-between items-start bg-white/80 backdrop-blur-md sticky top-0 z-20">
+           <div className="flex-1">
+             <div className="flex items-center gap-3 mb-2">
+               <span className="bg-blue-50 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded-full border border-blue-100 uppercase tracking-widest">
+                 OT-{ot.id.split('-')[1]}
+               </span>
+               <div className={cn("px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-tight", STAGE_CONFIG[ot.stage].color)}>
+                 {STAGE_CONFIG[ot.stage].label}
+               </div>
+             </div>
+             <h2 className="text-2xl font-black text-slate-900 leading-tight tracking-tight">{ot.title}</h2>
+             
+             {/* Pill Tabs */}
+             <div className="flex bg-slate-100 rounded-xl p-1 mt-6 w-fit mb-2">
+                <button 
+                  onClick={() => setActiveTab('details')}
+                  className={cn(
+                    "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200",
+                    activeTab === 'details' ? "bg-white shadow-sm text-blue-700" : "text-slate-500 hover:text-slate-700"
+                  )}
+                >
+                  Gestión
+                </button>
+                <button 
+                  onClick={() => setActiveTab('bitacora')}
+                  className={cn(
+                    "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200 flex items-center gap-2",
+                    activeTab === 'bitacora' ? "bg-white shadow-sm text-blue-700" : "text-slate-500 hover:text-slate-700"
+                  )}
+                >
+                  <MessageSquare size={14} /> 
+                  Bitácora
+                  {feed.length > 0 && (
+                    <span className="bg-slate-200 text-slate-500 text-[10px] px-1.5 rounded-full">
+                      {feed.length}
+                    </span>
+                  )}
+                </button>
              </div>
            </div>
-           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600">
-             <X size={24} />
+           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-2xl text-slate-400 hover:text-slate-900 transition-colors focus:ring-2 focus:ring-slate-100">
+             <X size={20} />
            </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 p-8">
+        <div className="overflow-y-auto flex-1 p-6 scrollbar-hide">
             {activeTab === 'details' ? (
-                <>
-                    <div className="flex flex-wrap gap-3 mb-6">
-                        {discount > 0 && <span className="bg-green-100 text-green-800 text-sm px-2 py-1 rounded font-medium">10% Descuento Aplicable</span>}
-                        {surcharge > 0 && <span className="bg-red-100 text-red-800 text-sm px-2 py-1 rounded font-medium">Recargo por retraso</span>}
-                    </div>
+                <div className="animate-fade-in space-y-8">
+                    {/* Urgency Indicators */}
+                    {(discount > 0 || surcharge > 0) && (
+                      <div className="flex flex-wrap gap-2">
+                          {discount > 0 && <span className="bg-emerald-50 text-emerald-700 text-[10px] px-2.5 py-1.5 rounded-lg font-bold border border-emerald-100 uppercase tracking-wide flex items-center gap-2">🎯 Descuento del 10% por Pronto Envío</span>}
+                          {surcharge > 0 && <span className="bg-rose-50 text-rose-700 text-[10px] px-2.5 py-1.5 rounded-lg font-bold border border-rose-100 uppercase tracking-wide flex items-center gap-2">⚠️ Recargo aplicado por retraso</span>}
+                      </div>
+                    )}
 
-                    {/* Assignment Section (Client Admin Only) */}
+                    {/* Assignment Section */}
                     {isClientAdmin && (
-                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 mb-6">
-                        <h3 className="text-sm font-bold text-purple-900 mb-3 flex items-center gap-2">
-                            <UserPlus size={16} /> Asignar Responsables
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                            {teamMembers.map(member => {
-                            const isAssigned = (ot.assignedTo || []).includes(member.id);
-                            return (
-                                <button
-                                key={member.id}
-                                onClick={() => assignUser(ot.id, member.id)}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                                    isAssigned 
-                                    ? 'bg-purple-600 text-white shadow-sm' 
-                                    : 'bg-white text-slate-600 border border-slate-200 hover:border-purple-300'
-                                }`}
-                                >
-                                <User size={12} />
-                                {member.name}
-                                </button>
-                            );
-                            })}
-                        </div>
+                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100">
+                          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                              <UserPlus size={14} className="text-blue-500" /> Responsables del Trámite
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                              {teamMembers.map(member => {
+                                const isAssigned = (ot.assignedTo || []).includes(member.id);
+                                return (
+                                    <button
+                                      key={member.id}
+                                      onClick={() => assignUser(ot.id, member.id)}
+                                      className={cn(
+                                        "flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border",
+                                        isAssigned 
+                                        ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/20 active:scale-95' 
+                                        : 'bg-white text-slate-600 border-slate-100 hover:border-blue-300 hover:bg-blue-50'
+                                      )}
+                                    >
+                                      {member.name}
+                                    </button>
+                                );
+                              })}
+                          </div>
                         </div>
                     )}
                     
                     {/* Stage Actions */}
-                    <div className="space-y-8">
-                    
+                    <div className="space-y-8 pb-12">
                         {/* STAGE 1: SOLICITUD */}
                         {ot.stage === 'solicitud' && (
-                            <div className="bg-blue-50 p-6 rounded-xl border border-blue-200">
-                                <h3 className="text-xl font-bold text-blue-900 mb-2">Solicitud Iniciada</h3>
-                                <p className="text-blue-700 mb-4">Tu solicitud ha sido recibida. Para comenzar el proceso, por favor procede al pago del adelanto.</p>
-                                <button 
-                                    onClick={() => advanceStage(ot.id)} // Mocking automatic acceptance
-                                    className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                            <div className="bg-amber-50 rounded-2xl p-6 border border-amber-100 flex flex-col items-center text-center animate-fade-scale">
+                                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-amber-100">
+                                    <FileText className="h-7 w-7 text-amber-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-amber-900 mb-2">Solicitud Iniciada</h3>
+                                <p className="text-amber-700/80 text-sm mb-6 max-w-xs">Tu solicitud ha sido recibida. Acepta los términos para proceder al pago inicial.</p>
+                                <Button 
+                                    onClick={() => advanceStage(ot.id)}
+                                    className="w-full bg-amber-600 hover:bg-amber-700 text-white h-12 rounded-xl font-bold shadow-lg shadow-amber-500/20"
                                 >
-                                    Aceptar Términos y Continuar
-                                </button>
+                                    Aceptar y Continuar <ChevronRight className="ml-2 h-4 w-4" />
+                                </Button>
                             </div>
                         )}
 
                         {/* STAGE 2: PAGO ADELANTO */}
                         {ot.stage === 'pago_adelanto' && (
-                            <div className="bg-white border-2 border-dashed border-slate-300 p-8 rounded-xl text-center">
-                                <h3 className="text-xl font-bold mb-4">Pago Inicial Requerido</h3>
-                                <p className="text-slate-500 mb-6">Monto: $150 USD</p>
-                                <button 
+                            <div className="bg-blue-50 rounded-2xl p-6 border border-blue-100 flex flex-col items-center text-center animate-fade-scale">
+                                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-blue-100">
+                                    <CreditCard className="h-7 w-7 text-blue-600" />
+                                </div>
+                                <h3 className="text-xl font-bold text-blue-900 mb-1">Pago Inicial Requerido</h3>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4">Honorarios por Apertura</p>
+                                <div className="text-3xl font-black text-blue-900 mb-6">$150 <span className="text-sm font-medium opacity-60">USD</span></div>
+                                <Button 
                                     disabled={processingId === 'payment'}
                                     onClick={() => handlePay('adelanto')}
-                                    className="bg-slate-900 text-white px-8 py-3 rounded-lg font-semibold hover:bg-slate-800 transition-all disabled:opacity-50"
+                                    className="w-full btn-primary h-12 rounded-xl shadow-lg shadow-blue-500/20"
                                 >
-                                    {processingId === 'payment' ? 'Procesando...' : 'Pagar Adelanto'}
-                                </button>
+                                    {processingId === 'payment' ? (
+                                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Procesando...</>
+                                    ) : (
+                                      <>Pagar Adelanto <CheckCircle className="ml-2 h-4 w-4" /></>
+                                    )}
+                                </Button>
                             </div>
                         )}
 
                         {/* STAGE 3: GESTIÓN (DOCS) */}
                         {ot.stage === 'gestion' && (
-                            <div>
-                                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                    <PenTool className="text-accent" /> Documentación Requerida
+                            <div className="space-y-4">
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <PenTool size={14} className="text-indigo-500" /> Documentación Pendiente
                                 </h3>
-                                <div className="grid gap-4">
+                                <div className="grid gap-3">
                                     {ot.documents.map(doc => {
-                                        const isDone = doc.status === 'approved' || doc.status === 'pre-approved';
+                                        const isApproved = doc.status === 'approved';
                                         const isProcessing = processingId === doc.id;
                                         
-                                        // AI Analysis UI Overlay
-                                        if (aiAnalysis?.docId === doc.id && aiAnalysis?.status === 'complete') {
-                                           return (
-                                               <div key={doc.id} className="p-4 rounded-xl border border-blue-200 bg-blue-50 animate-pulse-soft">
-                                                   <div className="flex items-center gap-2 text-blue-800 font-bold mb-2">
-                                                       <BrainCircuit size={20} /> Análisis IA Completado
-                                                   </div>
-                                                   <ul className="space-y-1 mb-2">
-                                                       {aiAnalysis.messages.map((msg, idx) => (
-                                                           <li key={idx} className="text-sm text-blue-700">{msg}</li>
-                                                       ))}
-                                                   </ul>
-                                                   <div className="text-xs text-blue-500 font-mono text-right">Validando finalización...</div>
-                                               </div>
-                                           );
-                                        }
-
                                         return (
-                                        <div key={doc.id} className={`p-4 rounded-xl border transition-all ${isDone ? 'bg-green-50 border-green-200' : 'bg-white border-slate-200'}`}>
-                                            <div className="flex items-center justify-between mb-2">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isDone ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                {isDone ? <CheckCircle size={18} /> : <Upload size={16} />} 
-                                                </div>
-                                                <span className={`font-medium ${isDone ? 'text-green-800' : 'text-slate-900'}`}>{doc.name}</span>
-                                            </div>
-                                            <span className="text-xs font-mono text-slate-400 uppercase">{doc.status}</span>
-                                            </div>
+                                        <div key={doc.id} className={cn(
+                                          "p-4 rounded-2xl border transition-all duration-300 relative overflow-hidden",
+                                          isApproved ? "bg-emerald-50 border-emerald-100" : "bg-white border-slate-100 shadow-sm"
+                                        )}>
+                                            {/* AI Analysis Modal-like Overlay */}
+                                            {aiAnalysis?.docId === doc.id && (
+                                              <div className="absolute inset-0 bg-blue-600/95 backdrop-blur-sm z-30 flex flex-col p-4 text-white animate-fade-in">
+                                                  <div className="flex items-center gap-2 mb-2">
+                                                    <BrainCircuit className="h-5 w-5 animate-pulse" />
+                                                    <span className="font-bold text-sm">Análisis por Smart AI</span>
+                                                  </div>
+                                                  <div className="space-y-1.5 flex-1 mt-1">
+                                                    {aiAnalysis.status === 'complete' ? (
+                                                      aiAnalysis.messages.map((msg, i) => (
+                                                        <div key={i} className="text-[11px] font-medium flex items-center gap-2 animate-slide-in-right" style={{ animationDelay: `${i * 150}ms` }}>
+                                                          <div className="w-1 h-1 bg-blue-300 rounded-full" /> {msg}
+                                                        </div>
+                                                      ))
+                                                    ) : (
+                                                      <div className="text-xs opacity-80 mt-2">Corroborando autenticidad...</div>
+                                                    )}
+                                                  </div>
+                                              </div>
+                                            )}
 
-                                            {!isDone && (
-                                            <div className="pl-11">
-                                                {doc.type === 'text' ? (
-                                                <div className="flex gap-2">
-                                                    <input type="text" placeholder="Ingresar texto..." className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm" />
-                                                    <button 
-                                                    onClick={() => updateDocumentStatus(ot.id, doc.id, 'approved')} // Skip AI for text for now or implement similar
-                                                    className="bg-slate-900 text-white px-4 py-2 rounded text-sm hover:bg-slate-800"
-                                                    >
-                                                    Guardar
-                                                    </button>
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={cn(
+                                                      "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
+                                                      isApproved ? "bg-emerald-100 text-emerald-600 shadow-sm" : "bg-slate-50 text-slate-400 ring-1 ring-inset ring-slate-100"
+                                                    )}>
+                                                      {isApproved ? <Check size={20} className="stroke-[3]" /> : <Upload size={18} />} 
+                                                    </div>
+                                                    <div>
+                                                      <span className={cn("font-bold text-sm block", isApproved ? "text-emerald-800" : "text-slate-900")}>{doc.name}</span>
+                                                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-tighter">
+                                                        {isApproved ? "Validado por Sistema" : (doc.type === 'sign' ? "Requiere Firma" : "Formato PDF únicamente")}
+                                                      </span>
+                                                    </div>
                                                 </div>
-                                                ) : (
-                                                <button 
+                                                
+                                                {!isApproved && !isProcessing && (
+                                                  <button 
                                                     onClick={() => handleUpload(doc.id)}
-                                                    disabled={isProcessing}
-                                                    className="w-full border-2 border-dashed border-slate-300 hover:border-accent hover:bg-slate-50 py-3 rounded-lg text-sm text-slate-500 transition-all flex items-center justify-center gap-2"
-                                                >
-                                                    {isProcessing ? (
-                                                        <>
-                                                            <BrainCircuit className="animate-pulse" size={16} />
-                                                            Analizando Documento...
-                                                        </>
-                                                    ) : (doc.type === 'sign' ? 'Firmar Digitalmente' : 'Subir Archivo')}
-                                                </button>
+                                                    className="p-2.5 hover:bg-slate-50 rounded-xl text-blue-600 transition-colors bg-white border border-slate-100 shadow-sm"
+                                                  >
+                                                    <ChevronRight size={18} />
+                                                  </button>
+                                                )}
+
+                                                {isProcessing && (
+                                                  <Loader2 className="animate-spin text-blue-600" size={20} />
                                                 )}
                                             </div>
+
+                                            {/* Mini Progress Bar for Processing */}
+                                            {isProcessing && !aiAnalysis && (
+                                              <div className="h-1 bg-slate-100 w-full mt-4 rounded-full overflow-hidden">
+                                                  <div className="h-full bg-blue-600 w-1/2 animate-shimmer" />
+                                              </div>
                                             )}
                                         </div>
                                         );
                                     })}
                                 </div>
 
-                                {/* Advance Button Only if All Done */}
-                                {/* Note: In real app, this might be automatic or "Send to Review" */}
                                 {allDocsApproved && (
-                                    <div className="mt-6 bg-green-50 p-4 rounded-lg flex items-center justify-between animate-fade-in-up">
-                                        <div className="text-green-800 font-medium">Todos los documentos completados.</div>
-                                        <button 
-                                        onClick={() => advanceStage(ot.id)}
-                                        className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
+                                    <div className="mt-8 bg-emerald-600 rounded-2xl p-6 text-white shadow-xl shadow-emerald-600/20 animate-fade-scale flex flex-col items-center">
+                                        <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mb-3">
+                                          <CheckCircle2 size={28} />
+                                        </div>
+                                        <h4 className="font-bold text-lg mb-1">¡Todo en Orden!</h4>
+                                        <p className="text-emerald-100 text-sm text-center mb-6">Hemos validado todos tus documentos. Ya puedes solicitar el pago de cierre.</p>
+                                        <Button 
+                                          onClick={() => advanceStage(ot.id)}
+                                          className="w-full bg-white text-emerald-700 hover:bg-emerald-50 h-11 font-black uppercase tracking-wider text-xs rounded-xl"
                                         >
-                                        Solicitar Pago Cierre
-                                        </button>
+                                          Solicitar Pago Final
+                                        </Button>
                                     </div>
                                 )}
                             </div>
@@ -258,93 +301,140 @@ export default function OTDetails({ ot, onClose }) {
 
                         {/* STAGE 4: PAGO CIERRE */}
                         {ot.stage === 'pago_cierre' && (
-                            <div className="bg-white border-2 border-dashed border-slate-300 p-8 rounded-xl text-center relative overflow-hidden">
+                            <div className="bg-purple-50 rounded-3xl p-8 border border-purple-100 relative overflow-hidden flex flex-col items-center animate-fade-scale">
                                 {discount > 0 && (
-                                    <div className="absolute top-0 right-0 bg-green-500 text-white text-xs px-3 py-1 font-bold rounded-bl-xl">
-                                    -10% APLICADO
+                                    <div className="absolute top-0 right-0 bg-emerald-500 text-white text-[10px] px-4 py-1.5 font-black rounded-bl-2xl uppercase tracking-widest shadow-lg">
+                                      Descuento Aplicado
                                     </div>
                                 )}
-                                <h3 className="text-xl font-bold mb-4">Pago Final</h3>
-                                <p className="text-slate-500 mb-2">Total Servicios: $500 USD</p>
-                                {discount > 0 && <p className="text-green-600 font-bold mb-4">Descuento Tiempo Record: -$50 USD</p>}
-                                {surcharge > 0 && <p className="text-red-500 font-bold mb-4">Recargo por Demora: +$50 USD</p>}
+                                <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center mb-4 shadow-sm border border-purple-100">
+                                  <CreditCard className="h-8 w-8 text-purple-600" />
+                                </div>
+                                <h3 className="text-2xl font-black text-purple-900 mb-6">Liquidación Final</h3>
                                 
-                                <div className="text-2xl font-bold text-slate-900 mb-6">
-                                    Total a Pagar: ${500 - (discount ? 50 : 0) + (surcharge ? 50 : 0)} USD
+                                <div className="w-full space-y-3 mb-8">
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-slate-500">Servicios Digitales</span>
+                                    <span className="font-bold text-slate-800">$500 USD</span>
+                                  </div>
+                                  {discount > 0 && (
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-emerald-600 font-medium">Bono Pronto Envío</span>
+                                      <span className="font-black text-emerald-600">-$50 USD</span>
+                                    </div>
+                                  )}
+                                  {surcharge > 0 && (
+                                    <div className="flex justify-between text-sm">
+                                      <span className="text-rose-600 font-medium">Gastos de Demora</span>
+                                      <span className="font-black text-rose-600">+$50 USD</span>
+                                    </div>
+                                  )}
+                                  <div className="h-px bg-purple-200/50 w-full" />
+                                  <div className="flex justify-between items-baseline pt-2">
+                                    <span className="text-purple-900 font-black uppercase tracking-widest text-[10px]">Neto a Pagar</span>
+                                    <span className="text-3xl font-black text-purple-900">
+                                      ${500 - (discount ? 50 : 0) + (surcharge ? 50 : 0)} <span className="text-sm font-medium opacity-60">USD</span>
+                                    </span>
+                                  </div>
                                 </div>
 
-                                <button 
+                                <Button 
                                     disabled={processingId === 'payment'}
                                     onClick={() => handlePay('cierre')}
-                                    className="bg-linear-to-r from-slate-900 to-slate-800 text-white px-8 py-4 rounded-lg font-bold shadow-lg hover:shadow-xl transition-all w-full disabled:opacity-50"
+                                    className="w-full bg-purple-600 hover:bg-purple-700 text-white h-14 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-purple-600/30 active:scale-95 transition-all"
                                 >
-                                    {processingId === 'payment' ? 'Procesando Pago...' : 'Pagar y Finalizar'}
-                                </button>
+                                    {processingId === 'payment' ? (
+                                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Procesando...</>
+                                    ) : (
+                                      "Confirmar y Finalizar"
+                                    )}
+                                </Button>
                             </div>
                         )}
                     
                         {/* STAGE 5: FINALIZADO */}
                         {ot.stage === 'finalizado' && (
-                            <div className="text-center py-12">
-                                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <CheckCircle size={40} />
+                            <div className="text-center py-16 flex flex-col items-center">
+                                <div className="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mb-6 shadow-sm border border-emerald-100">
+                                    <CheckCircle size={48} className="animate-fade-scale" />
                                 </div>
-                                <h3 className="text-2xl font-bold text-slate-900">¡Proceso Completado!</h3>
-                                <p className="text-slate-500 mt-2">Gracias por confiar en SPI Americas.</p>
+                                <h3 className="text-3xl font-black text-slate-900 tracking-tight">¡Misión Cumplida!</h3>
+                                <p className="text-slate-500 mt-3 text-lg font-medium">Tu marca/patente ya está protegida.</p>
+                                <div className="mt-12 bg-slate-50 rounded-2xl p-4 border border-slate-100 flex items-center gap-4 text-left w-full">
+                                   <div className="bg-blue-100 p-3 rounded-xl">
+                                      <FileText className="text-blue-600 h-6 w-6" />
+                                   </div>
+                                   <div>
+                                      <div className="text-xs font-black text-slate-400 tracking-widest uppercase">Certificado IP</div>
+                                      <div className="text-slate-900 font-bold hover:text-blue-600 cursor-pointer transition-colors">Descargar Resolución.pdf</div>
+                                   </div>
+                                   <ChevronRight className="ml-auto text-slate-300" size={20} />
+                                </div>
                             </div>
                         )}
-
                     </div>
-                </>
+                </div>
             ) : (
-                <div className="h-full flex flex-col">
-                    {/* Bitácora Feed */}
-                    <div className="flex-1 space-y-6">
+                <div className="h-full flex flex-col pb-6">
+                    {/* Bitácora Feed (Timeline) */}
+                    <div className="flex-1 space-y-0 relative border-l-2 border-slate-100 ml-3 pl-8 py-2">
                         {feed.length === 0 && (
-                             <div className="text-center text-slate-400 py-10">
+                             <div className="text-center text-slate-400 py-10 italic">
                                  No hay actividad registrada aún.
                              </div>
                         )}
                         {feed.map((entry, idx) => (
-                             <div key={idx} className="flex gap-4">
-                                 <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center ${
-                                     entry.type === 'system' ? 'bg-slate-100 text-slate-500' : 'bg-blue-100 text-blue-600'
-                                 }`}>
-                                     {entry.type === 'system' ? <FileText size={14} /> : <User size={14} />}
-                                 </div>
-                                 <div className="flex-1">
-                                     <div className="flex items-center gap-2 mb-1">
-                                         <span className="font-bold text-slate-900 text-sm">
-                                             {entry.user?.name || 'Sistema'}
+                             <div key={idx} className="relative mb-8 last:mb-0 group animate-fade-in" style={{ animationDelay: `${idx * 50}ms` }}>
+                                 {/* Timeline Dot */}
+                                 <div className={cn(
+                                   "absolute -left-[41px] top-1 w-5 h-5 rounded-full border-4 border-white shadow-sm flex items-center justify-center transition-transform group-hover:scale-125",
+                                   entry.type === 'system' ? 'bg-slate-300' : 'bg-blue-600'
+                                 )} />
+                                 
+                                 <div className="bg-slate-50/50 hover:bg-slate-50 transition-colors rounded-2xl p-4 border border-slate-100">
+                                     <div className="flex items-center justify-between mb-2">
+                                         <span className={cn(
+                                           "text-xs font-black tracking-tight",
+                                           entry.type === 'system' ? 'text-slate-400 uppercase' : 'text-slate-900'
+                                         )}>
+                                             {entry.user?.name || 'Smart Flow System'}
                                          </span>
-                                         <span className="text-xs text-slate-400">
-                                             {new Date(entry.date).toLocaleString()}
+                                         <span className="text-[10px] font-bold text-slate-300 uppercase">
+                                             {new Date(entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                          </span>
                                      </div>
-                                     <div className={`text-sm ${entry.type === 'system' ? 'text-slate-500 italic' : 'text-slate-700'}`}>
+                                     <div className={cn(
+                                       "text-sm leading-relaxed",
+                                       entry.type === 'system' ? 'text-slate-500 italic font-medium' : 'text-slate-700'
+                                     )}>
                                          {entry.text}
                                      </div>
+                                     {entry.type !== 'system' && (
+                                       <div className="mt-3 flex gap-2">
+                                         <span className="bg-blue-50 text-blue-600 text-[9px] px-2 py-0.5 rounded-full font-bold border border-blue-100 cursor-pointer hover:bg-white transition-colors">Responder</span>
+                                       </div>
+                                     )}
                                  </div>
                              </div>
                         ))}
                     </div>
 
                     {/* New Comment Input */}
-                    <form onSubmit={handleSendComment} className="mt-6 pt-4 border-t border-slate-100 sticky bottom-0 bg-white">
-                        <div className="relative">
-                            <input 
-                                type="text"
-                                placeholder="Escribe un comentario..."
-                                className="w-full bg-slate-50 border border-slate-200 rounded-full pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-slate-200"
+                    <form onSubmit={handleSendComment} className="mt-6 pt-6 border-t border-slate-100 bg-white z-10 sticky bottom-0">
+                        <div className="relative group">
+                            <textarea 
+                                rows={1}
+                                placeholder="Escribe un mensaje para el equipo..."
+                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-5 pr-14 py-3.5 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:bg-white focus:border-blue-400 transition-all text-sm resize-none"
                                 value={commentText}
                                 onChange={(e) => setCommentText(e.target.value)}
                             />
                             <button 
                                 type="submit"
                                 disabled={!commentText.trim()}
-                                className="absolute right-2 top-2 p-1.5 bg-slate-900 text-white rounded-full hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                                className="absolute right-2.5 bottom-2.5 p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-30 disabled:grayscale transition-all shadow-lg shadow-blue-500/20 active:scale-90"
                             >
-                                <Send size={16} />
+                                <Send size={18} />
                             </button>
                         </div>
                     </form>

@@ -1,9 +1,12 @@
 import { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, AlertCircle, Loader2, X, Eye } from 'lucide-react';
+import { 
+  Upload, FileText, AlertCircle, X, Eye, 
+  PenTool, ShieldCheck, FileType, Image as ImageIcon, Sparkles,
+  ChevronRight, Check
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; // Need to ensure Tabs component exists
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { analyzeDocument, ExtractedData } from '@/lib/gemini';
 import useDataStore from '@/store/useDataStore';
@@ -14,11 +17,17 @@ interface DocumentUploadProps {
   documentType: string;
   documentLabel: string;
   onUploadComplete: (data: ExtractedData) => void;
-  enableSigning?: boolean; // New prop
-  templatePreviewUrl?: string; // New prop for preview
+  enableSigning?: boolean;
+  templatePreviewUrl?: string;
 }
 
-const DocumentUpload = ({ documentType: _documentType, documentLabel, onUploadComplete, enableSigning = false, templatePreviewUrl }: DocumentUploadProps) => {
+const DocumentUpload = ({ 
+  documentType: _documentType, 
+  documentLabel, 
+  onUploadComplete, 
+  enableSigning = false, 
+  templatePreviewUrl 
+}: DocumentUploadProps) => {
   const { addToVault } = useDataStore();
   const { user } = useAuthStore();
   const [isDragging, setIsDragging] = useState(false);
@@ -28,8 +37,8 @@ const DocumentUpload = ({ documentType: _documentType, documentLabel, onUploadCo
   const [result, setResult] = useState<ExtractedData | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  // Signing State
   const [activeTab, setActiveTab] = useState<'upload' | 'sign'>('upload');
+  const [hasViewed, setHasViewed] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -62,31 +71,20 @@ const DocumentUpload = ({ documentType: _documentType, documentLabel, onUploadCo
     setError(null);
     setProgress(10);
 
-    // Simulate upload progress
     const interval = setInterval(() => {
-        setProgress(prev => {
-            if (prev >= 90) {
-                clearInterval(interval);
-                return 90;
-            }
-            return prev + 10;
-        });
+        setProgress(prev => (prev >= 90 ? 90 : prev + 10));
     }, 200);
 
     try {
         const data = await analyzeDocument(uploadedFile);
-        
         clearInterval(interval);
         setProgress(100);
         
-        // Basic validation logic
         if (data.confidence < 0.7) {
-             setError("No pudimos validar el documento con suficiente confianza. Por favor intenta con una imagen más clara.");
+             setError("No pudimos validar el documento con total confianza. Asegúrate de que la imagen no esté borrosa.");
              setResult(null);
         } else {
              setResult(data);
-             
-             // Add to Global Store / Vault
              if (user) {
                 addToVault({
                     id: `doc-${Date.now()}`,
@@ -96,14 +94,13 @@ const DocumentUpload = ({ documentType: _documentType, documentLabel, onUploadCo
                     status: 'validated',
                     isVaultEligible: true,
                     validUntil: data.validUntil || undefined,
-                    url: URL.createObjectURL(uploadedFile) // temporary
+                    url: URL.createObjectURL(uploadedFile)
                 });
              }
-
              onUploadComplete(data);
         }
     } catch (err) {
-        setError("Ocurrió un error al analizar el documento.");
+        setError("Ocurrió un error al procesar el documento con la IA.");
         console.error(err);
     } finally {
         setIsAnalyzing(false);
@@ -111,15 +108,11 @@ const DocumentUpload = ({ documentType: _documentType, documentLabel, onUploadCo
   };
 
   const handleSignatureSave = async (signatureDataUrl: string) => {
-      // simulate converting signature to a document
       setIsAnalyzing(true);
       setProgress(50);
-      
-      // Create a mock file from signature (in real app, generate PDF)
       const res = await fetch(signatureDataUrl);
       const blob = await res.blob();
       const signedFile = new File([blob], `${documentLabel}_firmado.png`, { type: 'image/png' });
-      
       processFile(signedFile);
   };
 
@@ -131,131 +124,199 @@ const DocumentUpload = ({ documentType: _documentType, documentLabel, onUploadCo
       if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const renderUploadContent = () => (
+    <div className="space-y-6">
+        <input 
+            type="file" 
+            ref={fileInputRef}
+            className="hidden" 
+            accept=".pdf,.jpg,.jpeg,.png"
+            onChange={handleFileSelect}
+        />
+
+        {!file ? (
+            <div 
+                className={cn(
+                    "relative group flex flex-col items-center justify-center p-12 rounded-[2rem] border-2 border-dashed transition-all duration-300 cursor-pointer overflow-hidden",
+                    isDragging ? "border-blue-500 bg-blue-50/50 scale-[0.98]" : "border-slate-200 bg-slate-50/30 hover:bg-slate-50 hover:border-blue-300",
+                    isAnalyzing && "ai-pulse border-blue-400 pointer-events-none"
+                )}
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+            >
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                
+                <div className="relative z-10 w-20 h-20 bg-white rounded-3xl shadow-xl shadow-slate-200/50 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
+                    <Upload className="h-8 w-8 text-blue-600" />
+                </div>
+                <h3 className="relative z-10 text-xl font-black text-slate-800 tracking-tight">Cargar {documentLabel}</h3>
+                <p className="relative z-10 text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">PDF, JPG o PNG hasta 10MB</p>
+                
+                <div className="mt-8 flex gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                        <FileType className="h-4 w-4 text-slate-400" />
+                    </div>
+                    <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shadow-sm">
+                        <ImageIcon className="h-4 w-4 text-slate-400" />
+                    </div>
+                </div>
+            </div>
+        ) : (
+            <div className="space-y-6 animate-fade-in">
+                <div className="flex items-center justify-between p-6 bg-slate-50 rounded-[1.5rem] border border-slate-100 shadow-sm">
+                    <div className="flex items-center gap-5">
+                         <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm text-blue-600">
+                            {file.type.includes('image') ? <ImageIcon className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
+                         </div>
+                         <div>
+                             <p className="font-black text-slate-800 truncate max-w-[240px] leading-tight">{file.name}</p>
+                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{(file.size / 1024 / 1024).toFixed(2)} Megabytes</p>
+                         </div>
+                    </div>
+                    {!result && !isAnalyzing && (
+                        <Button variant="ghost" size="icon" onClick={resetUpload} className="h-10 w-10 rounded-xl hover:bg-rose-50 hover:text-rose-600 transition-colors">
+                            <X className="h-5 w-5" />
+                        </Button>
+                    )}
+                </div>
+
+                {isAnalyzing && (
+                    <div className="bg-blue-50/50 p-6 rounded-[1.5rem] border border-blue-100/50 space-y-4 shadow-inner">
+                        <div className="flex justify-between items-center text-xs font-black uppercase tracking-[0.2em] text-blue-600">
+                            <span className="flex items-center gap-2"><Sparkles className="h-4 w-4 animate-pulse"/> Analizando con Smart IA...</span>
+                            <span>{progress}%</span>
+                        </div>
+                        <Progress value={progress} className="h-2 bg-blue-100 shadow-none" />
+                    </div>
+                )}
+
+                {error && (
+                    <div className="bg-rose-50 border border-rose-100 p-6 rounded-[1.5rem] flex flex-col gap-4">
+                        <div className="flex gap-3 items-start">
+                            <AlertCircle className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
+                            <p className="text-sm font-semibold text-rose-800">{error}</p>
+                        </div>
+                        <Button variant="outline" onClick={resetUpload} className="w-full h-10 rounded-xl border-rose-200 text-rose-700 hover:bg-rose-100 font-bold uppercase text-[10px] tracking-widest">Reintentar Carga</Button>
+                    </div>
+                )}
+
+                {result && (
+                    <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-[2rem] shadow-xl shadow-emerald-200/20 animate-fade-scale">
+                        <div className="flex gap-3 items-center text-emerald-800 font-black mb-4 uppercase tracking-widest text-xs">
+                            <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+                                <Check className="h-4 w-4 stroke-[4]" />
+                            </div>
+                            Validación Completada
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-white/50 p-4 rounded-2xl">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Tipo Detectado</p>
+                                <p className="text-sm font-bold text-emerald-700">{result.documentType}</p>
+                            </div>
+                            <div className="bg-white/50 p-4 rounded-2xl">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">Confianza</p>
+                                <p className="text-sm font-bold text-emerald-700">{(result.confidence * 100).toFixed(0)}% AI Score</p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )}
+    </div>
+  );
+
   return (
-    <Card className={cn(
-        "p-6 border-dashed border-2 transition-all duration-300 relative overflow-hidden",
-        isDragging ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-blue-300",
-        result ? "bg-green-50 border-green-200 border-solid" : "bg-white"
-    )}>
+    <div className="space-y-6">
         {enableSigning ? (
             <Tabs defaultValue="upload" value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="upload">Subir Archivo</TabsTrigger>
-                    <TabsTrigger value="sign">Firmar Digitalmente</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-2 p-1.5 bg-slate-100/50 rounded-2xl gap-2 h-14">
+                    <TabsTrigger value="upload" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-blue-700 transition-all">
+                        <Upload className="h-3.5 w-3.5 mr-2" /> Subir Archivo
+                    </TabsTrigger>
+                    <TabsTrigger value="sign" className="rounded-xl font-black uppercase text-[10px] tracking-widest data-[state=active]:bg-white data-[state=active]:shadow-lg data-[state=active]:text-blue-700 transition-all">
+                        <PenTool className="h-3.5 w-3.5 mr-2" /> Firma Digital
+                    </TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="upload">
+                <TabsContent value="upload" className="mt-8">
                     {renderUploadContent()}
                 </TabsContent>
 
-                <TabsContent value="sign">
-                    <div className="space-y-4">
-                        <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-center">
-                            <div className="flex justify-center mb-2">
-                                <FileText className="h-10 w-10 text-slate-400" />
-                            </div>
-                            <h4 className="font-semibold text-slate-700">Vista Previa del Documento</h4>
-                            <p className="text-xs text-slate-500 mb-4">Revisa el contenido antes de firmar.</p>
-                            
-                            <Button variant="outline" size="sm" className="gap-2" onClick={() => window.open(templatePreviewUrl || '#', '_blank')}>
-                                <Eye className="h-4 w-4" /> Ver Plantilla Completa
-                            </Button>
-                        </div>
+                <TabsContent value="sign" className="mt-8 h-full">
+                    <div className="space-y-6 h-full">
+                        {!hasViewed ? (
+                            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/40 text-center animate-fade-in">
+                                <div className="w-20 h-20 bg-blue-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                                    <ShieldCheck className="h-10 w-10 text-blue-600" />
+                                </div>
+                                <h4 className="font-black text-slate-900 text-2xl tracking-tight">Revisión de Seguridad</h4>
+                                <p className="text-slate-500 font-semibold mt-2 mb-8 px-4">Debes confirmar que has leído y apruebas el contenido de la plantilla antes de firmar.</p>
+                                
+                                <div className="space-y-6">
+                                     <Button 
+                                        variant="outline" 
+                                        className="w-full h-14 rounded-2xl gap-3 border-slate-100 bg-slate-50 hover:bg-slate-100 hover:border-slate-200 font-black uppercase text-xs tracking-widest transition-all group" 
+                                        onClick={() => window.open(templatePreviewUrl || '#', '_blank')}
+                                    >
+                                        <Eye className="h-5 w-5 text-blue-500 group-hover:scale-110 transition-transform" /> Vista Previa del Documento
+                                    </Button>
 
-                        <div className="text-sm font-medium text-slate-700 mb-2">Tu Firma:</div>
-                        <SignaturePad 
-                            onSave={handleSignatureSave}
-                            onCancel={() => setActiveTab('upload')}
-                        />
+                                    <div 
+                                        onClick={() => setHasViewed(!hasViewed)}
+                                        className={cn(
+                                            "flex items-center gap-4 p-5 rounded-2xl border-2 transition-all cursor-pointer select-none",
+                                            hasViewed ? "border-emerald-500 bg-emerald-50/50" : "border-slate-100 hover:border-blue-200"
+                                        )}
+                                    >
+                                        <div className={cn(
+                                            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                                            hasViewed ? "bg-emerald-500 border-emerald-500" : "border-slate-300"
+                                        )}>
+                                            {hasViewed && <Check className="h-4 w-4 text-white font-black" />}
+                                        </div>
+                                        <label className="text-sm font-black text-slate-700 cursor-pointer">
+                                            He leído y acepto los términos
+                                        </label>
+                                    </div>
+
+                                    <Button 
+                                        disabled={!hasViewed}
+                                        onClick={() => setHasViewed(true)}
+                                        className="w-full btn-primary h-14 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-blue-500/20 disabled:grayscale disabled:opacity-50"
+                                    >
+                                        Continuar a la Firma <ChevronRight className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="animate-slide-up bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/40 p-8 h-full">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div>
+                                        <h4 className="text-xl font-black text-slate-900 tracking-tight">Panel de Firma</h4>
+                                        <p className="text-xs font-bold text-slate-400 mt-1 uppercase tracking-widest">Utilice el ratón o touchpad para firmar</p>
+                                    </div>
+                                    <Button variant="ghost" size="sm" className="h-8 rounded-lg text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-blue-600" onClick={() => setHasViewed(false)}>
+                                        Volver a leer
+                                    </Button>
+                                </div>
+                                <div className="rounded-[1.5rem] overflow-hidden bg-slate-50 ring-1 ring-slate-100">
+                                    <SignaturePad 
+                                        onSave={handleSignatureSave}
+                                        onCancel={() => setActiveTab('upload')}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </TabsContent>
             </Tabs>
         ) : (
             renderUploadContent()
         )}
-    </Card>
+    </div>
   );
-
-  function renderUploadContent() {
-      return (
-        <>
-            <input 
-                type="file" 
-                ref={fileInputRef}
-                className="hidden" 
-                accept=".pdf,.jpg,.jpeg,.png,.svg" // Added .svg
-                onChange={handleFileSelect}
-            />
-
-            {!file ? (
-                <div 
-                    className="flex flex-col items-center justify-center h-40 cursor-pointer"
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={handleDragOver}
-                    onDragLeave={handleDragLeave}
-                    onDrop={handleDrop}
-                >
-                    <div className="p-3 bg-blue-100 rounded-full mb-3 text-blue-600">
-                        <Upload className="h-6 w-6" />
-                    </div>
-                    <h3 className="font-semibold text-slate-700">Subir {documentLabel}</h3>
-                    <p className="text-xs text-slate-500 mt-1">Arrastra o haz clic para seleccionar (PDF, JPG, PNG, SVG)</p>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                             <div className="p-2 bg-slate-100 rounded text-slate-600">
-                                <FileText className="h-5 w-5" />
-                             </div>
-                             <div className="text-sm">
-                                 <p className="font-medium text-slate-700 truncate max-w-[200px]">{file.name}</p>
-                                 <p className="text-xs text-slate-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-                             </div>
-                        </div>
-                        {!result && !isAnalyzing && (
-                            <Button variant="ghost" size="icon" onClick={resetUpload} className="text-slate-400 hover:text-red-500">
-                                <X className="h-4 w-4" />
-                            </Button>
-                        )}
-                    </div>
-
-                    {isAnalyzing && (
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-xs text-blue-600 font-medium">
-                                <span className="flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Analizando con Gemini AI...</span>
-                                <span>{progress}%</span>
-                            </div>
-                            <Progress value={progress} className="h-1" />
-                        </div>
-                    )}
-
-                    {error && (
-                        <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm flex gap-2 items-start">
-                            <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                            <p>{error}</p>
-                             <Button variant="link" size="sm" onClick={resetUpload} className="h-auto p-0 text-red-700 underline">Reintentar</Button>
-                        </div>
-                    )}
-
-                    {result && (
-                        <div className="bg-green-100/50 border border-green-200 p-3 rounded-lg text-sm animate-fade-in">
-                            <div className="flex gap-2 items-center text-green-700 font-semibold mb-1">
-                                <CheckCircle className="h-4 w-4" />
-                                Documento Validado
-                            </div>
-                            <div className="text-xs text-green-800 space-y-1 ml-6">
-                                <p>Tipo Detectado: <span className="font-medium">{result.documentType}</span></p>
-                                <p>Nombre: <span className="font-medium">{result.name}</span></p>
-                                {result.validUntil && <p>Vence: <span className="font-medium">{new Date(result.validUntil).toLocaleDateString()}</span></p>}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
-        </>
-      );
-  }
 };
 
 export default DocumentUpload;

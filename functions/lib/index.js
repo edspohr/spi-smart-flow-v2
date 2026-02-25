@@ -21,7 +21,7 @@ exports.analyzeDocument = (0, https_1.onCall)({ secrets: [geminiApiKey] }, async
         const key = geminiApiKey.value();
         const genAI = new generative_ai_1.GoogleGenerativeAI(key);
         // Use a model that supports vision/multimodal, e.g., gemini-1.5-flash
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
         // 3. Prepare the prompt
         const prompt = `
       You are an expert legal document analyzer for a Chilean LegalTech company.

@@ -4,12 +4,28 @@ import { Clock, CheckCircle } from 'lucide-react';
 import { useData } from '../../context/DataContext';
 
 const COLUMNS = [
-  { id: 'solicitud', title: 'Solicitud' },
-  { id: 'pago_adelanto', title: 'Pago Adelanto', color: 'bg-blue-50 border-blue-200' },
-  { id: 'gestion', title: 'Gestión Documentos', color: 'bg-orange-50 border-orange-200' },
-  { id: 'pago_cierre', title: 'Pago Cierre', color: 'bg-indigo-50 border-indigo-200' },
-  { id: 'finalizado', title: 'Finalizado' },
+  { id: 'solicitud', title: 'Solicitud', color: 'border-t-amber-500', chip: 'bg-amber-100 text-amber-700' },
+  { id: 'pago_adelanto', title: 'Pago Adelanto', color: 'border-t-sky-500', chip: 'bg-sky-100 text-sky-700' },
+  { id: 'gestion', title: 'Gestión', color: 'border-t-indigo-500', chip: 'bg-indigo-100 text-indigo-700' },
+  { id: 'pago_cierre', title: 'Pago Cierre', color: 'border-t-purple-500', chip: 'bg-purple-100 text-purple-700' },
+  { id: 'finalizado', title: 'Finalizado', color: 'border-t-emerald-500', chip: 'bg-emerald-100 text-emerald-700' },
 ];
+
+const STAGE_BORDER_COLORS = {
+  solicitud: 'border-b-amber-500',
+  pago_adelanto: 'border-b-sky-500',
+  gestion: 'border-b-indigo-500',
+  pago_cierre: 'border-b-purple-500',
+  finalizado: 'border-b-emerald-500'
+};
+
+const DOT_COLORS = {
+  solicitud: 'bg-amber-500',
+  pago_adelanto: 'bg-sky-500',
+  gestion: 'bg-indigo-500',
+  pago_cierre: 'bg-purple-500',
+  finalizado: 'bg-emerald-500'
+};
 
 export default function KanbanBoard({ userOts, onSelectOt }) {
   const { getTimeStatus } = useData();
@@ -23,62 +39,68 @@ export default function KanbanBoard({ userOts, onSelectOt }) {
   }, [userOts]);
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 h-[calc(100vh-200px)] items-start">
+    <div className="flex gap-4 overflow-x-auto pb-6 h-[calc(100vh-180px)] items-start">
       {COLUMNS.map(col => (
-        <div key={col.id} className="min-w-[280px] w-full max-w-[320px] bg-slate-100/50 rounded-xl p-3 border border-slate-200/60 flex flex-col h-full">
-          <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3 px-1">{col.title}</h3>
+        <div key={col.id} className="min-w-[300px] w-[300px] bg-slate-50/80 border border-slate-200/60 rounded-2xl flex flex-col h-full overflow-hidden">
+          {/* Column Header */}
+          <div className={`px-4 py-3 border-t-4 ${col.color} bg-white flex justify-between items-center shrink-0 shadow-sm`}>
+            <h3 className="text-xs font-bold text-slate-700 uppercase tracking-widest">{col.title}</h3>
+            <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-black", col.chip || "bg-slate-200 text-slate-600")}>
+              {otsByStage[col.id].length}
+            </span>
+          </div>
           
-          <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+          <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {otsByStage[col.id].map(ot => {
-               const { label, discount, surcharge } = getTimeStatus(ot);
+               const { discount, surcharge } = getTimeStatus(ot);
                
                return (
                 <div 
                   key={ot.id}
                   onClick={() => onSelectOt(ot)}
-                  className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:shadow-md hover:border-accent transition-all cursor-pointer group relative overflow-hidden"
+                  className={cn(
+                    "bg-white p-4 rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-200 cursor-pointer active:scale-[0.99] group border-b-[3px]",
+                    STAGE_BORDER_COLORS[ot.stage]
+                  )}
                 >
-                  {/* Status Strip */}
-                  <div className={`absolute top-0 left-0 w-1 h-full ${
-                    ot.stage === 'finalizado' ? 'bg-green-500' : 'bg-accent'
-                  }`}></div>
-
-                  <h4 className="font-semibold text-slate-900 mb-1 group-hover:text-accent transition-colors">
-                    {ot.title}
-                  </h4>
+                  <div className="flex items-start gap-2 mb-2">
+                    <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", DOT_COLORS[ot.stage] || "bg-slate-400")} />
+                    <h4 className="font-semibold text-slate-800 text-sm leading-tight line-clamp-2">
+                      {ot.title}
+                    </h4>
+                  </div>
                   
-                  <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
-                    <Clock size={12} />
-                    <span>Creado: {new Date(ot.createdAt).toLocaleDateString()}</span>
+                  <div className="mb-3">
+                    <span className="inline-block bg-slate-50 text-slate-400 font-mono text-[10px] px-2 py-0.5 rounded border border-slate-100">
+                      {ot.serviceType}
+                    </span>
                   </div>
 
-                  {/* Urgency Badge */}
-                  {ot.stage !== 'finalizado' && (
-                     <div className={`text-xs py-1 px-2 rounded-md font-medium inline-block mb-2 ${
-                       discount > 0 ? 'bg-green-100 text-green-700' :
-                       surcharge > 0 ? 'bg-red-100 text-red-700' : 
-                       'bg-slate-100 text-slate-600'
-                     }`}>
-                       {discount > 0 ? `🔥 10% Descuento disponible` : 
-                        surcharge > 0 ? `⚠️ Recargo aplicado` : label}
-                     </div>
-                  )}
+                  <div className="flex items-center justify-between mt-auto pt-2">
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
+                      <Clock size={12} />
+                      <span>{new Date(ot.createdAt).toLocaleDateString()}</span>
+                    </div>
 
-                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
-                     <span className="text-xs font-semibold text-slate-400">
-                       ID: {ot.id.split('-')[1]}
-                     </span>
-                     <span className="text-xs bg-slate-100 px-2 py-1 rounded text-slate-600">
-                       Ver detalle →
-                     </span>
+                    {/* Urgency Badge */}
+                    <div className={cn(
+                      "text-[10px] py-0.5 px-2 rounded-full font-bold uppercase tracking-tight",
+                      discount > 0 ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
+                      surcharge > 0 ? "bg-rose-50 text-rose-600 border border-rose-100" :
+                      "bg-slate-50 text-slate-500 border border-slate-100"
+                    )}>
+                      {discount > 0 ? "🎯 Descuento" : 
+                       surcharge > 0 ? "⚠️ Recargo" : "✓ En plazo"}
+                    </div>
                   </div>
                 </div>
               );
             })}
             
             {otsByStage[col.id].length === 0 && (
-              <div className="text-center py-8 text-slate-300 italic text-sm border-2 border-dashed border-slate-200 rounded-lg">
-                Vacío
+              <div className="flex flex-col items-center justify-center h-24 text-slate-300 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                <span className="text-xl mb-1 mt-1 font-light">+</span>
+                <span className="text-[10px] font-bold uppercase tracking-tight">Sin solicitudes</span>
               </div>
             )}
           </div>

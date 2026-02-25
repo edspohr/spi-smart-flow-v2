@@ -44,15 +44,20 @@ export const checkDocumentDeadlines = onSchedule("every 24 hours", async (event)
                 userId: 'system',
                 action: message,
                 type: 'system',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                metadata: { type: 'reminder', daysLeft: diffDays }
             });
             
             remindersSent.push(otId);
         }
 
         // 3. Escalation Logic: If last activity > 30 days or deadline passed
-        if (diffDays < 0) {
-             const escalationMessage = `ALERTA DE ESCALAMIENTO: OT Vencida por ${Math.abs(diffDays)} días. Contactando contacto alternativo.`;
+        const lastActive = ot.updatedAt ? new Date(ot.updatedAt) : new Date(ot.createdAt);
+        const daysInactive = Math.ceil((now.getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0 || daysInactive > 30) {
+             const reason = diffDays < 0 ? `Vencida por ${Math.abs(diffDays)} días` : `Inactiva por ${daysInactive} días`;
+             const escalationMessage = `ALERTA DE ESCALAMIENTO: OT ${ot.title} - ${reason}. Contactando contacto alternativo.`;
              
              await db.collection("logs").add({
                 otId: otId,

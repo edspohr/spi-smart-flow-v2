@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore, { UserRole } from '../store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Shield, Mail, Lock, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
+import { Shield, Mail, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 const LoginPage = () => {
-    const { user,devLogin } = useAuthStore();
+    const { user, devLogin } = useAuthStore();
     const navigate = useNavigate();
 
     const [step, setStep] = useState<'email' | 'code'>('email');
     const [email, setEmail] = useState('');
-    const [code, setCode] = useState('');
+    const [otp, setOtp] = useState(['', '', '', '', '', '']);
+    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -25,6 +25,14 @@ const LoginPage = () => {
         }
     }, [user, navigate]);
 
+    // Handle OTP auto-trigger
+    useEffect(() => {
+        if (step === 'code' && otp.every(v => v !== '') && otp.join('').length === 6) {
+            const finalCode = otp.join('');
+            autoVerify(finalCode);
+        }
+    }, [otp, step]);
+
     const handleSendCode = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -35,142 +43,221 @@ const LoginPage = () => {
         }
 
         setIsLoading(true);
-        // Simulate API call
         setTimeout(() => {
             setIsLoading(false);
             setStep('code');
-        }, 1500);
+        }, 1200);
     };
 
-    const handleVerifyCode = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const autoVerify = async (finalCode: string) => {
         setError('');
         setIsLoading(true);
 
-        // Simulate API verification
         setTimeout(() => {
             setIsLoading(false);
-            if (code === '123456') {
-                // Determine role based on email simulation
+            if (finalCode === '123456') {
                 let role: UserRole = 'client';
                 if (email.includes('admin') || email.includes('spi')) role = 'spi-admin';
                 else if (email.includes('manager') || email.includes('jefe')) role = 'client-admin';
-                
-                devLogin(role); // This will trigger the useEffect redirect
+                devLogin(role);
             } else {
                 setError('Código incorrecto. Intenta con 123456');
+                setOtp(['', '', '', '', '', '']);
+                inputRefs.current[0]?.focus();
             }
-        }, 1500);
+        }, 1200);
+    };
+
+    const handleOtpChange = (index: number, value: string) => {
+        if (value.length > 1) value = value[value.length - 1];
+        if (!/^\d*$/.test(value)) return;
+
+        const newOtp = [...otp];
+        newOtp[index] = value;
+        setOtp(newOtp);
+
+        if (value && index < 5) {
+            inputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+        if (e.key === 'Backspace' && !otp[index] && index > 0) {
+            inputRefs.current[index - 1]?.focus();
+        }
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center bg-slate-200 p-4">
-            <Card className="w-full max-w-md glass-card border-border shadow-xl">
-                <CardHeader className="text-center pb-2">
-                    <div className="mx-auto mb-4 bg-primary w-12 h-12 rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-                        <Shield className="h-6 w-6 text-primary-foreground" />
+        <div className="min-h-screen w-full flex overflow-hidden bg-white">
+            {/* LEFT PANEL: Branding & Visuals (Hidden on mobile) */}
+            <div className="hidden md:flex md:w-[45%] bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 relative flex-col justify-center items-center p-12 overflow-hidden">
+                {/* Abstract Background Grid */}
+                <div className="absolute inset-0 opacity-10">
+                    <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="1" />
+                            </pattern>
+                        </defs>
+                        <rect width="100%" height="100%" fill="url(#grid)" />
+                    </svg>
+                </div>
+
+                <div className="relative z-10 flex flex-col items-center gap-6 text-center">
+                    <div className="white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/20 shadow-2xl">
+                        <Shield className="h-10 w-10 text-white" />
                     </div>
-                    <CardTitle className="text-2xl font-bold text-foreground">SPI Smart Flow</CardTitle>
-                    <CardDescription className="text-muted-foreground">
-                        {step === 'email' 
-                            ? 'Ingresa tu correo corporativo para acceder' 
-                            : `Hemos enviado un código a ${email}`
-                        }
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {step === 'email' ? (
-                        <form onSubmit={handleSendCode} className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="email" className="text-foreground">Correo Electrónico</Label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                                    <Input 
-                                        id="email" 
-                                        type="email" 
-                                        placeholder="nombre@empresa.com" 
-                                        className="pl-10 border-border bg-background focus-visible:ring-ring text-slate-900"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        autoFocus
-                                        required
-                                    />
+                    <div>
+                        <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight mb-2">
+                            SPI <span className="opacity-80">Smart Flow</span>
+                        </h1>
+                        <p className="text-blue-200 text-lg font-medium max-w-xs mx-auto">
+                            Gestión inteligente de Propiedad Intelectual
+                        </p>
+                    </div>
+
+                    <div className="flex flex-wrap justify-center gap-3 mt-8">
+                        {["IA Integrada", "Bóveda Documental", "Firma Digital"].map((feat) => (
+                            <span key={feat} className="bg-white/10 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-sm uppercase tracking-wider">
+                                {feat}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="absolute bottom-8 text-blue-300/60 text-xs font-medium">
+                    © 2025 SPI Smart Flow · Soluciones IP de Alto Nivel
+                </div>
+            </div>
+
+            {/* RIGHT PANEL: Auth Form */}
+            <div className="w-full md:w-[55%] bg-slate-50 flex items-center justify-center p-8 relative">
+                <div className="w-full max-w-sm">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 animate-fade-scale shadow-blue-500/5">
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+                                {step === 'email' ? 'Bienvenido' : 'Verifica tu acceso'}
+                            </h2>
+                            <p className="text-slate-500 text-sm mt-1">
+                                {step === 'email' 
+                                    ? 'Ingresa tu correo para comenzar la sesión' 
+                                    : `Ingresa el código enviado a ${email}`}
+                            </p>
+                        </div>
+
+                        {step === 'email' ? (
+                            <form onSubmit={handleSendCode} className="space-y-5">
+                                <div className="space-y-2">
+                                    <Label htmlFor="email" className="text-slate-700 font-semibold ml-1">Correo Electrónico</Label>
+                                    <div className="relative">
+                                        <Mail className="absolute left-3.5 top-3 h-5 w-5 text-slate-400" />
+                                        <Input 
+                                            id="email" 
+                                            type="email" 
+                                            placeholder="nombre@empresa.com" 
+                                            className="h-11 pl-11 rounded-xl border-slate-200 bg-white focus-visible:ring-blue-600 focus-visible:border-blue-600"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            autoFocus
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                
+                                {error && <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg text-center animate-shake">{error}</p>}
+
+                                <Button type="submit" className="w-full btn-primary h-11" disabled={isLoading}>
+                                    {isLoading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            Continuar <ArrowRight className="ml-2 h-4 w-4" />
+                                        </>
+                                    )}
+                                </Button>
+
+                                <div className="mt-8 pt-6 border-t border-slate-100">
+                                    <p className="text-[11px] uppercase tracking-widest text-slate-400 font-bold mb-4">Accesos rápidos Demo</p>
+                                    <div className="flex flex-wrap gap-x-4 gap-y-2">
+                                        {[
+                                            { label: 'Admin', email: 'admin@spi.cl' },
+                                            { label: 'Gerente', email: 'manager@demo.com' },
+                                            { label: 'Cliente', email: 'usuario@demo.com' }
+                                        ].map((demo) => (
+                                            <button 
+                                                key={demo.label}
+                                                type="button" 
+                                                onClick={() => setEmail(demo.email)} 
+                                                className="text-slate-400 hover:text-blue-600 underline underline-offset-4 text-xs font-medium transition-colors"
+                                            >
+                                                {demo.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </form>
+                        ) : (
+                            <div className="space-y-6">
+                                <div className="flex justify-between gap-2">
+                                    {otp.map((val, i) => (
+                                        <input
+                                            key={i}
+                                            ref={(el) => { inputRefs.current[i] = el; }}
+                                            type="text"
+                                            maxLength={1}
+                                            value={val}
+                                            onChange={(e) => handleOtpChange(i, e.target.value)}
+                                            onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                                            className="w-10 h-12 text-center text-xl font-mono font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all bg-white text-slate-900"
+                                            autoFocus={i === 0}
+                                        />
+                                    ))}
+                                </div>
+
+                                {error && <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg text-center">{error}</p>}
+                                
+                                <p className="text-xs text-slate-400 text-center">
+                                    Usa el código <strong className="text-slate-900">123456</strong> para validar la demo
+                                </p>
+
+                                <div className="flex flex-col gap-3">
+                                    <Button 
+                                        onClick={() => autoVerify(otp.join(''))} 
+                                        className="w-full btn-primary h-11" 
+                                        disabled={isLoading || otp.join('').length < 6}
+                                    >
+                                        {isLoading ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                Verificar Código <CheckCircle className="ml-2 h-4 w-4" />
+                                            </>
+                                        )}
+                                    </Button>
+                                    
+                                    <button 
+                                        type="button" 
+                                        className="text-slate-400 hover:text-slate-900 text-xs font-medium transition-colors py-2" 
+                                        onClick={() => { setStep('email'); setOtp(['','','','','','']); setError(''); }}
+                                    >
+                                        Volver a ingresar correo
+                                    </button>
                                 </div>
                             </div>
-                            
-                            {error && <p className="text-sm text-destructive font-medium">{error}</p>}
-
-                            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11" disabled={isLoading}>
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...
-                                    </>
-                                ) : (
-                                    <>
-                                        Enviar Código de Acceso <ArrowRight className="ml-2 h-4 w-4" />
-                                    </>
-                                )}
-                            </Button>
-
-                            <div className="mt-6 pt-6 border-t border-border">
-                                <p className="text-xs text-center text-muted-foreground mb-3">Accesos rápidos (Demo):</p>
-                                <div className="flex justify-center gap-2 text-xs">
-                                    <button type="button" onClick={() => setEmail('admin@spi.cl')} className="px-2 py-1 bg-secondary rounded hover:bg-secondary/80 text-secondary-foreground">Admin</button>
-                                    <button type="button" onClick={() => setEmail('manager@demo.com')} className="px-2 py-1 bg-secondary rounded hover:bg-secondary/80 text-secondary-foreground">Gerente</button>
-                                    <button type="button" onClick={() => setEmail('usuario@demo.com')} className="px-2 py-1 bg-secondary rounded hover:bg-secondary/80 text-secondary-foreground">Cliente</button>
-                                </div>
-                            </div>
-                        </form>
-                    ) : (
-                        <form onSubmit={handleVerifyCode} className="space-y-4">
-                             <div className="space-y-2">
-                                <Label htmlFor="code" className="text-foreground">Código de Verificación</Label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                                    <Input 
-                                        id="code" 
-                                        type="text" 
-                                        placeholder="123456" 
-                                        className="pl-10 tracking-[0.5em] font-mono text-center text-lg border-border bg-background focus-visible:ring-ring text-slate-900"
-                                        value={code}
-                                        onChange={(e) => setCode(e.target.value)}
-                                        maxLength={6}
-                                        autoFocus
-                                        required
-                                    />
-                                </div>
-                                <p className="text-xs text-muted-foreground text-center">Usa el código <strong>123456</strong> para la demo</p>
-                            </div>
-
-                             {error && <p className="text-sm text-destructive font-medium text-center">{error}</p>}
-
-                            <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-11" disabled={isLoading}>
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando...
-                                    </>
-                                ) : (
-                                    <>
-                                        Ingresar al Portal <CheckCircle className="ml-2 h-4 w-4" />
-                                    </>
-                                )}
-                            </Button>
-                            
-                            <Button 
-                                type="button" 
-                                variant="ghost" 
-                                className="w-full text-muted-foreground hover:text-foreground" 
-                                onClick={() => { setStep('email'); setCode(''); setError(''); }}
-                            >
-                                Volver / Cambiar correo
-                            </Button>
-                        </form>
-                    )}
-                </CardContent>
-                <CardFooter className="flex justify-center border-t border-border py-4 bg-secondary/50 rounded-b-xl">
-                    <p className="text-xs text-muted-foreground">© 2024 SPI Smart Flow · Secure Access</p>
-                </CardFooter>
-            </Card>
+                        )}
+                        
+                        <div className="mt-12 text-center">
+                            <p className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">
+                                © 2025 SPI Smart Flow · Acceso Seguro
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
