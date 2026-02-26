@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, Navigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import Sidebar from './Sidebar';
 import { Bell, Search, Settings, HelpCircle, ChevronDown, LogOut } from 'lucide-react';
@@ -31,7 +31,7 @@ const AppLayout = () => {
     }
 
     if (!user) {
-        return <div className="p-10 font-bold text-slate-400">Sesión no validada. Reingrese.</div>; 
+        return <Navigate to="/login" replace />; 
     }
 
     const breadcrumbMap: Record<string, string> = {
