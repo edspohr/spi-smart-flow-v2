@@ -26,6 +26,7 @@ export const SERVICE_TYPES = {
     category: "PI",
   },
   AFEC: { code: "AFEC", label: "Afectaciones", category: "AR" },
+  REG_SAN: { code: "REG_SAN", label: "Registro Sanitario", category: "AR" },
 };
 
 // ── Companies / Clients ───────────────────────────────────────────
@@ -279,6 +280,42 @@ const DOC_TEMPLATES = {
       docType: "upload",
     },
   ],
+  REG_SAN: [
+    { type: "poder_legal", name: "Poder Legal Especial", docType: "sign" },
+    {
+      type: "form_minsal",
+      name: "Formulario MINSAL Oficial",
+      docType: "upload",
+    },
+    {
+      type: "clv",
+      name: "Certificado de Libre Venta (Apostillado)",
+      docType: "upload",
+    },
+    { type: "formula", name: "Fórmula Cualicuantitativa", docType: "upload" },
+    {
+      type: "specs",
+      name: "Especificaciones Técnicas Físico-Químicas",
+      docType: "text",
+    },
+    {
+      type: "rotulo",
+      name: "Bocetos de Rótulos y Empaques",
+      docType: "upload",
+      description: "Formatos comerciales según norma técnica 2024",
+    },
+    {
+      type: "estabilidad",
+      name: "Ensayo de Estabilidad Acelerada",
+      docType: "upload",
+    },
+    {
+      type: "gmp",
+      name: "Certificado de Buenas Prácticas (GMP)",
+      docType: "upload",
+      description: "Emitido por autoridad sanitaria de origen",
+    },
+  ],
 };
 
 // ── Document State Pool ───────────────────────────────────────────
@@ -524,6 +561,7 @@ const generateOT = ({
     title,
     serviceType: SERVICE_TYPES[serviceType]?.label || serviceType,
     serviceCode: serviceType,
+    area: SERVICE_TYPES[serviceType]?.category || "PI",
     stage,
     amount,
     discountPercentage,
@@ -703,6 +741,16 @@ export const INITIAL_OTS = [
     stage: "pago_cierre",
     daysOffset: 50,
     amount: 520000,
+  }),
+  generateOT({
+    id: 99,
+    clientId: "client-5",
+    companyId: "comp-biomed",
+    title: 'Registro Sanitario "NeuroVance XR"',
+    serviceType: "REG_SAN",
+    stage: "gestion",
+    daysOffset: 12,
+    amount: 4500000,
   }),
 
   // ── Andean Brands Corp ──────────────────────────────────────────

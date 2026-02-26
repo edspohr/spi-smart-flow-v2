@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, orderBy, doc, updateDoc, getDoc } from 'firebase/firestore';
+// @ts-ignore
 import { INITIAL_OTS, INITIAL_DOCS, INITIAL_LOGS, VAULT_DOCUMENTS } from '../data/mockData';
 
 // --- Types ---
@@ -13,6 +14,7 @@ export interface OT {
   clientId: string;
   title: string;
   serviceType: string;
+  area: 'PI' | 'AR';
   stage: OTStage;
   amount: number;
   discountPercentage?: number;

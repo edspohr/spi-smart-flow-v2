@@ -77,9 +77,14 @@ const OTCardProgress = ({ currentStage }: { currentStage: string }) => {
     );
 };
 
+import OTDetailsModal from '@/components/OTDetailsModal';
+import { useState } from 'react';
+import { OT } from '@/store/useDataStore';
+
 const ClientDashboard = () => {
     const { user } = useAuthStore();
     const { ots, loading } = useDataStore();
+    const [selectedOT, setSelectedOT] = useState<OT | null>(null);
 
     useEffect(() => {
         if (user?.uid) {
@@ -123,9 +128,10 @@ const ClientDashboard = () => {
                         <div 
                           key={ot.id} 
                           className={cn(
-                            "surface-card border-l-[6px] transition-all hover:-translate-y-1 hover:shadow-lg p-5 flex flex-col justify-between",
+                            "surface-card border-l-[6px] transition-all hover:-translate-y-1 hover:shadow-lg p-5 flex flex-col justify-between cursor-pointer",
                             STAGE_COLORS[ot.stage]
                           )}
+                          onClick={() => setSelectedOT(ot)}
                         >
                             <div>
                               <div className="flex justify-between items-start mb-3">
@@ -154,7 +160,11 @@ const ClientDashboard = () => {
                             </div>
 
                             <div className="pt-6 flex gap-3">
-                                 <Button variant="ghost" className="flex-1 text-slate-500 hover:bg-slate-50 text-xs font-semibold h-10 rounded-xl">
+                                 <Button 
+                                    variant="ghost" 
+                                    className="flex-1 text-slate-500 hover:bg-slate-50 text-xs font-semibold h-10 rounded-xl"
+                                    onClick={(e) => { e.stopPropagation(); setSelectedOT(ot); }}
+                                 >
                                     Ver Detalles
                                  </Button>
                                  <Button className="flex-1 btn-primary text-xs h-10 group px-4">
@@ -182,6 +192,14 @@ const ClientDashboard = () => {
             )}
             
             <AIChatbot />
+            
+            {selectedOT && (
+                <OTDetailsModal 
+                    open={!!selectedOT}
+                    onOpenChange={(open) => !open && setSelectedOT(null)}
+                    ot={selectedOT}
+                />
+            )}
         </div>
     );
 };
