@@ -6,9 +6,8 @@ import ClientDashboard from './pages/ClientDashboard';
 import ClientVault from './pages/ClientVault';
 import NewRequestPage from './pages/NewRequestPage';
 import GuestDashboard from './pages/GuestDashboard';
-import ClientAdminDashboard from './pages/ClientAdminDashboard';
 import SPIAdminDashboard from './pages/SPIAdminDashboard';
-
+import SPIVault from './pages/SPIVault';
 
 export default function AppRouter() {
   return (
@@ -20,10 +19,9 @@ export default function AppRouter() {
         <Route element={<AppLayout />}>
             
             {/* Client Routes */}
-            <Route element={<ProtectedRoute allowedRoles={['client', 'client-admin']} />}>
+            <Route element={<ProtectedRoute allowedRoles={['client']} />}>
                 <Route path="/client" element={<ClientDashboard />} />
                 <Route path="/client/vault" element={<ClientVault />} />
-                <Route path="/client/nueva-solicitud" element={<NewRequestPage />} />
             </Route>
 
             {/* Guest Route */}
@@ -31,14 +29,11 @@ export default function AppRouter() {
                 <Route path="/guest" element={<GuestDashboard />} />
             </Route>
 
-            {/* Client Admin Routes */}
-            <Route element={<ProtectedRoute allowedRoles={['client-admin']} />}>
-                <Route path="/client-admin" element={<ClientAdminDashboard />} />
-            </Route>
-
             {/* SPI Admin Routes */}
             <Route element={<ProtectedRoute allowedRoles={['spi-admin']} />}>
                 <Route path="/spi-admin" element={<SPIAdminDashboard />} />
+                <Route path="/spi-admin/nueva-solicitud" element={<NewRequestPage />} />
+                <Route path="/spi-admin/vault" element={<SPIVault />} />
             </Route>
 
         </Route>

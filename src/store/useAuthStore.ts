@@ -4,7 +4,7 @@ import { onAuthStateChanged, signOut as firebaseSignOut, signInWithEmailAndPassw
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 // Define types for roles
-export type UserRole = "client" | "client-admin" | "spi-admin" | "guest";
+export type UserRole = "client" | "spi-admin" | "guest";
 
 export interface UserProfile {
   uid: string;

@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { db, storage } from '../lib/firebase';
+import { db } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, orderBy, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../lib/firebase';
 
 // --- Types ---
 export type OTStage = 'solicitud' | 'pago_adelanto' | 'gestion' | 'pago_cierre' | 'finalizado';
@@ -20,7 +21,6 @@ export interface OT {
   createdAt: string;
   deadline: string;
   status?: string;
-  // PI-specific fields
   brandName?: string;
   description?: string;
   colors?: string[];
@@ -66,6 +66,7 @@ export async function uploadFile(file: File | Blob, storagePath: string): Promis
 interface DataState {
   ots: OT[];
   documents: Document[];
+  users: any[];
   logs: Log[];
   loading: boolean;
   vaultDocuments: Document[]; 
@@ -74,6 +75,8 @@ interface DataState {
   subscribeToCompanyData: (companyId: string) => () => void;
   subscribeToClientData: (clientId: string) => () => void;
   subscribeToAllOTs: () => () => void;
+  subscribeToAllDocuments: () => () => void;
+  subscribeToUsers: () => () => void;
   subscribeToOTLogs: (otId: string) => () => void;
   
   // Vault Logic
@@ -89,13 +92,12 @@ interface DataState {
 const useDataStore = create<DataState>((set, get) => ({
   ots: [],
   documents: [],
+  users: [],
   logs: [],
   vaultDocuments: [],
   loading: false,
 
   subscribeToCompanyData: (companyId) => {
-    console.log(`Subscribing to data for company: ${companyId}`);
-    
     const qOTs = query(collection(db, "ots"), where("companyId", "==", companyId));
     const unsubscribeOTs = onSnapshot(qOTs, (snapshot) => {
         const ots: OT[] = [];
@@ -127,13 +129,10 @@ const useDataStore = create<DataState>((set, get) => ({
   },
 
   subscribeToClientData: (clientId) => {
-    console.log(`Subscribing to data for client: ${clientId}`);
     const qDocs = query(collection(db, "documents"), where("clientId", "==", clientId));
-    
     const unsubscribeDocs = onSnapshot(qDocs, (snapshot) => {
         const documents: Document[] = [];
         const vaultDocuments: Document[] = [];
-        
         snapshot.forEach((doc) => {
             const data = { id: doc.id, ...doc.data() } as Document;
             if (data.isVaultEligible && data.status === 'validated') {
@@ -161,7 +160,6 @@ const useDataStore = create<DataState>((set, get) => ({
   },
 
   subscribeToAllOTs: () => {
-      console.log("Subscribing to ALL OTs (SPI Admin)");
       const q = query(collection(db, "ots"), orderBy("createdAt", "desc"));
       return onSnapshot(q, (snapshot) => {
           const ots: OT[] = [];
@@ -174,22 +172,48 @@ const useDataStore = create<DataState>((set, get) => ({
       });
   },
 
+  subscribeToAllDocuments: () => {
+    const q = query(
+        collection(db, "documents"), 
+        where("isVaultEligible", "==", true),
+        where("status", "==", "validated")
+    );
+    return onSnapshot(q, (snapshot) => {
+        const vaultDocuments: Document[] = [];
+        snapshot.forEach((doc) => {
+            vaultDocuments.push({ id: doc.id, ...doc.data() } as Document);
+        });
+        set({ vaultDocuments, loading: false });
+    }, (error) => {
+        console.error("Error fetching all documents:", error);
+    });
+  },
+
+  subscribeToUsers: () => {
+    const q = query(collection(db, "users"));
+    return onSnapshot(q, (snapshot) => {
+        const users: any[] = [];
+        snapshot.forEach((doc) => {
+            users.push({ id: doc.id, ...doc.data() });
+        });
+        set({ users });
+    }, (error) => {
+        console.error("Error fetching users:", error);
+    });
+  },
+
   subscribeToOTLogs: (otId) => {
-      console.log(`Subscribing to logs for OT: ${otId}`);
       const qLogs = query(
           collection(db, "logs"), 
           where("otId", "==", otId), 
           orderBy("timestamp", "desc")
       );
-      
       return onSnapshot(qLogs, (snapshot) => {
           const logs: Log[] = [];
           snapshot.forEach((doc) => {
               logs.push({ id: doc.id, ...doc.data() } as Log);
           });
           set({ logs });
-      }, (error) => {
-          console.error("Error processing logs query (check indexes):", error);
       });
   },
 
@@ -210,7 +234,6 @@ const useDataStore = create<DataState>((set, get) => ({
               ...data,
               createdAt: new Date().toISOString()
           });
-          console.log("Document added to Vault (Firestore)");
           get().logAction(docData.clientId, docData.otId || 'vault', `Documento agregado a Bóveda via Upload: ${docData.type}`);
       } catch (e) {
           console.error("Error adding to vault:", e);
@@ -224,7 +247,6 @@ const useDataStore = create<DataState>((set, get) => ({
             createdAt: new Date().toISOString(),
             stage: 'solicitud'
           });
-          console.log("OT Created in Firestore");
           if (otData.clientId) {
             get().logAction(otData.clientId, 'new-ot', `Nueva Solicitud Creada: ${otData.title}`);
           }
@@ -236,7 +258,6 @@ const useDataStore = create<DataState>((set, get) => ({
 
   logAction: async (userId, otId, action, metadata = {}) => {
       try {
-          // Get current user info for the log
           const useAuthStore = (await import('../store/useAuthStore')).default;
           const { user } = useAuthStore.getState();
           const displayName = user?.displayName || user?.email || 'Usuario Desconocido';
@@ -284,9 +305,7 @@ const useDataStore = create<DataState>((set, get) => ({
 
   replaceDocument: async (docId: string, file: File) => {
       try {
-           console.log(`Uploading file ${file.name} to replace doc ${docId}...`);
            const fileUrl = await uploadFile(file, `documents/${docId}/${file.name}`);
-
            const docRef = doc(db, "documents", docId);
            await updateDoc(docRef, {
                url: fileUrl,
@@ -301,7 +320,6 @@ const useDataStore = create<DataState>((set, get) => ({
                const docData = docSnap.data() as Document;
                get().logAction('current', docData.otId || 'general', `Documento Reemplazado: ${docData.name}`);
            }
-
       } catch (e) {
           console.error("Error replacing document:", e);
           throw e;
@@ -310,24 +328,17 @@ const useDataStore = create<DataState>((set, get) => ({
 
   updateOTStage: async (otId: string, stage: OTStage) => {
       try {
-          if (stage === 'finalizado') {
-              console.warn("Attempting to finalize OT. This should only be done by Admin via strict close process.");
-          }
-
           const otRef = doc(db, "ots", otId);
           await updateDoc(otRef, {
               stage,
               updatedAt: new Date().toISOString()
           });
-          
           get().logAction('system', otId, `Etapa actualizada a: ${stage}`);
-
       } catch (e) {
            console.error("Error updating OT stage:", e);
            throw e;
       }
   },
-
 }));
 
 export default useDataStore;

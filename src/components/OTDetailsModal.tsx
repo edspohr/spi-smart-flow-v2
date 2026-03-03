@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import {
   FileText, Clock, AlertCircle, CheckCircle, 
   XCircle, History, Upload, Check, X,
-  ExternalLink, BarChart3
+  ExternalLink
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -72,8 +72,6 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
         return { color: "bg-rose-50 text-rose-700 border-rose-100", icon: <XCircle className="w-7 h-7" />, label: "Rechazado" };
       case "uploaded":
         return { color: "bg-blue-50 text-blue-700 border-blue-100", icon: <Upload className="w-7 h-7" />, label: "En Revisión" };
-      case "validating_ai":
-        return { color: "bg-indigo-50 text-indigo-700 border-indigo-100", icon: <BarChart3 className="w-7 h-7 animate-pulse" />, label: "Analizando IA" };
       default:
         return { color: "bg-slate-50 text-slate-500 border-slate-100", icon: <FileText className="w-7 h-7" />, label: "Pendiente" };
     }
@@ -318,12 +316,10 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
              </DialogTitle>
           </div>
           <div className="p-8">
-            {uploadDoc && (
+            {uploadDoc && ot && (
               <DocumentUpload
-                documentType={uploadDoc.type}
                 documentLabel={uploadDoc.name}
-                enableSigning={uploadDoc.type === "sign" || uploadDoc.name.toLowerCase().includes("poder")}
-                templatePreviewUrl={uploadDoc.url || undefined}
+                storagePath={`documents/${ot.id}/${uploadDoc.id}`}
                 onUploadComplete={() => setUploadDoc(null)}
               />
             )}

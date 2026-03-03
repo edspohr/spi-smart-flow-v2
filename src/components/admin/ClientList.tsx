@@ -7,16 +7,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Search, Plus, Mail, Phone, Building2, User } from "lucide-react";
-import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
+import { Search, Plus, Building2 } from "lucide-react";
+import { collection, query, onSnapshot, updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
-// Mock client data interface (since we might not have a full 'users' collection synced in store yet)
 interface ClientUser {
     id: string;
     displayName: string;
     email: string;
-    role: string;
+    role: "spi-admin" | "client" | "guest";
     companyId: string;
     phone?: string;
     altContactName?: string;
@@ -25,158 +26,137 @@ interface ClientUser {
 }
 
 const ClientList = () => {
-    // We can use the store if we add 'users' to it, but for now we fetch directly or mock
-    // const { users } = useDataStore(); 
-    const [clients, setClients] = useState<ClientUser[]>([]);
+    const [users, setUsers] = useState<ClientUser[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
-    const [editingClient, setEditingClient] = useState<ClientUser | null>(null);
+    const [editingUser, setEditingUser] = useState<ClientUser | null>(null);
     const [editOpen, setEditOpen] = useState(false);
 
     useEffect(() => {
-        fetchClients();
+        const q = query(collection(db, "users"));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const userList: ClientUser[] = [];
+            snapshot.forEach((doc) => {
+                userList.push({ id: doc.id, ...doc.data() } as ClientUser);
+            });
+            setUsers(userList);
+            setLoading(false);
+        });
+        return () => unsubscribe();
     }, []);
 
-    const fetchClients = async () => {
-        setLoading(true);
-        try {
-            // In a real app, use a store subscription or better query
-            // For now, fetch 'users' where role is client or client-admin
-            const querySnapshot = await getDocs(collection(db, "users"));
-            const users: ClientUser[] = [];
-            querySnapshot.forEach((doc) => {
-                const data = doc.data() as any;
-                if (data.role === 'client' || data.role === 'client-admin') {
-                    users.push({ id: doc.id, ...data } as ClientUser);
-                }
-            });
-            setClients(users);
-        } catch (error) {
-            console.error("Error fetching clients:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleSaveClient = async (e: React.FormEvent) => {
+    const handleSaveUser = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!editingClient) return;
+        if (!editingUser) return;
 
         try {
-            await updateDoc(doc(db, "users", editingClient.id), {
-                phone: editingClient.phone,
-                altContactName: editingClient.altContactName,
-                altContactEmail: editingClient.altContactEmail,
-                altContactPhone: editingClient.altContactPhone
+            await updateDoc(doc(db, "users", editingUser.id), {
+                role: editingUser.role,
+                companyId: editingUser.companyId,
+                phone: editingUser.phone || "",
+                altContactName: editingUser.altContactName || "",
+                altContactEmail: editingUser.altContactEmail || "",
+                altContactPhone: editingUser.altContactPhone || ""
             });
-            
-            // Update local state
-            setClients(prev => prev.map(c => c.id === editingClient.id ? editingClient : c));
             setEditOpen(false);
-            setEditingClient(null);
+            setEditingUser(null);
         } catch (error) {
-            console.error("Error updating client:", error);
+            console.error("Error updating user:", error);
         }
     };
 
-    const filteredClients = clients.filter(c => 
-        (c.displayName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (c.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (c.companyId?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+    const filteredUsers = users.filter(u => 
+        (u.displayName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (u.email?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+        (u.companyId?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
+    const getRoleBadge = (role: string) => {
+        switch (role) {
+            case 'spi-admin': return <Badge className="bg-slate-900 text-white border-none text-[8px] font-black uppercase tracking-widest px-2">SPI Admin</Badge>;
+            case 'client': return <Badge className="bg-blue-100 text-blue-700 border-none text-[8px] font-black uppercase tracking-widest px-2">Cliente</Badge>;
+            case 'guest': return <Badge className="bg-slate-100 text-slate-400 border-none text-[8px] font-black uppercase tracking-widest px-2 px-2">Invitado</Badge>;
+            default: return <Badge className="bg-slate-50 text-slate-300 border-none text-[8px] font-black uppercase tracking-widest px-2">Desconocido</Badge>;
+        }
+    };
+
     return (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <div className="relative w-72">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-400" />
+        <div className="space-y-6 animate-fade-in">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white/50 p-6 rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/20 backdrop-blur-sm">
+                <div className="relative w-full md:w-96">
+                    <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-400" />
                     <Input 
                         placeholder="Buscar por nombre, email o empresa..." 
-                        className="pl-8 bg-slate-50 border-slate-200" 
+                        className="pl-12 h-11 bg-white border-slate-100 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-50 transition-all font-bold text-xs" 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                    <Plus className="mr-2 h-4 w-4" /> Nuevo Cliente
+                <Button className="w-full md:w-auto bg-slate-900 hover:bg-slate-800 text-white h-11 rounded-2xl px-8 font-black uppercase text-[10px] tracking-widest shadow-xl shadow-slate-900/20 transition-all active:scale-95">
+                    <Plus className="mr-3 h-4 w-4 stroke-[3]" /> Registrar Usuario
                 </Button>
             </div>
 
-            <Card className="border-none shadow-sm bg-white">
+            <Card className="rounded-[2.5rem] border-slate-100 shadow-2xl shadow-slate-200/40 bg-white overflow-hidden">
                 <CardContent className="p-0">
                     <Table>
-                        <TableHeader className="bg-slate-50">
-                            <TableRow>
-                                <TableHead>Cliente / Empresa</TableHead>
-                                <TableHead>Contacto Principal</TableHead>
-                                <TableHead>Contacto Alternativo</TableHead>
-                                <TableHead className="text-right">Acciones</TableHead>
+                        <TableHeader className="bg-slate-50/50">
+                            <TableRow className="border-b border-slate-100">
+                                <TableHead className="px-8 font-black uppercase text-[10px] text-slate-400 tracking-widest h-14">Usuario / Empresa</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] text-slate-400 tracking-widest h-14">Acceso / Rol</TableHead>
+                                <TableHead className="font-black uppercase text-[10px] text-slate-400 tracking-widest h-14 text-center">Gestión</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center py-10 text-slate-500">
-                                        Cargando clientes...
+                                    <TableCell colSpan={3} className="text-center py-20">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sincronizando Usuarios...</p>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
-                            ) : filteredClients.length === 0 ? (
+                            ) : filteredUsers.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center py-10 text-slate-500">
-                                        No se encontraron clientes.
-                                    </TableCell>
+                                    <TableCell colSpan={3} className="text-center py-20 text-slate-400 font-bold">No se encontraron resultados.</TableCell>
                                 </TableRow>
                             ) : (
-                                filteredClients.map((client) => (
-                                    <TableRow key={client.id} className="hover:bg-slate-50/50">
-                                        <TableCell>
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className="h-9 w-9 border border-slate-200">
-                                                    <AvatarFallback className="bg-blue-100 text-blue-700 font-bold">
-                                                        {client.displayName?.charAt(0) || 'C'}
+                                filteredUsers.map((u, idx) => (
+                                    <TableRow key={u.id} className={cn("hover:bg-slate-50/50 transition-colors border-b border-slate-50", idx % 2 === 0 ? "bg-white" : "bg-slate-50/20")}>
+                                        <TableCell className="px-8 py-6">
+                                            <div className="flex items-center gap-4">
+                                                <Avatar className="h-11 w-11 rounded-2xl border-none shadow-lg">
+                                                    <AvatarFallback className="bg-blue-600 text-white font-black text-sm">
+                                                        {u.displayName?.charAt(0).toUpperCase() || 'U'}
                                                     </AvatarFallback>
                                                 </Avatar>
                                                 <div>
-                                                    <div className="font-medium text-slate-800">{client.displayName || 'Sin Nombre'}</div>
-                                                    <div className="text-xs text-slate-500 flex items-center gap-1">
-                                                        <Building2 className="h-3 w-3" /> {client.companyId}
+                                                    <div className="font-black text-slate-800 tracking-tight text-sm">{u.displayName || 'Sin Nombre'}</div>
+                                                    <div className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5 mt-0.5">
+                                                        <Building2 className="h-3 w-3" /> {u.companyId || 'Sin Empresa'}
                                                     </div>
+                                                    <div className="text-[10px] font-bold text-blue-500 mt-1">{u.email}</div>
                                                 </div>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="text-sm space-y-1">
-                                                <div className="flex items-center gap-1.5 text-slate-700">
-                                                    <Mail className="h-3.5 w-3.5 text-slate-400" />
-                                                    {client.email}
-                                                </div>
-                                                <div className="flex items-center gap-1.5 text-slate-700">
-                                                    <Phone className="h-3.5 w-3.5 text-slate-400" />
-                                                    {client.phone || <span className="text-slate-300 italic">Sin teléfono</span>}
-                                                </div>
+                                            <div className="flex flex-col gap-2">
+                                                {getRoleBadge(u.role)}
+                                                {u.phone && <p className="text-[10px] font-mono font-bold text-slate-400">{u.phone}</p>}
                                             </div>
                                         </TableCell>
-                                        <TableCell>
-                                            {client.altContactName ? (
-                                                 <div className="text-sm space-y-1">
-                                                    <div className="font-medium text-slate-700 flex items-center gap-1">
-                                                        <User className="h-3.5 w-3.5 text-slate-400" />
-                                                        {client.altContactName}
-                                                    </div>
-                                                    <div className="text-xs text-slate-500 ml-5">
-                                                        {client.altContactEmail}
-                                                    </div>
-                                                 </div>
-                                            ) : (
-                                                <span className="text-xs text-slate-300 italic">No configurado</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="sm" onClick={() => {
-                                                setEditingClient(client);
-                                                setEditOpen(true);
-                                            }}>
-                                                Editar
+                                        <TableCell className="text-center px-8">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="bg-slate-50 hover:bg-blue-50 text-slate-400 hover:text-blue-600 font-black uppercase text-[10px] tracking-widest px-4 rounded-xl"
+                                                onClick={() => {
+                                                    setEditingUser(u);
+                                                    setEditOpen(true);
+                                                }}
+                                            >
+                                                Configurar
                                             </Button>
                                         </TableCell>
                                     </TableRow>
@@ -187,62 +167,70 @@ const ClientList = () => {
                 </CardContent>
             </Card>
 
-            {/* Edit Client Dialog */}
+            {/* Edit User Dialog */}
             <Dialog open={editOpen} onOpenChange={setEditOpen}>
-                <DialogContent className="max-w-lg bg-white">
-                    <DialogHeader>
-                        <DialogTitle>Editar Información de Contacto</DialogTitle>
-                        <DialogDescription className="text-slate-500">
-                            Actualiza los datos de contacto para {editingClient?.displayName}.
+                <DialogContent className="max-w-md bg-white rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-8 pb-4 bg-slate-900 text-white">
+                        <DialogTitle className="text-2xl font-black tracking-tight">Perfil de Acceso</DialogTitle>
+                        <DialogDescription className="text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+                            Privilegios y Vinculación Corporativa
                         </DialogDescription>
                     </DialogHeader>
                     
-                    {editingClient && (
-                        <form onSubmit={handleSaveClient} className="space-y-4 py-2">
-                             <div className="grid grid-cols-2 gap-4">
+                    {editingUser && (
+                        <form onSubmit={handleSaveUser} className="p-8 space-y-6">
+                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label>Teléfono Principal (Whatsapp)</Label>
+                                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Rol de Usuario</Label>
+                                    <select 
+                                        className="w-full h-11 px-4 rounded-xl border-2 border-slate-100 bg-slate-50 font-bold text-xs"
+                                        value={editingUser.role}
+                                        onChange={e => setEditingUser({...editingUser, role: e.target.value as any})}
+                                    >
+                                        <option value="guest">Invitado (Sin Acceso)</option>
+                                        <option value="client">Cliente (Dashboard Operativo)</option>
+                                        <option value="spi-admin">SPI Admin (Control Total)</option>
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Empresa / CompanyId</Label>
                                     <Input 
-                                        value={editingClient.phone || ''}
-                                        onChange={e => setEditingClient({...editingClient, phone: e.target.value})}
+                                        className="h-11 rounded-xl border-2 border-slate-100 bg-slate-50 font-bold text-xs"
+                                        value={editingUser.companyId || ''}
+                                        onChange={e => setEditingUser({...editingUser, companyId: e.target.value})}
+                                        placeholder="Nombre de la empresa..."
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Teléfono (Whatsapp)</Label>
+                                    <Input 
+                                        className="h-11 rounded-xl border-2 border-slate-100 bg-slate-50 font-bold text-xs"
+                                        value={editingUser.phone || ''}
+                                        onChange={e => setEditingUser({...editingUser, phone: e.target.value})}
                                         placeholder="+56 9..."
                                     />
                                 </div>
                              </div>
                              
-                             <Separator className="my-2" />
+                             <Separator className="bg-slate-100" />
                              
-                             <h4 className="text-sm font-semibold text-slate-700">Contacto Alternativo (Escalamiento)</h4>
-                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2 col-span-2">
-                                    <Label>Nombre Completo</Label>
-                                    <Input 
-                                        value={editingClient.altContactName || ''}
-                                        onChange={e => setEditingClient({...editingClient, altContactName: e.target.value})}
-                                        placeholder="Ej: Juan Pérez (Gerente)"
-                                    />
-                                </div>
+                             <div className="space-y-4">
+                                <h4 className="text-[10px] font-black uppercase text-blue-600 tracking-[0.2em]">Escalamiento (Opcional)</h4>
                                 <div className="space-y-2">
-                                    <Label>Email</Label>
+                                    <Label className="text-[9px] font-black uppercase text-slate-400">Nombre Alternativo</Label>
                                     <Input 
-                                        value={editingClient.altContactEmail || ''}
-                                        onChange={e => setEditingClient({...editingClient, altContactEmail: e.target.value})}
-                                        placeholder="contacto@empresa.com"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Teléfono</Label>
-                                    <Input 
-                                        value={editingClient.altContactPhone || ''}
-                                        onChange={e => setEditingClient({...editingClient, altContactPhone: e.target.value})}
-                                        placeholder="+56 9..."
+                                        className="h-10 rounded-xl border border-slate-100"
+                                        value={editingUser.altContactName || ''}
+                                        onChange={e => setEditingUser({...editingUser, altContactName: e.target.value})}
                                     />
                                 </div>
                              </div>
 
-                             <DialogFooter className="mt-4">
-                                <Button type="button" variant="outline" onClick={() => setEditOpen(false)}>Cancelar</Button>
-                                <Button type="submit">Guardar Cambios</Button>
+                             <DialogFooter className="pt-2">
+                                <Button type="button" variant="ghost" className="font-black uppercase text-[10px] text-slate-400" onClick={() => setEditOpen(false)}>Cerrar</Button>
+                                <Button type="submit" className="bg-blue-600 text-white font-black uppercase text-[10px] tracking-widest px-8 rounded-2xl h-11">Guardar</Button>
                              </DialogFooter>
                         </form>
                     )}

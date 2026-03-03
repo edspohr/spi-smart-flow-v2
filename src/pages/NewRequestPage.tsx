@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useDataStore, { uploadFile } from '../store/useDataStore';
 import useAuthStore from '../store/useAuthStore';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Check, Loader2, PenTool, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, PenTool, ShieldCheck, UserCircle2, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { addDays } from 'date-fns';
 
@@ -18,10 +18,11 @@ const LEGAL_TEXT = "Por el presente instrumento, otorgo poder especial a SPI Ame
 
 const NewRequestPage = () => {
     const navigate = useNavigate();
-    const { user } = useAuthStore();
-    const { createOT } = useDataStore();
+    const { user: currentUser } = useAuthStore();
+    const { createOT, users, subscribeToUsers } = useDataStore();
 
     // Form state
+    const [selectedClientId, setSelectedClientId] = useState('');
     const [brandName, setBrandName] = useState('');
     const [description, setDescription] = useState('');
     const [colors, setColors] = useState<string[]>([]);
@@ -35,12 +36,21 @@ const NewRequestPage = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [submitError, setSubmitError] = useState('');
 
+    useEffect(() => {
+        const unsubscribe = subscribeToUsers();
+        return () => unsubscribe();
+    }, [subscribeToUsers]);
+
+    // Filter only clients for the dropdown
+    const clientUsers = users.filter(u => u.role === 'client');
+
     const handleSignatureSave = async (signatureDataUrl: string) => {
+        if (!selectedClientId) return;
         setIsUploadingSignature(true);
         try {
             const res = await fetch(signatureDataUrl);
             const blob = await res.blob();
-            const url = await uploadFile(blob, `signatures/${user?.uid}/${Date.now()}_firma.png`);
+            const url = await uploadFile(blob, `signatures/${selectedClientId}/${Date.now()}_firma.png`);
             setSignatureUrl(url);
             setIsSigning(false);
         } catch (err) {
@@ -51,19 +61,21 @@ const NewRequestPage = () => {
     };
 
     const canSubmit = () => {
-        return brandName.trim() !== '' && 
+        return selectedClientId !== '' &&
+               brandName.trim() !== '' && 
                description.trim() !== '' && 
                signatureUrl !== '' && 
                logoUrl !== '';
     };
 
     const handleSubmit = async () => {
-        if (!canSubmit() || !user) return;
+        if (!canSubmit() || !currentUser) return;
         
         setIsSubmitting(true);
         setSubmitError('');
         
         try {
+            const selectedClient = clientUsers.find(u => u.id === selectedClientId);
             const now = new Date();
             await createOT({
                 brandName,
@@ -75,8 +87,8 @@ const NewRequestPage = () => {
                 serviceType: 'Propiedad Intelectual',
                 area: 'PI',
                 stage: 'solicitud',
-                clientId: user.uid,
-                companyId: user.companyId || '',
+                clientId: selectedClientId,
+                companyId: selectedClient?.companyId || 'Personal',
                 amount: 0,
                 createdAt: now.toISOString(),
                 deadline: addDays(now, 90).toISOString(),
@@ -95,7 +107,7 @@ const NewRequestPage = () => {
                 confetti({ ...defaults, particleCount, origin: { x: random(0.7, 0.9), y: Math.random() - 0.2 } });
             }, 250);
 
-            setTimeout(() => navigate('/client'), 1500);
+            setTimeout(() => navigate('/spi-admin'), 1500);
         } catch (error) {
             console.error("Failed to create OT", error);
             setSubmitError('Error al crear la solicitud. Intenta nuevamente.');
@@ -105,38 +117,69 @@ const NewRequestPage = () => {
     };
 
     return (
-        <div className="max-w-3xl mx-auto space-y-8 pb-20">
+        <div className="max-w-3xl mx-auto space-y-8 pb-20 p-6 animate-fade-in">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigate('/client')}>
+                <Button variant="ghost" size="icon" onClick={() => navigate('/spi-admin')} className="rounded-full">
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Nueva Solicitud de Propiedad Intelectual</h1>
-                    <p className="text-sm text-slate-500 mt-1">completa todos los campos para iniciar tu trámite de registro de marca</p>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Nueva Operación <span className="text-blue-600">SPI</span></h1>
+                    <p className="text-sm font-semibold text-slate-500 mt-1">Alta de trámite de Propiedad Intelectual para cliente.</p>
                 </div>
             </div>
 
             {/* Form */}
-            <div className="space-y-8">
-
-                {/* 1. Poder Simple (Signature) */}
-                <Card className="glass-card overflow-hidden">
-                    <CardContent className="p-8 space-y-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
-                                <PenTool className="h-5 w-5 text-blue-600" />
+            <div className="space-y-6">
+                
+                {/* 0. Selección de Cliente */}
+                <Card className="rounded-[2rem] border-slate-100 shadow-xl shadow-slate-200/40 bg-white overflow-hidden">
+                    <CardContent className="p-8 space-y-4">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2.5 bg-blue-600 rounded-2xl">
+                                <UserCircle2 className="h-5 w-5 text-white" />
                             </div>
                             <div>
-                                <h2 className="text-lg font-bold text-slate-800">1. Poder Simple</h2>
-                                <p className="text-xs text-slate-500">Firma digital del poder legal</p>
+                                <h2 className="text-lg font-black text-slate-800">Selección de Cliente</h2>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paso Inicial</p>
                             </div>
-                            {signatureUrl && <Check className="h-5 w-5 text-emerald-600 ml-auto" />}
+                        </div>
+                        <div className="space-y-2">
+                            <select 
+                                className="w-full h-12 px-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white transition-all font-bold text-slate-700 outline-none"
+                                value={selectedClientId}
+                                onChange={(e) => setSelectedClientId(e.target.value)}
+                            >
+                                <option value="" disabled>Seleccionar un cliente registrado...</option>
+                                {clientUsers.map(u => (
+                                    <option key={u.id} value={u.id}>{u.displayName} ({u.companyId || 'Sin Empresa'})</option>
+                                ))}
+                            </select>
+                            {clientUsers.length === 0 && (
+                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-tighter">
+                                    No hay usuarios con rol "cliente" registrados.
+                                </p>
+                            )}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* 1. Poder Simple (Signature) */}
+                <Card className="rounded-[2rem] border-slate-100 shadow-xl shadow-slate-200/40 bg-white overflow-hidden">
+                    <CardContent className="p-8 space-y-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2.5 bg-emerald-500 rounded-2xl">
+                                <PenTool className="h-5 w-5 text-white" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-black text-slate-800">Firma de Poder Legal</h2>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Documento Obligatorio</p>
+                            </div>
+                            {signatureUrl && <Check className="h-6 w-6 text-emerald-600 ml-auto" />}
                         </div>
 
-                        {/* Legal Text */}
-                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                            <p className="text-sm text-slate-700 leading-relaxed italic">
+                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 border-l-4 border-l-blue-600 shadow-sm">
+                            <p className="text-sm text-slate-700 leading-relaxed font-semibold italic">
                                 "{LEGAL_TEXT}"
                             </p>
                         </div>
@@ -156,34 +199,34 @@ const NewRequestPage = () => {
                                             }`}>
                                                 {hasReadLegalText && <Check className="h-4 w-4 text-white" />}
                                             </div>
-                                            <label className="text-sm font-bold text-slate-700 cursor-pointer">
-                                                He leído y acepto los términos del poder legal
+                                            <label className="text-sm font-black text-slate-700 cursor-pointer">
+                                                He validado la aceptación de los términos con el cliente
                                             </label>
                                         </div>
 
                                         <Button
-                                            disabled={!hasReadLegalText}
+                                            disabled={!hasReadLegalText || !selectedClientId}
                                             onClick={() => setIsSigning(true)}
-                                            className="w-full btn-primary h-12 rounded-2xl font-bold uppercase text-xs tracking-widest shadow-xl shadow-blue-500/20 disabled:grayscale disabled:opacity-50"
+                                            className="w-full btn-primary h-12 rounded-2xl font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-blue-500/20"
                                         >
-                                            <ShieldCheck className="mr-2 h-4 w-4" /> Continuar a la Firma
+                                            <ShieldCheck className="mr-2 h-4 w-4" /> Proceder a la Firma
                                         </Button>
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
                                         <div className="flex items-center justify-between">
-                                            <h4 className="text-sm font-bold text-slate-700">Panel de Firma</h4>
-                                            <Button variant="ghost" size="sm" onClick={() => setIsSigning(false)} className="text-xs text-slate-400">
-                                                Volver
+                                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Panel de Dibujo</h4>
+                                            <Button variant="ghost" size="sm" onClick={() => setIsSigning(false)} className="text-xs font-bold text-blue-600">
+                                                Cancelar
                                             </Button>
                                         </div>
                                         {isUploadingSignature ? (
                                             <div className="flex items-center justify-center py-12 gap-3">
                                                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                                                <span className="text-sm font-medium text-slate-500">Subiendo firma...</span>
+                                                <span className="text-sm font-black text-slate-500">Guardando firma...</span>
                                             </div>
                                         ) : (
-                                            <div className="rounded-2xl overflow-hidden bg-slate-50 ring-1 ring-slate-100">
+                                            <div className="rounded-3xl overflow-hidden bg-white ring-2 ring-slate-100 shadow-inner">
                                                 <SignaturePad 
                                                     onSave={handleSignatureSave}
                                                     onCancel={() => setIsSigning(false)}
@@ -194,110 +237,107 @@ const NewRequestPage = () => {
                                 )}
                             </>
                         ) : (
-                            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white">
-                                    <Check className="h-4 w-4 stroke-[3]" />
+                            <div className="bg-emerald-50 border border-emerald-100 p-5 rounded-3xl flex items-center gap-4 animate-scale-in">
+                                <div className="w-10 h-10 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/30">
+                                    <Check className="h-6 w-6 stroke-[4]" />
                                 </div>
-                                <span className="text-sm font-bold text-emerald-800">Firma registrada exitosamente</span>
+                                <span className="text-sm font-black text-emerald-800 uppercase tracking-tighter">Firma Registrada correctamente</span>
                             </div>
                         )}
                     </CardContent>
                 </Card>
 
-                {/* 2. Marca o producto a registrar */}
-                <Card className="glass-card">
-                    <CardContent className="p-8 space-y-4">
-                        <h2 className="text-lg font-bold text-slate-800">2. Marca o producto a registrar</h2>
-                        <p className="text-xs text-slate-500">Nombre de la marca que deseas registrar</p>
-                        <div className="space-y-2">
-                            <Label htmlFor="brandName" className="text-slate-700 font-semibold">Nombre de la Marca</Label>
-                            <Input
-                                id="brandName"
-                                type="text"
-                                placeholder="Ej: Mi Marca Premium"
-                                value={brandName}
-                                onChange={(e) => setBrandName(e.target.value)}
-                                className="h-12 rounded-xl border-slate-200 text-base"
-                            />
+                {/* 2. Información de Marca */}
+                <Card className="rounded-[2rem] border-slate-100 shadow-xl shadow-slate-200/40 bg-white">
+                    <CardContent className="p-8 space-y-6">
+                        <div>
+                            <h2 className="text-lg font-black text-slate-800">Detalles de la Marca</h2>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identidad Visual</p>
+                        </div>
+                        
+                        <div className="grid gap-6">
+                             <div className="space-y-2">
+                                <Label className="text-xs font-black text-slate-500 uppercase tracking-[0.1em] ml-1">Nombre Comercial</Label>
+                                <Input
+                                    type="text"
+                                    placeholder="Nombre de la marca..."
+                                    value={brandName}
+                                    onChange={(e) => setBrandName(e.target.value)}
+                                    className="h-12 rounded-xl border-slate-200 bg-slate-50 font-bold focus:bg-white transition-all"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs font-black text-slate-500 uppercase tracking-[0.1em] ml-1">Descripción de Actividades</Label>
+                                <Textarea
+                                    placeholder="Describe los productos o servicios asociados..."
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    className="min-h-[100px] rounded-xl border-slate-200 bg-slate-50 font-semibold focus:bg-white transition-all resize-none"
+                                />
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
 
-                {/* 3. Descripción */}
-                <Card className="glass-card">
-                    <CardContent className="p-8 space-y-4">
-                        <h2 className="text-lg font-bold text-slate-800">3. Descripción</h2>
-                        <p className="text-xs text-slate-500">Describe la marca o producto que deseas registrar</p>
-                        <div className="space-y-2">
-                            <Label htmlFor="description" className="text-slate-700 font-semibold">Descripción del producto o servicio</Label>
-                            <Textarea
-                                id="description"
-                                placeholder="Describe los productos o servicios asociados a tu marca..."
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                className="min-h-[120px] rounded-xl border-slate-200 text-sm resize-none"
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* 4. Logo (File Upload) */}
-                <Card className="glass-card">
-                    <CardContent className="p-8 space-y-4">
+                {/* 3. Multimedia */}
+                <Card className="rounded-[2rem] border-slate-100 shadow-xl shadow-slate-200/40 bg-white">
+                    <CardContent className="p-8 space-y-6">
                         <div className="flex items-center gap-3">
-                            <h2 className="text-lg font-bold text-slate-800">4. Logo</h2>
-                            {logoUrl && <Check className="h-5 w-5 text-emerald-600" />}
+                            <h2 className="text-lg font-black text-slate-800">Logo y Pantón</h2>
+                            {logoUrl && <Check className="h-6 w-6 text-emerald-600" />}
                         </div>
-                        <p className="text-xs text-slate-500">Sube el logo de tu marca en formato PNG o JPG</p>
+                        
                         {!logoUrl ? (
                             <DocumentUpload
-                                documentLabel="Logo de la Marca"
-                                storagePath={`logos/${user?.uid}`}
+                                documentLabel="Subir Logo (PNG/JPG)"
+                                storagePath={`logos/${selectedClientId || 'temp'}`}
                                 onUploadComplete={(url) => setLogoUrl(url)}
                                 accept=".png,.jpg,.jpeg"
                             />
                         ) : (
-                            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white">
-                                    <Check className="h-4 w-4 stroke-[3]" />
+                            <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-[2rem] flex items-center gap-4">
+                                <img src={logoUrl} alt="Preview" className="w-16 h-16 rounded-xl object-cover shadow-md" />
+                                <div className="flex-1">
+                                    <p className="text-xs font-black text-emerald-800">Logo Verificado</p>
+                                    <Button variant="ghost" size="sm" onClick={() => setLogoUrl('')} className="text-[10px] font-black uppercase text-slate-400 h-6 p-0 hover:text-rose-500">Eliminar</Button>
                                 </div>
-                                <span className="text-sm font-bold text-emerald-800">Logo subido exitosamente</span>
                             </div>
                         )}
-                    </CardContent>
-                </Card>
 
-                {/* 5. Pantón de colores */}
-                <Card className="glass-card">
-                    <CardContent className="p-8 space-y-4">
-                        <h2 className="text-lg font-bold text-slate-800">5. Pantón de Colores</h2>
-                        <p className="text-xs text-slate-500">Selecciona los colores de tu marca (código hex o Pantone)</p>
-                        <ColorPicker colors={colors} onChange={setColors} />
+                        <div className="pt-4 border-t border-slate-100">
+                             <Label className="text-xs font-black text-slate-500 uppercase tracking-[0.1em] mb-4 block">Paleta de Colores</Label>
+                             <ColorPicker colors={colors} onChange={setColors} />
+                        </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Submit */}
+            {/* Error Message */}
             {submitError && (
-                <p className="text-sm text-red-600 font-medium bg-red-50 p-3 rounded-xl text-center">{submitError}</p>
+                <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 animate-fade-in">
+                    <AlertCircle className="h-5 w-5" />
+                    <p className="text-sm font-bold">{submitError}</p>
+                </div>
             )}
 
-            <div className="flex justify-between pt-4">
-                <Button variant="ghost" onClick={() => navigate('/client')}>
-                    Cancelar
+            {/* Submit */}
+            <div className="flex justify-between items-center bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-blue-900/10">
+                <Button variant="ghost" onClick={() => navigate('/spi-admin')} className="font-black text-slate-400 uppercase tracking-widest text-xs">
+                    Descartar
                 </Button>
                 <Button 
                     onClick={handleSubmit} 
                     disabled={!canSubmit() || isSubmitting} 
-                    className="bg-blue-600 hover:bg-blue-700 min-w-[180px] h-12 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/20"
+                    className="bg-slate-900 hover:bg-slate-800 min-w-[240px] h-14 rounded-2xl font-black uppercase text-xs tracking-[0.2rem] shadow-2xl shadow-slate-900/30 text-white transition-all active:scale-95 disabled:grayscale"
                 >
                     {isSubmitting ? (
                         <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...
+                            <Loader2 className="mr-3 h-5 w-5 animate-spin" /> Procesando...
                         </>
                     ) : (
                         <>
-                            Finalizar Solicitud <Check className="ml-2 h-4 w-4" />
+                            Confirmar Operación <Check className="ml-3 h-5 w-5 stroke-[3]" />
                         </>
                     )}
                 </Button>

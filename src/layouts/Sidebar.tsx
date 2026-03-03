@@ -3,13 +3,10 @@ import useAuthStore from '../store/useAuthStore';
 import { 
   LayoutDashboard, 
   Files, 
-  Settings, 
   Users, 
   ShieldCheck, 
-  BarChart, 
   LogOut,
-  Command,
-  CreditCard
+  Command
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -26,21 +23,15 @@ const Sidebar = () => {
     switch (user.role) {
       case 'client':
         return [
-          { href: '/client', label: 'Dashboard', icon: LayoutDashboard },
+          { href: '/client', label: 'Tablero Operativo', icon: LayoutDashboard },
           { href: '/client/vault', label: 'Bóveda Smart', icon: ShieldCheck },
-          { href: '/client/profile', label: 'Mi Perfil', icon: Users },
-        ];
-      case 'client-admin':
-        return [
-          { href: '/client-admin', label: 'Consola Corporativa', icon: BarChart },
-          { href: '/client-admin/team', label: 'Gestión de Equipo', icon: Users },
-          { href: '/client-admin/billing', label: 'Pagos y Facturas', icon: CreditCard },
         ];
       case 'spi-admin':
         return [
           { href: '/spi-admin', label: 'Torre de Control', icon: Command },
-          { href: '/spi-admin/companies', label: 'Empresas Clientes', icon: Files },
-          { href: '/spi-admin/settings', label: 'Sistema SPI', icon: Settings },
+          { href: '/spi-admin/nueva-solicitud', label: 'Nueva Operación', icon: Files },
+          { href: '/spi-admin/vault', label: 'Bóveda Global', icon: ShieldCheck },
+          { href: '/spi-admin/companies', label: 'Empresas Clientes', icon: Users },
         ];
       case 'guest':
         return [];
