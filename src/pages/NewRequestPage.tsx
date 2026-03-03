@@ -170,7 +170,7 @@ const NewRequestPage = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Contacto / Representante</Label>
+                                <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Contacto / Representante</Label>
                                 <select 
                                     disabled={!selectedCompanyId}
                                     className="w-full h-12 px-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white transition-all font-bold text-slate-700 outline-none disabled:opacity-50"
@@ -289,7 +289,7 @@ const NewRequestPage = () => {
                         
                         <div className="grid gap-6">
                              <div className="space-y-2">
-                                <Label className="text-xs font-black text-slate-500 uppercase tracking-[0.1em] ml-1">Nombre Comercial</Label>
+                                <Label className="text-xs font-black text-slate-600 uppercase tracking-[0.1em] ml-1">Nombre Comercial</Label>
                                 <Input
                                     type="text"
                                     placeholder="Nombre de la marca..."
@@ -300,7 +300,7 @@ const NewRequestPage = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-xs font-black text-slate-500 uppercase tracking-[0.1em] ml-1">Descripción de Actividades</Label>
+                                <Label className="text-xs font-black text-slate-600 uppercase tracking-[0.1em] ml-1">Descripción de Actividades</Label>
                                 <Textarea
                                     placeholder="Describe los productos o servicios asociados..."
                                     value={description}
@@ -341,7 +341,7 @@ const NewRequestPage = () => {
                         )}
 
                         <div className="pt-4 border-t border-slate-100">
-                             <Label className="text-xs font-black text-slate-500 uppercase tracking-[0.1em] mb-4 block">Paleta de Colores</Label>
+                             <Label className="text-xs font-black text-slate-600 uppercase tracking-[0.1em] mb-4 block">Paleta de Colores</Label>
                              <ColorPicker colors={colors} onChange={setColors} />
                         </div>
                     </CardContent>
