@@ -19,12 +19,16 @@ const AppLayout = () => {
     const { user, loading, logout } = useAuthStore();
     const location = useLocation();
 
-    if (loading) {
+     if (loading) {
         return (
-             <div className="flex h-screen items-center justify-center bg-white">
-                <div className="relative w-16 h-16">
-                    <div className="absolute inset-0 rounded-2xl bg-blue-600/20 animate-pulse" />
-                    <div className="absolute inset-4 rounded-xl bg-blue-600 animate-spin border-4 border-white border-t-transparent shadow-xl" />
+             <div className="flex h-screen items-center justify-center bg-[#0B1121]">
+                <div className="relative">
+                    <div className="absolute inset-0 bg-blue-600/20 blur-2xl rounded-full scale-150 animate-pulse" />
+                    <img 
+                        src="/spi-logo.png" 
+                        alt="SPI Loading..." 
+                        className="h-20 w-20 relative animate-[spin_3s_linear_infinite]"
+                    />
                 </div>
              </div>
         );

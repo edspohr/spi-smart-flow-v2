@@ -66,12 +66,12 @@ const NewRequestPage = () => {
     };
 
     const canSubmit = () => {
+        // Now only requires identity and brand info.
+        // Documents and signature can be completed later by the client.
         return selectedCompanyId !== '' &&
                selectedClientId !== '' &&
                brandName.trim() !== '' && 
-               description.trim() !== '' && 
-               signatureUrl !== '' && 
-               logoUrl !== '';
+               description.trim() !== '';
     };
 
     const handleSubmit = async () => {
@@ -147,13 +147,13 @@ const NewRequestPage = () => {
                             </div>
                             <div>
                                 <h2 className="text-lg font-black text-slate-800">Vínculo Corporativo</h2>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Entidad y Representante</p>
+                                <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Identificación Obligatoria</p>
                             </div>
                         </div>
                         
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Empresa Cliente</Label>
+                                <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Empresa Cliente</Label>
                                 <select 
                                     className="w-full h-12 px-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white transition-all font-bold text-slate-700 outline-none"
                                     value={selectedCompanyId}
@@ -205,7 +205,7 @@ const NewRequestPage = () => {
                             </div>
                             <div>
                                 <h2 className="text-lg font-black text-slate-800">Firma de Poder Legal</h2>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Documento Obligatorio</p>
+                                <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Opcional para Admin (Completado por cliente)</p>
                             </div>
                             {signatureUrl && <Check className="h-6 w-6 text-emerald-600 ml-auto" />}
                         </div>
@@ -284,7 +284,7 @@ const NewRequestPage = () => {
                     <CardContent className="p-8 space-y-6">
                         <div>
                             <h2 className="text-lg font-black text-slate-800">Detalles de la Marca</h2>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identidad Visual</p>
+                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Información Base</p>
                         </div>
                         
                         <div className="grid gap-6">
@@ -316,8 +316,11 @@ const NewRequestPage = () => {
                 <Card className="rounded-[2rem] border-slate-100 shadow-xl shadow-slate-200/40 bg-white">
                     <CardContent className="p-8 space-y-6">
                         <div className="flex items-center gap-3">
-                            <h2 className="text-lg font-black text-slate-800">Logo y Pantón</h2>
-                            {logoUrl && <Check className="h-6 w-6 text-emerald-600" />}
+                            <div>
+                                <h2 className="text-lg font-black text-slate-800">Logo y Pantón</h2>
+                                <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Opcional (Puede cargarlo el cliente)</p>
+                            </div>
+                            {logoUrl && <Check className="h-6 w-6 text-emerald-600 ml-auto" />}
                         </div>
                         
                         {!logoUrl ? (
