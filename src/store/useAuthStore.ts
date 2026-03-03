@@ -48,29 +48,42 @@ const useAuthStore = create<AuthState>((set) => ({
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
                 displayName: firebaseUser.displayName,
-                role: userData.role || "client", // Default to client
+                role: userData.role || "guest",
                 companyId: userData.companyId,
               },
               loading: false,
               initialized: true,
             });
           } else {
-            // Fallback if user document doesn't exist (e.g. just signed up)
+            // Fallback if user document doesn't exist (e.g. just signed up, race condition)
             set({
               user: {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
                 displayName: firebaseUser.displayName,
-                role: "client",
-                companyId: "demo-company-1",
+                role: "guest",
+                companyId: "Pendiente",
               },
               loading: false,
               initialized: true,
             });
           }
-        } catch (error) {
-          console.error("Error fetching user profile:", error);
-          set({ user: null, loading: false, initialized: true });
+        } catch (error: any) {
+          // If it's a permission error, it's likely the doc hasn't been created/rules not deployed
+          // We still set a minimal guest user to avoid blocking the UI if they just signed up
+          console.warn("Aviso: No se pudo obtener el perfil de Firestore (posible falta de permisos o documento inexistente):", error.message);
+          
+          set({
+            user: {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              role: "guest",
+              companyId: "Pendiente",
+            },
+            loading: false,
+            initialized: true,
+          });
         }
       } else {
         set({ user: null, loading: false, initialized: true });
