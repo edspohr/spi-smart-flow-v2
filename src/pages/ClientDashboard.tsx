@@ -35,15 +35,17 @@ const ClientDashboard = () => {
 
             <div className="flex-1 min-h-0 flex flex-col">
                 {ots.length > 0 ? (
-                    <div className="flex-1 bg-white/50 border border-slate-100 rounded-[2.5rem] p-6 shadow-sm flex flex-col min-h-0">
-                        <div className="flex items-center gap-3 mb-6 shrink-0">
-                            <h2 className="text-xl font-bold text-slate-800">Mis Trámites Activos</h2>
-                            <span className="bg-blue-50 text-blue-600 text-xs font-black px-2.5 py-1 rounded-full border border-blue-100">
-                                {ots.length}
-                            </span>
+                    <div className="flex-1 flex flex-col min-h-0">
+                        <div className="flex items-center justify-between mb-4 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <h2 className="text-xl font-black text-slate-900 tracking-tight">Mi Flujo de Trabajo</h2>
+                                <span className="bg-blue-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-lg shadow-blue-500/20 uppercase tracking-widest">
+                                    {ots.length} Operaciones
+                                </span>
+                            </div>
                         </div>
                         
-                        <div className="flex-1 min-h-0 bg-slate-900/30 border border-slate-800 rounded-[2.5rem] overflow-hidden p-4">
+                        <div className="flex-1 min-h-0 bg-[#0B1121] border border-slate-800 rounded-[2.5rem] overflow-hidden p-4 shadow-2xl shadow-blue-900/20">
                             <KanbanBoard userOts={ots} onSelectOt={setSelectedOT} />
                         </div>
                     </div>
