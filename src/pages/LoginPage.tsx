@@ -24,13 +24,13 @@ const LoginPage = () => {
     const [error, setError] = useState('');
 
     useEffect(() => {
-        if (user) {
+        if (user && !isLoading) {
             if (user.role === 'spi-admin') navigate('/spi-admin');
             else if (user.role === 'client-admin') navigate('/client-admin');
             else if (user.role === 'guest') navigate('/guest');
             else navigate('/client');
         }
-    }, [user, navigate]);
+    }, [user, navigate, isLoading]);
 
     const getFirebaseErrorMessage = (code: string): string => {
         switch (code) {

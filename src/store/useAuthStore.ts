@@ -18,6 +18,7 @@ interface AuthState {
   user: UserProfile | null;
   loading: boolean;
   initialized: boolean;
+  isSigningUp: boolean;
   setUser: (user: UserProfile | null) => void;
   initializeAuthListener: () => () => void;
   logout: () => Promise<void>;
@@ -29,6 +30,7 @@ const useAuthStore = create<AuthState>((set) => ({
   user: null,
   loading: true,
   initialized: false,
+  isSigningUp: false,
 
   setUser: (user) => set({ user, loading: false }),
 
@@ -55,7 +57,15 @@ const useAuthStore = create<AuthState>((set) => ({
               initialized: true,
             });
           } else {
-            // Fallback if user document doesn't exist (e.g. just signed up, race condition)
+            // Check if we are in the middle of a signUp
+            const { isSigningUp } = useAuthStore.getState();
+            
+            if (isSigningUp) {
+              // Waiting for signUp function to finish its work
+              return;
+            }
+
+            // Fallback if user document doesn't exist
             set({
               user: {
                 uid: firebaseUser.uid,
@@ -109,7 +119,7 @@ const useAuthStore = create<AuthState>((set) => ({
   },
 
   signUp: async (email, password, displayName, companyName) => {
-    set({ loading: true });
+    set({ loading: true, isSigningUp: true });
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const firebaseUser = userCredential.user;
@@ -129,9 +139,20 @@ const useAuthStore = create<AuthState>((set) => ({
 
       await setDoc(doc(db, 'users', firebaseUser.uid), userDoc);
       
-      // User will be set by the listener
+      // Update state immediately so the UI transitions
+      set({
+        user: {
+          uid: firebaseUser.uid,
+          email,
+          displayName,
+          role: 'guest',
+          companyId: companyName
+        },
+        loading: false,
+        isSigningUp: false
+      });
     } catch (error) {
-      set({ loading: false });
+      set({ loading: false, isSigningUp: false });
       throw error;
     }
   }
