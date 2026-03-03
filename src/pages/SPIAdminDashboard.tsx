@@ -6,14 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
-    AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, 
-    BarChart, Bar, Cell, PieChart, Pie 
+    BarChart, Bar, Cell, PieChart, Pie, ResponsiveContainer, Tooltip
 } from 'recharts';
 import { 
-    Activity,  AlertTriangle, 
+    Activity, AlertTriangle, 
     Search, TrendingUp,
     ArrowUpRight, Filter, Download,
-    ShieldCheck, Hexagon
+    ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import OTDetailsModal from '@/components/OTDetailsModal';
@@ -71,16 +70,6 @@ const SPIAdminDashboard = () => {
          return daysLeft < 2 && ot.stage !== 'finalizado';
     }).length;
 
-    const efficiencyData = [
-        { name: 'Lun', manual: 4, ai: 12 },
-        { name: 'Mar', manual: 3, ai: 18 },
-        { name: 'Mie', manual: 2, ai: 25 },
-        { name: 'Jue', manual: 2, ai: 22 },
-        { name: 'Vie', manual: 1, ai: 30 },
-        { name: 'Sab', manual: 0, ai: 15 },
-        { name: 'Dom', manual: 0, ai: 10 },
-    ];
-
     const distributionData = [
         { name: 'PI', value: ots.filter(o => o.area === 'PI').length },
         { name: 'AR', value: ots.filter(o => o.area === 'AR').length },
@@ -122,7 +111,7 @@ const SPIAdminDashboard = () => {
 
             {/* Metrics Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex items-center justify-between relative overflow-hidden group hover:border-slate-700 transition-colors" style={{animationDelay: '0ms'}}>
+                <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex items-center justify-between relative overflow-hidden group hover:border-slate-700 transition-colors">
                     <div className="absolute top-0 left-0 w-1 h-full bg-blue-500" />
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Trámites Totales</p>
@@ -136,7 +125,7 @@ const SPIAdminDashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex items-center justify-between relative overflow-hidden group hover:border-slate-700 transition-colors" style={{animationDelay: '100ms'}}>
+                <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex items-center justify-between relative overflow-hidden group hover:border-slate-700 transition-colors">
                     <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500" />
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Gestiones Activas</p>
@@ -150,7 +139,7 @@ const SPIAdminDashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex items-center justify-between relative overflow-hidden group hover:border-slate-700 transition-colors" style={{animationDelay: '200ms'}}>
+                <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex items-center justify-between relative overflow-hidden group hover:border-slate-700 transition-colors">
                     <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Alertas Críticas</p>
@@ -177,31 +166,7 @@ const SPIAdminDashboard = () => {
 
                 <TabsContent value="solicitudes" className="space-y-8 animate-fade-in">
                     {/* Charts Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <Card className="rounded-[2.5rem] bg-slate-900/50 border-slate-800 shadow-xl overflow-hidden relative">
-                            <CardHeader className="pt-8 px-8 border-b border-slate-800/50 pb-6 mb-2">
-                                <CardTitle className="text-lg font-black text-slate-100 uppercase tracking-tight">Eficiencia AI</CardTitle>
-                                <CardDescription className="font-semibold text-slate-500">Automatización vs Manual</CardDescription>
-                            </CardHeader>
-                            <CardContent className="h-[280px] p-6 pt-0">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <AreaChart data={efficiencyData}>
-                                        <defs>
-                                            <linearGradient id="adminAi" x1="0" y1="0" x2="0" y2="1">
-                                                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                                                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                                            </linearGradient>
-                                        </defs>
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10, fontWeight: 700}} dy={10} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 10, fontWeight: 700}} />
-                                        <Tooltip content={<CustomTooltip />} />
-                                        <Area type="monotone" dataKey="ai" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#adminAi)" />
-                                        <Area type="monotone" dataKey="manual" stroke="#475569" strokeWidth={2} strokeDasharray="6 6" fill="transparent" />
-                                    </AreaChart>
-                                </ResponsiveContainer>
-                            </CardContent>
-                        </Card>
-
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                         <Card className="rounded-[2.5rem] bg-slate-900/50 border-slate-800 shadow-xl overflow-hidden relative">
                             <CardHeader className="pt-8 px-8 border-b border-slate-800/50 pb-6 mb-2">
                                 <CardTitle className="text-lg font-black text-slate-100 uppercase tracking-tight">Carga por Área</CardTitle>
@@ -334,10 +299,10 @@ const SPIAdminDashboard = () => {
                                                     onClick={(e) => { e.stopPropagation(); setSelectedOT(ot); }}
                                                     className="rounded-2xl hover:bg-blue-600/20 hover:text-blue-400 transition-all font-bold group/btn shadow-sm bg-slate-800/50 border border-slate-700 hover:border-blue-500/50 text-slate-300"
                                                 >
-                                                     <Hexagon className="h-4 w-4 mr-2" /> Inspect
+                                                     Inspect
                                                  </Button>
                                              </td>
-                                        </tr>
+                                         </tr>
                                      )})}
                                  </tbody>
                             </table>

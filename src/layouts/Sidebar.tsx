@@ -8,8 +8,6 @@ import {
   ShieldCheck, 
   BarChart, 
   LogOut,
-  ChevronRight,
-  Sparkles,
   Command,
   CreditCard
 } from 'lucide-react';
@@ -98,20 +96,6 @@ const Sidebar = () => {
               );
             })}
           </nav>
-        </div>
-
-        {/* AI Feature Pill (Visual only) */}
-        <div className="px-4">
-            <div className="bg-gradient-to-br from-indigo-900/40 to-blue-900/40 border border-blue-500/20 rounded-3xl p-5 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-100 transition-opacity">
-                    <Sparkles className="h-4 w-4 text-blue-400" />
-                </div>
-                <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">AI Assistant</p>
-                <p className="text-xs font-bold text-slate-300 leading-tight">Optimiza tus trámites con nuestra IA avanzada.</p>
-                <div className="mt-4 flex items-center gap-2 text-blue-400 text-[10px] font-black uppercase tracking-widest cursor-pointer hover:text-white transition-colors">
-                    Explorar <ChevronRight className="h-3 w-3" />
-                </div>
-            </div>
         </div>
       </div>
       

@@ -4,7 +4,6 @@ import useDataStore from '../store/useDataStore';
 import useAuthStore from '../store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Clock, FileText, ArrowRight } from 'lucide-react';
-import AIChatbot from '@/components/AIChatbot';
 import { cn } from '@/lib/utils';
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -192,8 +191,6 @@ const ClientDashboard = () => {
                     </Button>
                 </div>
             )}
-            
-            <AIChatbot />
             
             {selectedOT && (
                 <OTDetailsModal 

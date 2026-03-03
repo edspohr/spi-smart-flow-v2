@@ -126,9 +126,6 @@ const AppLayout = () => {
                                         <p className={cn("text-sm font-black tracking-tight", isSpi ? "text-slate-100" : "text-slate-900")}>
                                             {user.displayName || user.email?.split('@')[0]}
                                         </p>
-                                        <p className={cn("text-[9px] font-black uppercase tracking-widest mt-1", isSpi ? "text-slate-500" : "text-slate-400")}>
-                                            Nivel: Full Access
-                                        </p>
                                     </div>
                                     <ChevronDown className={cn("h-4 w-4", isSpi ? "text-slate-600" : "text-slate-300")} />
                                 </Button>
