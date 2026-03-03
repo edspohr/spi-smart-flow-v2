@@ -97,9 +97,7 @@ const SPIVault = () => {
                             {docTypes.map(t => <option key={t as string} value={t as string}>{t as string}</option>)}
                         </select>
                     </div>
-                    <Button className="flex-1 lg:flex-none btn-primary h-11 rounded-2xl px-6 font-bold shadow-lg shadow-blue-500/20">
-                        <Download className="h-4 w-4 mr-2" /> Exportar Selección
-                    </Button>
+
                   </div>
              </div>
 

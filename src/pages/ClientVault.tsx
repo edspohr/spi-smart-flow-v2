@@ -78,9 +78,7 @@ const ClientVault = () => {
                     <Button variant="outline" className="flex-1 md:flex-none h-12 rounded-2xl border-slate-100 bg-white font-bold shadow-sm">
                         <Filter className="h-4 w-4 mr-2" /> Filtros
                     </Button>
-                    <Button className="flex-1 md:flex-none btn-primary h-12 rounded-2xl px-6 font-bold shadow-lg shadow-blue-500/20">
-                        <Download className="h-4 w-4 mr-2" /> Exportar Todo
-                    </Button>
+
                   </div>
              </div>
 

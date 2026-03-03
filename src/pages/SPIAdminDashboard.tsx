@@ -1,18 +1,18 @@
 import { useEffect, useState } from 'react';
 import useDataStore, { OT } from '../store/useDataStore';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
-    Search, Download,
+    Search,
     ShieldCheck, 
     ListFilter
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useNavigate } from 'react-router-dom';
 import OTDetailsModal from '@/components/OTDetailsModal';
-import ClientList from '@/components/admin/ClientList';
 import KanbanBoard from '@/components/dashboard/KanbanBoard';
 
 const STAGE_CONFIG: Record<string, { label: string; badge: string }> = {
@@ -29,6 +29,7 @@ const AREA_CONFIG: Record<string, { badge: string; color: string; fill: string }
 };
 
 const SPIAdminDashboard = () => {
+    const navigate = useNavigate();
     const { ots, subscribeToAllOTs } = useDataStore(); 
     const [selectedOT, setSelectedOT] = useState<OT | null>(null);
     const [activeTab, setActiveTab] = useState("kanban");
@@ -68,10 +69,10 @@ const SPIAdminDashboard = () => {
                     <p className="text-slate-400 text-sm font-medium">Gestión unificada de operaciones de Propiedad Intelectual.</p>
                 </div>
                 <div className="flex gap-3">
-                     <Button variant="outline" className="rounded-xl h-10 px-4 border-slate-700 bg-slate-900/50 text-slate-300 hover:text-white font-bold transition-all">
-                        <Download className="h-4 w-4 mr-2" /> Exportar
-                     </Button>
-                     <Button className="btn-primary rounded-xl h-10 px-4 shadow-lg shadow-blue-900/40 font-bold transition-all border border-blue-500/50">
+                     <Button 
+                        onClick={() => navigate('/spi-admin/nueva-solicitud')}
+                        className="btn-primary rounded-xl h-10 px-4 shadow-lg shadow-blue-900/40 font-bold transition-all border border-blue-500/50"
+                     >
                         Nueva Operación
                      </Button>
                 </div>
@@ -86,13 +87,12 @@ const SPIAdminDashboard = () => {
                         <TabsTrigger value="solicitudes" className="rounded-lg px-6 py-2 font-black data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400 text-xs uppercase tracking-widest transition-all">
                             Lista Maestra
                         </TabsTrigger>
-                        <TabsTrigger value="clientes" className="rounded-lg px-6 py-2 font-black data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400 text-xs uppercase tracking-widest transition-all">
-                            Usuarios
+                        <TabsTrigger value="solicitudes" className="rounded-lg px-6 py-2 font-black data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400 text-xs uppercase tracking-widest transition-all">
+                            Lista Maestra
                         </TabsTrigger>
                     </TabsList>
 
-                    {activeTab !== "clientes" && (
-                        <div className="flex gap-3 items-center">
+                    <div className="flex gap-3 items-center">
                             <div className="relative w-64">
                                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
                                 <input 
@@ -117,7 +117,6 @@ const SPIAdminDashboard = () => {
                                 </select>
                             </div>
                         </div>
-                    )}
                 </div>
 
                 <TabsContent value="kanban" className="flex-1 min-h-0 m-0 outline-none">
@@ -199,12 +198,6 @@ const SPIAdminDashboard = () => {
                             </table>
                          </div>
                     </Card>
-                </TabsContent>
-
-                <TabsContent value="clientes" className="flex-1 min-h-0 m-0 outline-none">
-                    <div className="h-full bg-slate-900/30 border border-slate-800 rounded-[2rem] p-8 overflow-auto">
-                        <ClientList />
-                    </div>
                 </TabsContent>
             </Tabs>
 

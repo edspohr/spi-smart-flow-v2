@@ -126,12 +126,12 @@ const NewRequestPage = () => {
         <div className="max-w-3xl mx-auto space-y-8 pb-20 p-6 animate-fade-in">
             {/* Header */}
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => navigate('/spi-admin')} className="rounded-full">
+                <Button variant="ghost" size="icon" onClick={() => navigate('/spi-admin')} className="rounded-full text-slate-400 hover:text-white hover:bg-slate-800">
                     <ArrowLeft className="h-5 w-5" />
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Nueva Operación <span className="text-blue-600">SPI</span></h1>
-                    <p className="text-sm font-semibold text-slate-500 mt-1">Alta de trámite de Propiedad Intelectual para cliente.</p>
+                    <h1 className="text-3xl font-black text-slate-50 tracking-tight">Nueva Operación <span className="text-blue-500">SPI</span></h1>
+                    <p className="text-sm font-semibold text-slate-400 mt-1">Alta de trámite de Propiedad Intelectual para cliente.</p>
                 </div>
             </div>
 

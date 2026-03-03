@@ -65,15 +65,25 @@ const useAuthStore = create<AuthState>((set) => ({
               return;
             }
 
-            // Fallback if user document doesn't exist
-            set({
-              user: {
+            // Auto-heal: Create Firestore document for existing Auth user
+            const guestDoc = {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
-                displayName: firebaseUser.displayName,
+                displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuario',
                 role: "guest",
-                companyId: "Pendiente",
-              },
+                companyId: "",
+                createdAt: new Date().toISOString()
+            };
+            
+            try {
+                await setDoc(docRef, guestDoc);
+            } catch (e) {
+                console.warn("No se pudo auto-reparar el perfil de usuario:", e);
+            }
+
+            // Fallback if user document doesn't exist
+            set({
+              user: guestDoc as any,
               loading: false,
               initialized: true,
             });
