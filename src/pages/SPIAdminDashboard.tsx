@@ -87,9 +87,6 @@ const SPIAdminDashboard = () => {
                         <TabsTrigger value="solicitudes" className="rounded-lg px-6 py-2 font-black data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400 text-xs uppercase tracking-widest transition-all">
                             Lista Maestra
                         </TabsTrigger>
-                        <TabsTrigger value="solicitudes" className="rounded-lg px-6 py-2 font-black data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400 text-xs uppercase tracking-widest transition-all">
-                            Lista Maestra
-                        </TabsTrigger>
                     </TabsList>
 
                     <div className="flex gap-3 items-center">
