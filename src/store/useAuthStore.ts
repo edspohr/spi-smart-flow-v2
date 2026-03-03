@@ -23,7 +23,7 @@ interface AuthState {
   initializeAuthListener: () => () => void;
   logout: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string, companyName: string) => Promise<void>;
+  signUp: (email: string, password: string, displayName: string, companyName: string, companyId?: string) => Promise<void>;
 }
 
 const useAuthStore = create<AuthState>((set) => ({
@@ -118,7 +118,7 @@ const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  signUp: async (email, password, displayName, companyName) => {
+  signUp: async (email: string, password: string, displayName: string, companyName: string, companyId?: string) => {
     set({ loading: true, isSigningUp: true });
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -132,7 +132,7 @@ const useAuthStore = create<AuthState>((set) => ({
         uid: firebaseUser.uid,
         email,
         displayName,
-        companyId: companyName,
+        companyId: companyId || companyName,
         role: 'guest' as UserRole,
         createdAt: new Date().toISOString()
       };
@@ -146,7 +146,7 @@ const useAuthStore = create<AuthState>((set) => ({
           email,
           displayName,
           role: 'guest',
-          companyId: companyName
+          companyId: companyId || companyName
         },
         loading: false,
         isSigningUp: false

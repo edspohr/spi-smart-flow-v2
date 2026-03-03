@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
+import useDataStore from '../store/useDataStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, ArrowRight, Loader2, User, Building } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, User, Building, Building2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 const LoginPage = () => {
     const { user, signIn, signUp } = useAuthStore();
+    const { companies, subscribeToCompanies } = useDataStore();
     const navigate = useNavigate();
 
     // Toggle between Login and Register
@@ -18,17 +20,26 @@ const LoginPage = () => {
     const [password, setPassword] = useState('');
     const [displayName, setDisplayName] = useState('');
     const [companyName, setCompanyName] = useState('');
+    const [selectedCompanyId, setSelectedCompanyId] = useState('');
+    const [isNewCompany, setIsNewCompany] = useState(false);
     const [confirmPassword, setConfirmPassword] = useState('');
     
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
+        if (isRegistering) {
+            const unsubscribe = subscribeToCompanies();
+            return () => unsubscribe();
+        }
+    }, [isRegistering, subscribeToCompanies]);
+
+    useEffect(() => {
         if (user && !isLoading) {
             if (user.role === 'spi-admin') navigate('/spi-admin');
-            else if (user.role === 'client-admin') navigate('/client-admin');
+            else if (user.role === 'client') navigate('/client');
             else if (user.role === 'guest') navigate('/guest');
-            else navigate('/client');
+            else navigate('/guest');
         }
     }, [user, navigate, isLoading]);
 
@@ -82,7 +93,10 @@ const LoginPage = () => {
         e.preventDefault();
         setError('');
 
-        if (!displayName || !companyName || !email || !password || !confirmPassword) {
+        const finalCompanyName = isNewCompany ? companyName : companies.find(c => c.id === selectedCompanyId)?.name || '';
+        const finalCompanyId = isNewCompany ? undefined : selectedCompanyId;
+
+        if (!displayName || (!isNewCompany && !selectedCompanyId) || (isNewCompany && !companyName) || !email || !password || !confirmPassword) {
             setError('Todos los campos son obligatorios');
             return;
         }
@@ -97,7 +111,7 @@ const LoginPage = () => {
 
         setIsLoading(true);
         try {
-            await signUp(email, password, displayName, companyName);
+            await signUp(email, password, displayName, finalCompanyName, finalCompanyId);
         } catch (err: any) {
             setError(getFirebaseErrorMessage(err?.code || ''));
         } finally {
@@ -149,10 +163,10 @@ const LoginPage = () => {
             </div>
 
             {/* RIGHT PANEL: Auth Form */}
-            <div className="w-full md:w-[55%] bg-slate-50 flex items-center justify-center p-8 relative">
-                <div className="w-full max-w-sm">
+            <div className="w-full md:w-[55%] bg-slate-50 flex items-center justify-center p-8 relative overflow-y-auto">
+                <div className="w-full max-w-sm my-8">
                     <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 animate-fade-scale shadow-blue-500/5">
-                        <div className="mb-8">
+                        <div className="mb-8 text-center sm:text-left">
                             <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
                                 {isRegistering ? 'Crea tu cuenta' : 'Bienvenido'}
                             </h2>
@@ -179,20 +193,56 @@ const LoginPage = () => {
                                             />
                                         </div>
                                     </div>
+                                    
                                     <div className="space-y-1">
-                                        <Label htmlFor="companyName" className="text-slate-700 font-semibold ml-1">Empresa</Label>
-                                        <div className="relative">
-                                            <Building className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                                            <Input 
-                                                id="companyName" 
-                                                type="text" 
-                                                placeholder="Nombre de tu empresa" 
-                                                className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
-                                                value={companyName}
-                                                onChange={(e) => setCompanyName(e.target.value)}
-                                                required
-                                            />
-                                        </div>
+                                        <Label className="text-slate-700 font-semibold ml-1">Empresa</Label>
+                                        {!isNewCompany ? (
+                                            <div className="space-y-2">
+                                                <div className="relative">
+                                                    <Building2 className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                                                    <select
+                                                        className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none font-medium"
+                                                        value={selectedCompanyId}
+                                                        onChange={(e) => setSelectedCompanyId(e.target.value)}
+                                                        required
+                                                    >
+                                                        <option value="" disabled>Selecciona tu empresa...</option>
+                                                        {companies.map(c => (
+                                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setIsNewCompany(true)}
+                                                    className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline ml-1"
+                                                >
+                                                    + Mi empresa no está en la lista
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                <div className="relative">
+                                                    <Building className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                                                    <Input 
+                                                        id="companyName" 
+                                                        type="text" 
+                                                        placeholder="Nombre de tu nueva empresa" 
+                                                        className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
+                                                        value={companyName}
+                                                        onChange={(e) => setCompanyName(e.target.value)}
+                                                        required
+                                                    />
+                                                </div>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setIsNewCompany(false)}
+                                                    className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:underline ml-1"
+                                                >
+                                                    ← Volver a la lista
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             )}
@@ -274,7 +324,7 @@ const LoginPage = () => {
                             </button>
                         </div>
                         
-                        <div className="mt-12 text-center">
+                        <div className="mt-8 text-center">
                             <p className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">
                                 © 2025 SPI Smart Flow · Acceso Seguro
                             </p>
