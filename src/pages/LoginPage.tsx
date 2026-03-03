@@ -137,7 +137,7 @@ const LoginPage = () => {
 
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center">
                     <div className="p-4 drop-shadow-2xl">
-                        <img src="/spi-logo.png" alt="SPI Americas" className="h-20 w-auto brightness-0 invert object-contain drop-shadow-lg" />
+                        <img src="/spi-logo.png" alt="SPI Americas" className="h-20 w-auto object-contain drop-shadow-lg rounded-xl" />
                     </div>
                     <div>
                         <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight mb-2">
@@ -158,7 +158,7 @@ const LoginPage = () => {
                 </div>
 
                 <div className="absolute bottom-8 text-blue-300/60 text-xs font-medium">
-                    © 2025 SPI Smart Flow · Soluciones IP de Alto Nivel
+                    © 2026 SPI Smart Flow · Soluciones IP de Alto Nivel
                 </div>
             </div>
 
@@ -326,7 +326,7 @@ const LoginPage = () => {
                         
                         <div className="mt-8 text-center">
                             <p className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">
-                                © 2025 SPI Smart Flow · Acceso Seguro
+                                © 2026 SPI Smart Flow · Acceso Seguro
                             </p>
                         </div>
                     </div>

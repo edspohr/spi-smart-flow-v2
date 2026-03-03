@@ -89,6 +89,7 @@ interface DataState {
   subscribeToCompanyData: (companyId: string) => () => void;
   subscribeToClientData: (clientId: string) => () => void;
   subscribeToAllOTs: () => () => void;
+  subscribeToOTs: () => () => void;
   subscribeToAllDocuments: () => () => void;
   subscribeToUsers: () => () => void;
   subscribeToCompanies: () => () => void;
@@ -243,6 +244,17 @@ const useDataStore = create<DataState>((set, get) => ({
       }, (error) => {
           console.error("Error fetching all OTs:", error);
       });
+  },
+
+  subscribeToOTs: () => {
+       const q = query(collection(db, "ots"));
+       return onSnapshot(q, (snapshot) => {
+           const ots: OT[] = [];
+           snapshot.forEach((doc) => {
+               ots.push({ id: doc.id, ...doc.data() } as OT);
+           });
+           set({ ots });
+       });
   },
 
   subscribeToAllDocuments: () => {

@@ -10,7 +10,8 @@ import {
     Trash2, 
     Search,
     Building2,
-    Users
+    Users,
+    Activity
 } from 'lucide-react';
 import {
     Dialog,
@@ -24,7 +25,7 @@ import ClientList from '@/components/admin/ClientList';
 import { cn } from '@/lib/utils';
 
 const CompaniesPage = () => {
-    const { companies, subscribeToCompanies, createCompany, updateCompany, deleteCompany } = useDataStore();
+    const { companies, subscribeToCompanies, createCompany, updateCompany, deleteCompany, ots, documents, subscribeToOTs, subscribeToAllDocuments } = useDataStore();
     const [searchTerm, setSearchTerm] = useState("");
     const [activeTab, setActiveTab] = useState<'companies' | 'users'>('companies');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -40,8 +41,14 @@ const CompaniesPage = () => {
 
     useEffect(() => {
         const unsubscribe = subscribeToCompanies();
-        return () => unsubscribe();
-    }, [subscribeToCompanies]);
+        const unsubscribeOTs = subscribeToOTs();
+        const unsubscribeDocs = subscribeToAllDocuments();
+        return () => {
+            unsubscribe();
+            unsubscribeOTs();
+            unsubscribeDocs();
+        };
+    }, [subscribeToCompanies, subscribeToOTs, subscribeToAllDocuments]);
 
     const handleOpenDialog = (company?: Company) => {
         if (company) {
@@ -93,6 +100,34 @@ const CompaniesPage = () => {
         c.industry?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         c.taxId?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    const getCompanyHealth = (companyId: string | undefined) => {
+        if (!companyId) return null;
+        
+        const companyOts = ots.filter(ot => ot.companyId === companyId);
+        if (companyOts.length === 0) return { status: 'idle', color: 'bg-slate-800 text-slate-400 border-slate-700', label: 'Sin Actividad' };
+
+        let hasPendingDocs = false;
+        let isStuck = false;
+
+        const now = new Date();
+
+        for (const ot of companyOts) {
+            const otDocs = documents.filter(d => d.otId === ot.id);
+            const pending = otDocs.some(d => d.status === 'pending' || d.status === 'rejected');
+            if (pending) hasPendingDocs = true;
+
+            const daysSinceCreation = Math.floor((now.getTime() - new Date(ot.createdAt).getTime()) / (1000 * 3600 * 24));
+            if (daysSinceCreation > 15 && ot.stage !== 'finalizado') {
+                isStuck = true;
+            }
+        }
+
+        if (isStuck) return { status: 'stuck', color: 'bg-rose-500/20 text-rose-400 border-rose-500/50', label: 'Atascado (>15 días)' };
+        if (hasPendingDocs) return { status: 'pending', color: 'bg-amber-500/20 text-amber-400 border-amber-500/50', label: 'Docs. Pendientes' };
+        
+        return { status: 'healthy', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50', label: 'Al día' };
+    };
 
     return (
         <div className="space-y-8 p-6 max-w-[1400px] mx-auto animate-fade-in pb-20">
@@ -157,12 +192,22 @@ const CompaniesPage = () => {
 
                     {/* Grid */}
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredCompanies.map(company => (
+                        {filteredCompanies.map(company => {
+                            const health = getCompanyHealth(company.name); // Using name as ID based on current implementation
+                            
+                            return (
                             <Card key={company.id} className="bg-slate-900/40 border-slate-800 hover:border-blue-500/50 transition-all group rounded-[2rem] overflow-hidden">
                                 <CardHeader className="pb-2">
                                     <div className="flex justify-between items-start">
-                                        <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                            <Building2 className="text-blue-400 h-6 w-6" />
+                                        <div className="flex gap-3 items-center mb-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                                <Building2 className="text-blue-400 h-6 w-6" />
+                                            </div>
+                                            {health && (
+                                                <div className={cn("px-2.5 py-1 rounded-xl border text-[9px] font-black uppercase tracking-widest flex items-center gap-1", health.color)}>
+                                                    <Activity className="w-3 h-3" /> {health.label}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex gap-1">
                                             <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(company)} className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg">
@@ -193,7 +238,7 @@ const CompaniesPage = () => {
                                     </div>
                                 </CardContent>
                             </Card>
-                        ))}
+                        )})}
                     </div>
                 </div>
             ) : (

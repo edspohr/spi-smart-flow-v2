@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import {
   FileText, Clock, AlertCircle, CheckCircle, 
   XCircle, History, Upload, Check, X,
-  ExternalLink, ShieldCheck, Building2
+  ExternalLink, ShieldCheck, Building2, LayoutList
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -81,6 +81,10 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
 
   const relevantDocs = documents.filter((d) => d.otId === ot.id);
 
+  // Calculate Next Steps for Client
+  const pendingDocs = relevantDocs.filter(d => d.status === 'pending' || d.status === 'rejected');
+  const needsAction = user?.role === 'client' && pendingDocs.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 border-none shadow-2xl overflow-hidden rounded-3xl">
@@ -137,7 +141,60 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
         <div className="flex-1 w-full overflow-hidden flex flex-col bg-slate-50/30">
           {activeTab === "docs" ? (
             <ScrollArea className="flex-1">
-              <div className="p-8 space-y-4">
+              <div className="p-8 space-y-6">
+                  
+                {/* 🚀 Next Steps Panel (Client Only) */}
+                {needsAction && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-3xl p-6 shadow-sm mb-4 animate-fade-in relative overflow-hidden">
+                        <div className="absolute top-0 right-0 p-4 opacity-10">
+                            <LayoutList className="w-24 h-24 text-blue-600" />
+                        </div>
+                        <h3 className="text-lg font-black text-blue-900 mb-2 flex items-center gap-2">
+                            <AlertCircle className="w-5 h-5" /> Acción Requerida
+                        </h3>
+                        <p className="text-blue-700 text-sm font-medium mb-4 max-w-2xl">
+                            Tienes <span className="font-extrabold">{pendingDocs.length} documento(s)</span> pendientes de acción para continuar con tu trámite.
+                        </p>
+                        
+                        <div className="grid gap-3 select-none">
+                            {pendingDocs.map(doc => (
+                                <div key={`action-${doc.id}`} className="flex items-center justify-between bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-white/50 shadow-sm">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                                            <FileText className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-800 text-sm">{doc.name}</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                {doc.status === 'rejected' ? 'Rechazado - Requiere Reemplazo' : 'Pendiente de Carga'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button 
+                                            size="sm" 
+                                            onClick={() => setUploadDoc(doc)}
+                                            className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20"
+                                        >
+                                            <Upload className="w-4 h-4 mr-2" /> Subir
+                                        </Button>
+                                        {doc.status === 'pending' && (
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline"
+                                                onClick={() => setVaultPickDoc(doc)}
+                                                className="border-blue-200 text-blue-700 hover:bg-blue-50 font-bold text-xs rounded-xl"
+                                            >
+                                                <ShieldCheck className="w-4 h-4 mr-2" /> Usar Bóveda
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
                 {relevantDocs.length === 0 ? (
                   <div className="text-center py-20 flex flex-col items-center">
                     <History className="h-12 w-12 text-slate-200 mb-4" />

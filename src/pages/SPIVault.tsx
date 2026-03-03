@@ -162,10 +162,26 @@ const SPIVault = () => {
                             </div>
 
                             <div className="flex gap-2 mt-auto">
-                                <Button variant="outline" className="flex-1 h-11 rounded-2xl font-black uppercase text-[10px] tracking-widest border-slate-100 hover:bg-slate-50 transition-all text-slate-500 shadow-sm">
-                                    Ver
+                                <Button 
+                                    variant="outline" 
+                                    onClick={() => doc.url && window.open(doc.url, '_blank')}
+                                    disabled={!doc.url}
+                                    className="flex-1 h-11 rounded-2xl font-black uppercase text-[10px] tracking-widest border-slate-100 hover:bg-slate-50 transition-all text-slate-500 shadow-sm"
+                                >
+                                    Ver Documento
                                 </Button>
-                                <Button className="h-11 w-11 rounded-2xl bg-slate-900 border-none hover:bg-slate-800 shadow-xl shadow-slate-900/20 text-white p-0 flex items-center justify-center transition-all active:scale-95">
+                                <Button 
+                                    onClick={() => {
+                                        if (doc.url) {
+                                            const a = document.createElement('a');
+                                            a.href = doc.url;
+                                            a.download = doc.name;
+                                            a.click();
+                                        }
+                                    }}
+                                    disabled={!doc.url}
+                                    className="h-11 w-11 rounded-2xl bg-slate-900 border-none hover:bg-slate-800 shadow-xl shadow-slate-900/20 text-white p-0 flex items-center justify-center transition-all active:scale-95"
+                                >
                                     <Download className="h-4 w-4" />
                                 </Button>
                             </div>
