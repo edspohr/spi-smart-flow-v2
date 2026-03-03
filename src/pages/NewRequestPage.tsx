@@ -24,6 +24,7 @@ const NewRequestPage = () => {
     // Form state
     const [selectedCompanyId, setSelectedCompanyId] = useState('');
     const [selectedClientId, setSelectedClientId] = useState('');
+    const [otTitle, setOtTitle] = useState('');
     const [brandName, setBrandName] = useState('');
     const [description, setDescription] = useState('');
     const [colors, setColors] = useState<string[]>([]);
@@ -70,6 +71,7 @@ const NewRequestPage = () => {
         // Documents and signature can be completed later by the client.
         return selectedCompanyId !== '' &&
                selectedClientId !== '' &&
+               otTitle.trim() !== '' &&
                brandName.trim() !== '' && 
                description.trim() !== '';
     };
@@ -88,7 +90,7 @@ const NewRequestPage = () => {
                 colors,
                 logoUrl,
                 signatureUrl,
-                title: `Registro de Marca: ${brandName}`,
+                title: otTitle,
                 serviceType: 'Propiedad Intelectual',
                 area: 'PI',
                 stage: 'solicitud',
@@ -282,14 +284,20 @@ const NewRequestPage = () => {
                 {/* 2. Información de Marca */}
                 <Card className="rounded-[2rem] border-slate-100 shadow-xl shadow-slate-200/40 bg-white">
                     <CardContent className="p-8 space-y-6">
-                        <div>
-                            <h2 className="text-lg font-black text-slate-800">Detalles de la Marca</h2>
-                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Información Base</p>
-                        </div>
-                        
                         <div className="grid gap-6">
                              <div className="space-y-2">
-                                <Label className="text-xs font-black text-slate-600 uppercase tracking-[0.1em] ml-1">Nombre Comercial</Label>
+                                <Label className="text-xs font-black text-slate-600 uppercase tracking-[0.1em] ml-1">Título de la Operación (OT)</Label>
+                                <Input
+                                    type="text"
+                                    placeholder="Ej: Registro de Marca 2026..."
+                                    value={otTitle}
+                                    onChange={(e) => setOtTitle(e.target.value)}
+                                    className="h-12 rounded-xl border-slate-200 bg-slate-50 font-bold focus:bg-white transition-all"
+                                />
+                            </div>
+
+                             <div className="space-y-2">
+                                <Label className="text-xs font-black text-slate-600 uppercase tracking-[0.1em] ml-1">Nombre Comercial de la Marca</Label>
                                 <Input
                                     type="text"
                                     placeholder="Nombre de la marca..."

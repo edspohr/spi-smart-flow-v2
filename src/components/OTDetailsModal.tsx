@@ -150,10 +150,10 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                             <LayoutList className="w-24 h-24 text-blue-600" />
                         </div>
                         <h3 className="text-lg font-black text-blue-900 mb-2 flex items-center gap-2">
-                            <AlertCircle className="w-5 h-5" /> Acción Requerida
+                            <AlertCircle className="w-5 h-5" /> Acción Obligatoria Requerida
                         </h3>
                         <p className="text-blue-700 text-sm font-medium mb-4 max-w-2xl">
-                            Tienes <span className="font-extrabold">{pendingDocs.length} documento(s)</span> pendientes de acción para continuar con tu trámite.
+                            Para formalizar tu solicitud, es <span className="font-extrabold text-blue-900">obligatorio</span> completar el registro de <span className="font-extrabold">{pendingDocs.length} documento(s)</span>. Sin estos, el proceso legal no podrá avanzar.
                         </p>
                         
                         <div className="grid gap-3 select-none">

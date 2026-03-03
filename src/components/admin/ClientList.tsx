@@ -151,7 +151,7 @@ const ClientList = () => {
                                                         {u.role === 'guest' && <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>}
                                                     </div>
                                                     <div className={cn("text-[10px] font-bold flex items-center gap-1.5 mt-0.5", !u.companyId ? "text-rose-500" : "text-slate-400")}>
-                                                        <Building2 className="h-3 w-3" /> {u.companyId || '⚠ Empresa No Asignada'}
+                                                        <Building2 className="h-3 w-3" /> {companies.find(c => c.id === u.companyId)?.name || u.companyId || '⚠ Empresa No Asignada'}
                                                     </div>
                                                     <div className="text-[10px] font-bold text-blue-500 mt-1">{u.email}</div>
                                                 </div>
@@ -224,7 +224,7 @@ const ClientList = () => {
                                     >
                                         <option value="">Seleccionar Empresa...</option>
                                         {companies.map(company => (
-                                            <option key={company.id} value={company.name}>{company.name}</option>
+                                            <option key={company.id} value={company.id}>{company.name}</option>
                                         ))}
                                     </select>
                                 </div>
