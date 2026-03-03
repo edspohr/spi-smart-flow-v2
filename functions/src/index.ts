@@ -3,7 +3,11 @@ import * as admin from "firebase-admin";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { defineSecret } from "firebase-functions/params";
 
+import { registerPipefyHandlers } from './pipefy';
+import { registerReminderHandlers } from './reminders';
+
 admin.initializeApp();
+const db = admin.firestore();
 
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 
@@ -35,7 +39,7 @@ export const analyzeDocument = onCall({ secrets: [geminiApiKey] }, async (reques
     const key = geminiApiKey.value();
     const genAI = new GoogleGenerativeAI(key);
     // Use a model that supports vision/multimodal, e.g., gemini-1.5-flash
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // 3. Prepare the prompt
     const prompt = `
@@ -70,7 +74,7 @@ export const analyzeDocument = onCall({ secrets: [geminiApiKey] }, async (reques
     const parsedData = JSON.parse(cleanedText);
 
     // 6. Log to Firestore (Bitácora)
-    await admin.firestore().collection("logs").add({
+    await db.collection("logs").add({
       otId: "temp-analysis", // Linked when confirmed?
       userId: request.auth.uid,
       action: `Document Analysis: ${parsedData.documentType}`,
@@ -92,7 +96,9 @@ export const analyzeDocument = onCall({ secrets: [geminiApiKey] }, async (reques
 });
 
 // Pipefy Webhook
-export { createOTFromPipefy } from './pipefy';
+const { createOTFromPipefy } = registerPipefyHandlers(db);
+export { createOTFromPipefy };
 
 // Reminders & Automation
-export { checkDocumentDeadlines, triggerDeadlinesCheck } from './reminders';
+const { checkDocumentDeadlines, triggerDeadlinesCheck } = registerReminderHandlers(db);
+export { checkDocumentDeadlines, triggerDeadlinesCheck };
