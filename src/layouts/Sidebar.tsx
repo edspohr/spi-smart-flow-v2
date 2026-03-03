@@ -47,8 +47,8 @@ const Sidebar = () => {
       {/* 1. Logo Area */}
       <div className="p-8 shrink-0">
         <div className="flex items-center gap-4 group cursor-pointer">
-          <div className="w-12 h-12 rounded-2xl bg-blue-600 flex items-center justify-center shadow-2xl shadow-blue-500/40 group-hover:scale-110 transition-transform duration-500 overflow-hidden p-2">
-            <img src="/spi-logo.png" alt="SPI" className="h-full w-full object-contain brightness-0 invert" />
+          <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-2xl shadow-blue-500/10 group-hover:scale-110 transition-transform duration-500 overflow-hidden p-1">
+            <img src="/spi-logo.png" alt="SPI" className="h-full w-full object-contain" />
           </div>
           <div className="flex flex-col">
             <span className="font-black text-white text-2xl tracking-tighter leading-none">SPI</span>

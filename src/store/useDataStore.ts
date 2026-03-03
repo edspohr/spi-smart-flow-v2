@@ -32,6 +32,7 @@ export interface Document {
   id: string;
   otId?: string;
   clientId: string;
+  companyId?: string;
   name: string;
   type: string;
   status: DocumentStatus;
@@ -39,6 +40,7 @@ export interface Document {
   isVaultEligible: boolean;
   validUntil?: string;
   url?: string;
+  uploadedAt: string;
 }
 
 export interface Log {
@@ -63,10 +65,22 @@ export async function uploadFile(file: File | Blob, storagePath: string): Promis
   return url;
 }
 
+export interface Company {
+  id: string;
+  name: string;
+  industry?: string;
+  taxId?: string;
+  address?: string;
+  contactName?: string;
+  contactEmail?: string;
+  createdAt: string;
+}
+
 interface DataState {
   ots: OT[];
   documents: Document[];
   users: any[];
+  companies: Company[];
   logs: Log[];
   loading: boolean;
   vaultDocuments: Document[]; 
@@ -77,11 +91,18 @@ interface DataState {
   subscribeToAllOTs: () => () => void;
   subscribeToAllDocuments: () => () => void;
   subscribeToUsers: () => () => void;
+  subscribeToCompanies: () => () => void;
   subscribeToOTLogs: (otId: string) => () => void;
   
+  // CRUD Actions
+  createCompany: (companyData: Partial<Company>) => Promise<void>;
+  updateCompany: (id: string, companyData: Partial<Company>) => Promise<void>;
+  deleteCompany: (id: string) => Promise<void>;
+
   // Vault Logic
   checkVaultForReuse: (documentType: string) => Document | undefined;
-  addToVault: (doc: Document) => void; 
+  addToVault: (doc: Document) => void;
+  linkVaultDocument: (otId: string, vaultDoc: Document) => Promise<void>;
   createOT: (otData: Partial<OT>) => Promise<void>;
   logAction: (userId: string, otId: string, action: string, metadata?: any) => Promise<void>; 
   updateDocumentStatus: (docId: string, status: DocumentStatus, reason?: string) => Promise<void>; 
@@ -93,9 +114,61 @@ const useDataStore = create<DataState>((set, get) => ({
   ots: [],
   documents: [],
   users: [],
+  companies: [],
   logs: [],
   vaultDocuments: [],
   loading: false,
+
+  subscribeToCompanies: () => {
+    const q = query(collection(db, "companies"), orderBy("name"));
+    return onSnapshot(q, (snapshot) => {
+        const companies: Company[] = [];
+        snapshot.forEach((doc) => {
+            companies.push({ id: doc.id, ...doc.data() } as Company);
+        });
+        set({ companies });
+    }, (error) => {
+        console.error("Error fetching companies:", error);
+    });
+  },
+
+  createCompany: async (companyData) => {
+      try {
+          await addDoc(collection(db, "companies"), {
+              ...companyData,
+              createdAt: new Date().toISOString()
+          });
+          get().logAction('admin', 'system', `Empresa Creada: ${companyData.name}`);
+      } catch (e) {
+          console.error("Error creating company:", e);
+          throw e;
+      }
+  },
+
+  updateCompany: async (id, companyData) => {
+      try {
+          const docRef = doc(db, "companies", id);
+          await updateDoc(docRef, {
+              ...companyData,
+              updatedAt: new Date().toISOString()
+          });
+          get().logAction('admin', 'system', `Empresa Actualizada: ${companyData.name}`);
+      } catch (e) {
+          console.error("Error updating company:", e);
+          throw e;
+      }
+  },
+
+  deleteCompany: async (id) => {
+      try {
+          const { deleteDoc } = await import('firebase/firestore');
+          await deleteDoc(doc(db, "companies", id));
+          get().logAction('admin', 'system', `Empresa Eliminada ID: ${id}`);
+      } catch (e) {
+          console.error("Error deleting company:", e);
+          throw e;
+      }
+  },
 
   subscribeToCompanyData: (companyId) => {
     const qOTs = query(collection(db, "ots"), where("companyId", "==", companyId));
@@ -252,6 +325,28 @@ const useDataStore = create<DataState>((set, get) => ({
           }
       } catch (e) {
           console.error("Error creating OT:", e);
+          throw e;
+      }
+  },
+
+  linkVaultDocument: async (otId, vaultDoc) => {
+      try {
+          const newDoc = {
+              name: vaultDoc.name,
+              url: vaultDoc.url || '',
+              status: 'validated' as DocumentStatus,
+              otId: otId,
+              clientId: vaultDoc.clientId,
+              companyId: vaultDoc.companyId || '',
+              type: vaultDoc.type || 'generic',
+              uploadedAt: new Date().toISOString(),
+              isVaultEligible: false
+          };
+          await addDoc(collection(db, "documents"), newDoc);
+          const userId = (await import('../store/useAuthStore')).default.getState().user?.uid || 'client';
+          await get().logAction(userId, otId, `Documento vinculado desde Bóveda: ${vaultDoc.name}`);
+      } catch (e) {
+          console.error("Error linking vault document:", e);
           throw e;
       }
   },

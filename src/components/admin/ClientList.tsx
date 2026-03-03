@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import useDataStore from "@/store/useDataStore";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +27,7 @@ interface ClientUser {
 }
 
 const ClientList = () => {
+    const { companies, subscribeToCompanies } = useDataStore();
     const [users, setUsers] = useState<ClientUser[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [loading, setLoading] = useState(true);
@@ -33,8 +35,7 @@ const ClientList = () => {
     const [editOpen, setEditOpen] = useState(false);
 
     useEffect(() => {
-        const q = query(collection(db, "users"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const unsubscribeUsers = onSnapshot(query(collection(db, "users")), (snapshot) => {
             const userList: ClientUser[] = [];
             snapshot.forEach((doc) => {
                 userList.push({ id: doc.id, ...doc.data() } as ClientUser);
@@ -42,8 +43,14 @@ const ClientList = () => {
             setUsers(userList);
             setLoading(false);
         });
-        return () => unsubscribe();
-    }, []);
+
+        const unsubscribeCompanies = subscribeToCompanies();
+
+        return () => {
+            unsubscribeUsers();
+            unsubscribeCompanies();
+        };
+    }, [subscribeToCompanies]);
 
     const handleSaveUser = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -194,13 +201,17 @@ const ClientList = () => {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Empresa / CompanyId</Label>
-                                    <Input 
-                                        className="h-11 rounded-xl border-2 border-slate-100 bg-slate-50 font-bold text-xs"
+                                    <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Empresa Vinculada</Label>
+                                    <select 
+                                        className="w-full h-11 px-4 rounded-xl border-2 border-slate-100 bg-slate-50 font-bold text-xs"
                                         value={editingUser.companyId || ''}
                                         onChange={e => setEditingUser({...editingUser, companyId: e.target.value})}
-                                        placeholder="Nombre de la empresa..."
-                                    />
+                                    >
+                                        <option value="">Seleccionar Empresa...</option>
+                                        {companies.map(company => (
+                                            <option key={company.id} value={company.name}>{company.name}</option>
+                                        ))}
+                                    </select>
                                 </div>
 
                                 <div className="space-y-2">

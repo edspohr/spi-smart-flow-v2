@@ -8,6 +8,7 @@ import NewRequestPage from './pages/NewRequestPage';
 import GuestDashboard from './pages/GuestDashboard';
 import SPIAdminDashboard from './pages/SPIAdminDashboard';
 import SPIVault from './pages/SPIVault';
+import CompaniesPage from './pages/CompaniesPage';
 
 export default function AppRouter() {
   return (
@@ -34,6 +35,7 @@ export default function AppRouter() {
                 <Route path="/spi-admin" element={<SPIAdminDashboard />} />
                 <Route path="/spi-admin/nueva-solicitud" element={<NewRequestPage />} />
                 <Route path="/spi-admin/vault" element={<SPIVault />} />
+                <Route path="/spi-admin/companies" element={<CompaniesPage />} />
             </Route>
 
         </Route>

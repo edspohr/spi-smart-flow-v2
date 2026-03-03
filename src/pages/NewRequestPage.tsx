@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Check, Loader2, PenTool, ShieldCheck, UserCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, PenTool, ShieldCheck, UserCircle2, AlertCircle, Building2 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { addDays } from 'date-fns';
 
@@ -19,9 +19,10 @@ const LEGAL_TEXT = "Por el presente instrumento, otorgo poder especial a SPI Ame
 const NewRequestPage = () => {
     const navigate = useNavigate();
     const { user: currentUser } = useAuthStore();
-    const { createOT, users, subscribeToUsers } = useDataStore();
+    const { createOT, users, subscribeToUsers, companies, subscribeToCompanies } = useDataStore();
 
     // Form state
+    const [selectedCompanyId, setSelectedCompanyId] = useState('');
     const [selectedClientId, setSelectedClientId] = useState('');
     const [brandName, setBrandName] = useState('');
     const [description, setDescription] = useState('');
@@ -37,12 +38,16 @@ const NewRequestPage = () => {
     const [submitError, setSubmitError] = useState('');
 
     useEffect(() => {
-        const unsubscribe = subscribeToUsers();
-        return () => unsubscribe();
-    }, [subscribeToUsers]);
+        const unsubscribeUsers = subscribeToUsers();
+        const unsubscribeCompanies = subscribeToCompanies();
+        return () => {
+            unsubscribeUsers();
+            unsubscribeCompanies();
+        };
+    }, [subscribeToUsers, subscribeToCompanies]);
 
-    // Filter only clients for the dropdown
-    const clientUsers = users.filter(u => u.role === 'client');
+    // Filter only clients for the selected company
+    const clientUsers = users.filter(u => u.role === 'client' && (selectedCompanyId === '' || u.companyId === selectedCompanyId));
 
     const handleSignatureSave = async (signatureDataUrl: string) => {
         if (!selectedClientId) return;
@@ -61,7 +66,8 @@ const NewRequestPage = () => {
     };
 
     const canSubmit = () => {
-        return selectedClientId !== '' &&
+        return selectedCompanyId !== '' &&
+               selectedClientId !== '' &&
                brandName.trim() !== '' && 
                description.trim() !== '' && 
                signatureUrl !== '' && 
@@ -75,7 +81,6 @@ const NewRequestPage = () => {
         setSubmitError('');
         
         try {
-            const selectedClient = clientUsers.find(u => u.id === selectedClientId);
             const now = new Date();
             await createOT({
                 brandName,
@@ -88,13 +93,14 @@ const NewRequestPage = () => {
                 area: 'PI',
                 stage: 'solicitud',
                 clientId: selectedClientId,
-                companyId: selectedClient?.companyId || 'Personal',
+                companyId: selectedCompanyId,
                 amount: 0,
                 createdAt: now.toISOString(),
                 deadline: addDays(now, 90).toISOString(),
             });
 
             // Success confetti
+// ... existing confetti logic ...
             const duration = 3 * 1000;
             const animationEnd = Date.now() + duration;
             const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
@@ -132,35 +138,61 @@ const NewRequestPage = () => {
             {/* Form */}
             <div className="space-y-6">
                 
-                {/* 0. Selección de Cliente */}
+                {/* 0. Selección de Empresa y Cliente */}
                 <Card className="rounded-[2rem] border-slate-100 shadow-xl shadow-slate-200/40 bg-white overflow-hidden">
-                    <CardContent className="p-8 space-y-4">
+                    <CardContent className="p-8 space-y-6">
                         <div className="flex items-center gap-3 mb-2">
                             <div className="p-2.5 bg-blue-600 rounded-2xl">
-                                <UserCircle2 className="h-5 w-5 text-white" />
+                                <Building2 className="h-5 w-5 text-white" />
                             </div>
                             <div>
-                                <h2 className="text-lg font-black text-slate-800">Selección de Cliente</h2>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Paso Inicial</p>
+                                <h2 className="text-lg font-black text-slate-800">Vínculo Corporativo</h2>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Entidad y Representante</p>
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <select 
-                                className="w-full h-12 px-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white transition-all font-bold text-slate-700 outline-none"
-                                value={selectedClientId}
-                                onChange={(e) => setSelectedClientId(e.target.value)}
-                            >
-                                <option value="" disabled>Seleccionar un cliente registrado...</option>
-                                {clientUsers.map(u => (
-                                    <option key={u.id} value={u.id}>{u.displayName} ({u.companyId || 'Sin Empresa'})</option>
-                                ))}
-                            </select>
-                            {clientUsers.length === 0 && (
-                                <p className="text-[10px] font-black text-amber-600 uppercase tracking-tighter">
-                                    No hay usuarios con rol "cliente" registrados.
-                                </p>
-                            )}
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Empresa Cliente</Label>
+                                <select 
+                                    className="w-full h-12 px-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white transition-all font-bold text-slate-700 outline-none"
+                                    value={selectedCompanyId}
+                                    onChange={(e) => {
+                                        setSelectedCompanyId(e.target.value);
+                                        setSelectedClientId(''); // Reset client when company changes
+                                    }}
+                                >
+                                    <option value="" disabled>Seleccionar Empresa...</option>
+                                    {companies.map(c => (
+                                        <option key={c.id} value={c.name}>{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Contacto / Representante</Label>
+                                <select 
+                                    disabled={!selectedCompanyId}
+                                    className="w-full h-12 px-4 rounded-xl border-2 border-slate-100 bg-slate-50 focus:border-blue-500 focus:bg-white transition-all font-bold text-slate-700 outline-none disabled:opacity-50"
+                                    value={selectedClientId}
+                                    onChange={(e) => setSelectedClientId(e.target.value)}
+                                >
+                                    <option value="" disabled>Seleccionar Persona...</option>
+                                    {clientUsers.map(u => (
+                                        <option key={u.id} value={u.id}>{u.displayName}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
+
+                        {selectedCompanyId && clientUsers.length === 0 && (
+                            <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex items-center gap-3">
+                                <UserCircle2 className="h-5 w-5 text-amber-500" />
+                                <p className="text-[10px] font-black text-amber-700 uppercase tracking-tight">
+                                    No hay usuarios asignados a esta empresa aún.
+                                </p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 

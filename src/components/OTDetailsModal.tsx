@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import {
   FileText, Clock, AlertCircle, CheckCircle, 
   XCircle, History, Upload, Check, X,
-  ExternalLink
+  ExternalLink, ShieldCheck, Building2
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -26,7 +26,7 @@ interface OTDetailsModalProps {
 }
 
 const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
-  const { documents, logs, subscribeToOTLogs, updateDocumentStatus } = useDataStore();
+  const { documents, logs, vaultDocuments, subscribeToOTLogs, updateDocumentStatus, linkVaultDocument } = useDataStore();
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<"docs" | "bitacora">("docs");
 
@@ -35,7 +35,9 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
   const [rejectionReason, setRejectionReason] = useState("");
 
   const [uploadDoc, setUploadDoc] = useState<Document | null>(null);
+  const [vaultPickDoc, setVaultPickDoc] = useState<Document | null>(null); // For picking from vault
   const [historyDoc, setHistoryDoc] = useState<Document | null>(null);
+  const [isLinking, setIsLinking] = useState(false);
 
   useEffect(() => {
     if (open && ot) {
@@ -200,8 +202,19 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                             className="h-9 px-4 rounded-xl border-blue-100 text-blue-600 hover:bg-blue-50 shadow-sm font-bold text-xs"
                             onClick={() => setUploadDoc(doc)}
                           >
-                            Reemplazar
+                            {doc.status === 'pending' ? 'Subir' : 'Reemplazar'}
                           </Button>
+
+                          {doc.status === 'pending' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-9 px-4 rounded-xl border-indigo-100 text-indigo-600 hover:bg-indigo-50 shadow-sm font-bold text-xs flex gap-2"
+                              onClick={() => setVaultPickDoc(doc)}
+                            >
+                              <ShieldCheck className="w-3.5 h-3.5" /> Bóveda
+                            </Button>
+                          )}
 
                           {user?.role === "spi-admin" && (
                             <div className="flex items-center gap-2 pl-3 ml-3 border-l border-slate-100">
@@ -355,6 +368,69 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Vault Picker Dialog */}
+      <Dialog open={!!vaultPickDoc} onOpenChange={(open) => !open && setVaultPickDoc(null)}>
+        <DialogContent className="max-w-2xl bg-white rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden">
+          <div className="p-8 border-b border-slate-100 bg-slate-50/50">
+             <DialogTitle className="text-xl font-black text-slate-900 flex items-center gap-3">
+               <ShieldCheck className="text-indigo-600 h-6 w-6" /> Bóveda Smart: {vaultPickDoc?.name}
+             </DialogTitle>
+             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+               Selecciona un documento validado para reutilizar
+             </p>
+          </div>
+          <div className="p-8">
+            <ScrollArea className="h-[40vh] pr-4">
+              <div className="grid gap-3">
+                {vaultDocuments.length === 0 ? (
+                  <div className="py-12 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-100">
+                    <Building2 className="h-10 w-10 text-slate-200 mx-auto mb-3" />
+                    <p className="text-sm font-bold text-slate-400">Tu bóveda está vacía.</p>
+                    <p className="text-[10px] text-slate-300 uppercase font-black">Valida documentos en tus operaciones para que aparezcan aquí.</p>
+                  </div>
+                ) : (
+                  vaultDocuments.map((vd) => (
+                    <button
+                      key={vd.id}
+                      disabled={isLinking}
+                      onClick={async () => {
+                        if (vaultPickDoc) {
+                          setIsLinking(true);
+                          try {
+                            await linkVaultDocument(ot.id, vd);
+                            setVaultPickDoc(null);
+                          } catch (err) {
+                            console.error(err);
+                          } finally {
+                            setIsLinking(false);
+                          }
+                        }
+                      }}
+                      className="flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:border-indigo-500 hover:bg-indigo-50/30 transition-all text-left group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-indigo-600 border border-slate-50 group-hover:scale-110 transition-transform">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm">{vd.name}</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                            Validado: {vd.uploadedAt ? format(new Date(vd.uploadedAt), "dd/MM/yyyy") : '—'}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[8px] font-black uppercase tracking-widest px-2">Válido</Badge>
+                    </button>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+          <DialogFooter className="p-6 bg-slate-50/50 border-t border-slate-100">
+             <Button variant="ghost" onClick={() => setVaultPickDoc(null)} className="font-black uppercase text-[10px] text-slate-400">Cerrar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Dialog>
