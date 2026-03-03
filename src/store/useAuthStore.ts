@@ -1,14 +1,10 @@
 import { create } from "zustand";
 import { auth, db } from "../lib/firebase";
-import {
-  onAuthStateChanged,
-  signOut as firebaseSignOut,
-  signInWithEmailAndPassword,
-} from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { onAuthStateChanged, signOut as firebaseSignOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 // Define types for roles
-export type UserRole = "client" | "client-admin" | "spi-admin";
+export type UserRole = "client" | "client-admin" | "spi-admin" | "guest";
 
 export interface UserProfile {
   uid: string;
@@ -26,6 +22,7 @@ interface AuthState {
   initializeAuthListener: () => () => void;
   logout: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, displayName: string, companyName: string) => Promise<void>;
 }
 
 const useAuthStore = create<AuthState>((set) => ({
@@ -97,6 +94,34 @@ const useAuthStore = create<AuthState>((set) => ({
       throw error;
     }
   },
+
+  signUp: async (email, password, displayName, companyName) => {
+    set({ loading: true });
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = userCredential.user;
+
+      // Update profile with displayName
+      await updateProfile(firebaseUser, { displayName });
+
+      // Create Firestore document
+      const userDoc = {
+        uid: firebaseUser.uid,
+        email,
+        displayName,
+        companyId: companyName,
+        role: 'guest' as UserRole,
+        createdAt: new Date().toISOString()
+      };
+
+      await setDoc(doc(db, 'users', firebaseUser.uid), userDoc);
+      
+      // User will be set by the listener
+    } catch (error) {
+      set({ loading: false });
+      throw error;
+    }
+  }
 }));
 
 export default useAuthStore;

@@ -3,15 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Shield, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, User, Building } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 const LoginPage = () => {
-    const { user, signIn } = useAuthStore();
+    const { user, signIn, signUp } = useAuthStore();
     const navigate = useNavigate();
 
+    // Toggle between Login and Register
+    const [isRegistering, setIsRegistering] = useState(false);
+
+    // Form states
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [displayName, setDisplayName] = useState('');
+    const [companyName, setCompanyName] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -19,6 +27,7 @@ const LoginPage = () => {
         if (user) {
             if (user.role === 'spi-admin') navigate('/spi-admin');
             else if (user.role === 'client-admin') navigate('/client-admin');
+            else if (user.role === 'guest') navigate('/guest');
             else navigate('/client');
         }
     }, [user, navigate]);
@@ -37,8 +46,12 @@ const LoginPage = () => {
                 return 'Credenciales inválidas. Verifica tu correo y contraseña.';
             case 'auth/too-many-requests':
                 return 'Demasiados intentos fallidos. Intenta más tarde.';
+            case 'auth/email-already-in-use':
+                return 'Este correo electrónico ya está en uso.';
+            case 'auth/weak-password':
+                return 'La contraseña es muy débil (mínimo 6 caracteres).';
             default:
-                return 'Error al iniciar sesión. Intenta nuevamente.';
+                return 'Ocurrió un error. Intenta nuevamente.';
         }
     };
 
@@ -59,8 +72,34 @@ const LoginPage = () => {
         try {
             await signIn(email, password);
         } catch (err: any) {
-            const code = err?.code || '';
-            setError(getFirebaseErrorMessage(code));
+            setError(getFirebaseErrorMessage(err?.code || ''));
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRegister = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+
+        if (!displayName || !companyName || !email || !password || !confirmPassword) {
+            setError('Todos los campos son obligatorios');
+            return;
+        }
+        if (password !== confirmPassword) {
+            setError('Las contraseñas no coinciden');
+            return;
+        }
+        if (password.length < 6) {
+            setError('La contraseña debe tener al menos 6 caracteres');
+            return;
+        }
+
+        setIsLoading(true);
+        try {
+            await signUp(email, password, displayName, companyName);
+        } catch (err: any) {
+            setError(getFirebaseErrorMessage(err?.code || ''));
         } finally {
             setIsLoading(false);
         }
@@ -83,8 +122,8 @@ const LoginPage = () => {
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center gap-6 text-center">
-                    <div className="white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/20 shadow-2xl">
-                        <Shield className="h-10 w-10 text-white" />
+                    <div className="p-4 drop-shadow-2xl">
+                        <img src="/spi-logo.png" alt="SPI Americas" className="h-20 w-auto brightness-0 invert object-contain drop-shadow-lg" />
                     </div>
                     <div>
                         <h1 className="text-4xl lg:text-5xl font-bold text-white tracking-tight mb-2">
@@ -115,61 +154,125 @@ const LoginPage = () => {
                     <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 animate-fade-scale shadow-blue-500/5">
                         <div className="mb-8">
                             <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-                                Bienvenido
+                                {isRegistering ? 'Crea tu cuenta' : 'Bienvenido'}
                             </h2>
                             <p className="text-slate-500 text-sm mt-1">
-                                Ingresa tus credenciales para acceder al sistema
+                                {isRegistering ? 'Completa tus datos para registrarte' : 'Ingresa tus credenciales para acceder al sistema'}
                             </p>
                         </div>
 
-                        <form onSubmit={handleLogin} className="space-y-5">
-                            <div className="space-y-2">
+                        <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
+                            {isRegistering && (
+                                <>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="displayName" className="text-slate-700 font-semibold ml-1">Nombre Completo</Label>
+                                        <div className="relative">
+                                            <User className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                                            <Input 
+                                                id="displayName" 
+                                                type="text" 
+                                                placeholder="Juan Pérez" 
+                                                className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
+                                                value={displayName}
+                                                onChange={(e) => setDisplayName(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="companyName" className="text-slate-700 font-semibold ml-1">Empresa</Label>
+                                        <div className="relative">
+                                            <Building className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                                            <Input 
+                                                id="companyName" 
+                                                type="text" 
+                                                placeholder="Nombre de tu empresa" 
+                                                className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
+                                                value={companyName}
+                                                onChange={(e) => setCompanyName(e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            <div className="space-y-1">
                                 <Label htmlFor="email" className="text-slate-700 font-semibold ml-1">Correo Electrónico</Label>
                                 <div className="relative">
-                                    <Mail className="absolute left-3.5 top-3 h-5 w-5 text-slate-400" />
+                                    <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                                     <Input 
                                         id="email" 
                                         type="email" 
                                         placeholder="nombre@empresa.com" 
-                                        className="h-11 pl-11 rounded-xl border-slate-200 bg-white focus-visible:ring-blue-600 focus-visible:border-blue-600"
+                                        className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        autoFocus
                                         required
                                     />
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
+                            <div className="space-y-1">
                                 <Label htmlFor="password" className="text-slate-700 font-semibold ml-1">Contraseña</Label>
                                 <div className="relative">
-                                    <Lock className="absolute left-3.5 top-3 h-5 w-5 text-slate-400" />
+                                    <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
                                     <Input 
                                         id="password" 
                                         type="password" 
                                         placeholder="••••••••" 
-                                        className="h-11 pl-11 rounded-xl border-slate-200 bg-white focus-visible:ring-blue-600 focus-visible:border-blue-600"
+                                        className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         required
                                     />
                                 </div>
                             </div>
+
+                            {isRegistering && (
+                                <div className="space-y-1">
+                                    <Label htmlFor="confirmPassword" className="text-slate-700 font-semibold ml-1">Confirmar Contraseña</Label>
+                                    <div className="relative">
+                                        <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                                        <Input 
+                                            id="confirmPassword" 
+                                            type="password" 
+                                            placeholder="••••••••" 
+                                            className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            )}
                             
                             {error && <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg text-center animate-shake">{error}</p>}
 
-                            <Button type="submit" className="w-full btn-primary h-11" disabled={isLoading}>
+                            <Button type="submit" className="w-full btn-primary h-11 mt-4" disabled={isLoading}>
                                 {isLoading ? (
                                     <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Ingresando...
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isRegistering ? 'Registrando...' : 'Ingresando...'}
                                     </>
                                 ) : (
                                     <>
-                                        Iniciar Sesión <ArrowRight className="ml-2 h-4 w-4" />
+                                        {isRegistering ? 'Registrarse' : 'Iniciar Sesión'} <ArrowRight className="ml-2 h-4 w-4" />
                                     </>
                                 )}
                             </Button>
                         </form>
+
+                        <div className="mt-6 text-center">
+                            <button 
+                                onClick={() => {
+                                    setIsRegistering(!isRegistering);
+                                    setError('');
+                                }}
+                                className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                            >
+                                {isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate aquí'}
+                            </button>
+                        </div>
                         
                         <div className="mt-12 text-center">
                             <p className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">

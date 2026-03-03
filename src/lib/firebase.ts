@@ -25,10 +25,21 @@ if (import.meta.env.DEV) {
   }
 }
 
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-export const functions = getFunctions(app);
+let app: any;
+let auth: any;
+let db: any;
+let storage: any;
+let functions: any;
 
+try {
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+  functions = getFunctions(app);
+} catch (error) {
+  console.error("❌ Error al inicializar Firebase. Verifica las variables de entorno VITE_FIREBASE_* en Vercel.", error);
+}
+
+export { auth, db, storage, functions };
 export default app;

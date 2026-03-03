@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import ClientDashboard from './pages/ClientDashboard';
 import ClientVault from './pages/ClientVault';
 import NewRequestPage from './pages/NewRequestPage';
+import GuestDashboard from './pages/GuestDashboard';
 import ClientAdminDashboard from './pages/ClientAdminDashboard';
 import SPIAdminDashboard from './pages/SPIAdminDashboard';
 
@@ -23,6 +24,11 @@ export default function AppRouter() {
                 <Route path="/client" element={<ClientDashboard />} />
                 <Route path="/client/vault" element={<ClientVault />} />
                 <Route path="/client/nueva-solicitud" element={<NewRequestPage />} />
+            </Route>
+
+            {/* Guest Route */}
+            <Route element={<ProtectedRoute allowedRoles={['guest']} />}>
+                <Route path="/guest" element={<GuestDashboard />} />
             </Route>
 
             {/* Client Admin Routes */}
