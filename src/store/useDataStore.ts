@@ -1,8 +1,7 @@
 import { create } from 'zustand';
-import { db } from '../lib/firebase';
+import { db, storage } from '../lib/firebase';
 import { collection, query, where, onSnapshot, addDoc, orderBy, doc, updateDoc, getDoc } from 'firebase/firestore';
-// @ts-ignore
-import { INITIAL_OTS, INITIAL_DOCS, INITIAL_LOGS, VAULT_DOCUMENTS } from '../data/mockData';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // --- Types ---
 export type OTStage = 'solicitud' | 'pago_adelanto' | 'gestion' | 'pago_cierre' | 'finalizado';
@@ -18,21 +17,27 @@ export interface OT {
   stage: OTStage;
   amount: number;
   discountPercentage?: number;
-  createdAt: string; // ISO String
-  deadline: string; // ISO String
+  createdAt: string;
+  deadline: string;
   status?: string;
+  // PI-specific fields
+  brandName?: string;
+  description?: string;
+  colors?: string[];
+  logoUrl?: string;
+  signatureUrl?: string;
 }
 
 export interface Document {
   id: string;
-  otId?: string; // Can be null if it's a vault document not linked to active OT? Or always linked?
+  otId?: string;
   clientId: string;
   name: string;
-  type: string; // e.g., 'poder_legal', 'cedula'
+  type: string;
   status: DocumentStatus;
   validationMetadata?: any;
   isVaultEligible: boolean;
-  validUntil?: string; // ISO String
+  validUntil?: string;
   url?: string;
 }
 
@@ -40,7 +45,7 @@ export interface Log {
   id: string;
   otId: string;
   userId: string;
-  userName?: string; // Added for real user visibility
+  userName?: string;
   action: string;
   type: 'system' | 'user';
   timestamp: string;
@@ -50,13 +55,19 @@ export interface Log {
   };
 }
 
+// --- Upload Helper ---
+export async function uploadFile(file: File | Blob, storagePath: string): Promise<string> {
+  const storageRef = ref(storage, storagePath);
+  const snapshot = await uploadBytes(storageRef, file);
+  const url = await getDownloadURL(snapshot.ref);
+  return url;
+}
+
 interface DataState {
   ots: OT[];
   documents: Document[];
   logs: Log[];
   loading: boolean;
-  
-  // Vault specific
   vaultDocuments: Document[]; 
 
   // Actions
@@ -72,17 +83,8 @@ interface DataState {
   logAction: (userId: string, otId: string, action: string, metadata?: any) => Promise<void>; 
   updateDocumentStatus: (docId: string, status: DocumentStatus, reason?: string) => Promise<void>; 
   replaceDocument: (docId: string, file: File) => Promise<void>; 
-  updateOTStage: (otId: string, stage: OTStage) => Promise<void>; // Added for strict transition control
- 
-
-  // Mock Data Generators for Dev
-  loadMockData: (role: 'client' | 'client-admin' | 'spi-admin', id: string) => void;
+  updateOTStage: (otId: string, stage: OTStage) => Promise<void>;
 }
-
-// Mock data is now imported from src/data/mockData.js
-const MOCK_OTS: OT[] = INITIAL_OTS as OT[];
-const MOCK_DOCS: Document[] = [...(INITIAL_DOCS as Document[]), ...(VAULT_DOCUMENTS as Document[])];
-const MOCK_LOGS = INITIAL_LOGS;
 
 const useDataStore = create<DataState>((set, get) => ({
   ots: [],
@@ -94,7 +96,6 @@ const useDataStore = create<DataState>((set, get) => ({
   subscribeToCompanyData: (companyId) => {
     console.log(`Subscribing to data for company: ${companyId}`);
     
-    // Subscribe to OTs
     const qOTs = query(collection(db, "ots"), where("companyId", "==", companyId));
     const unsubscribeOTs = onSnapshot(qOTs, (snapshot) => {
         const ots: OT[] = [];
@@ -104,10 +105,9 @@ const useDataStore = create<DataState>((set, get) => ({
         set({ ots });
     });
 
-    // Subscribe to Vault Documents (Valid & Eligible)
     const qVault = query(
         collection(db, "documents"), 
-        where("companyId", "==", companyId), // Assuming docs belong to company too? Or User?
+        where("companyId", "==", companyId),
         where("isVaultEligible", "==", true),
         where("status", "==", "validated")
     );
@@ -128,7 +128,6 @@ const useDataStore = create<DataState>((set, get) => ({
 
   subscribeToClientData: (clientId) => {
     console.log(`Subscribing to data for client: ${clientId}`);
-    // Subscribe to Client's Documents (Active/Pending)
     const qDocs = query(collection(db, "documents"), where("clientId", "==", clientId));
     
     const unsubscribeDocs = onSnapshot(qDocs, (snapshot) => {
@@ -146,7 +145,6 @@ const useDataStore = create<DataState>((set, get) => ({
         set({ documents, vaultDocuments });
     });
 
-    // Subscribe to Client's OTs
     const qOTs = query(collection(db, "ots"), where("clientId", "==", clientId));
     const unsubscribeOTs = onSnapshot(qOTs, (snapshot) => {
         const ots: OT[] = [];
@@ -178,10 +176,6 @@ const useDataStore = create<DataState>((set, get) => ({
 
   subscribeToOTLogs: (otId) => {
       console.log(`Subscribing to logs for OT: ${otId}`);
-      // Note: This requires a composite index if we mix where and orderBy. 
-      // For now, let's just get them and sort in memory if index is missing, 
-      // OR rely on client-side filtering if volume is low.
-      // But let's try the query first.
       const qLogs = query(
           collection(db, "logs"), 
           where("otId", "==", otId), 
@@ -217,10 +211,7 @@ const useDataStore = create<DataState>((set, get) => ({
               createdAt: new Date().toISOString()
           });
           console.log("Document added to Vault (Firestore)");
-          
-          // Log the action
           get().logAction(docData.clientId, docData.otId || 'vault', `Documento agregado a Bóveda via Upload: ${docData.type}`);
-
       } catch (e) {
           console.error("Error adding to vault:", e);
       }
@@ -231,7 +222,6 @@ const useDataStore = create<DataState>((set, get) => ({
           await addDoc(collection(db, "ots"), {
             ...otData,
             createdAt: new Date().toISOString(),
-            status: 'solicitud', // Default status? Or comes in otData?
             stage: 'solicitud'
           });
           console.log("OT Created in Firestore");
@@ -240,36 +230,24 @@ const useDataStore = create<DataState>((set, get) => ({
           }
       } catch (e) {
           console.error("Error creating OT:", e);
-          throw e; // Re-throw so component knows it failed
+          throw e;
       }
   },
 
-  // Enhanced Log Action with Real User
   logAction: async (userId, otId, action, metadata = {}) => {
       try {
-          // Dynamic Import to avoid circular dependency if possible, or just standard import if valid.
-          // Better: User passes userName, OR we try to fetch it here if we are on client side.
-          // Since we are in a store, let's try to get it from the Auth Store if not explicitly known?
-          // Actually, let's grab the current user from the AuthStore directly if userId is 'current' or similar,
-          // BUT the prompt says: "Retrieve the actual displayName from useAuthStore.getState().user"
-
-          // We need to import useAuthStore at the top level, but let's assume it's available or we pass it.
-          // To avoid circular deps, we can assume the caller passes it, OR we use the direct import trick if supported.
-          // Let's rely on the caller passing the right ID, BUT we need the NAME for the log? 
-          // Actually, the Log interface now needs a 'userName' field.
-          
-          // Let's get the user from the store state (we'll add the import).
-          const { user } = require('../store/useAuthStore').default.getState();
+          // Get current user info for the log
+          const useAuthStore = (await import('../store/useAuthStore')).default;
+          const { user } = useAuthStore.getState();
           const displayName = user?.displayName || user?.email || 'Usuario Desconocido';
           const realUserId = user?.uid || userId;
 
           await addDoc(collection(db, "logs"), {
               userId: realUserId,
-              userName: displayName, // Added field
+              userName: displayName,
               otId: otId || 'general',
               action,
-              type: 'system', // Keep 'system' for automated, but maybe 'user' for explicit actions?
-              // Let's infer type: if it's a direct user action like "Uploaded", "Approved", it matches.
+              type: 'system',
               timestamp: new Date().toISOString(),
               metadata
           });
@@ -306,21 +284,18 @@ const useDataStore = create<DataState>((set, get) => ({
 
   replaceDocument: async (docId: string, file: File) => {
       try {
-           // 1. Simulate Upload (In real app: upload bytes to storage, get URL)
            console.log(`Uploading file ${file.name} to replace doc ${docId}...`);
-           const fakeUrl = URL.createObjectURL(file); // Temporary for demo
+           const fileUrl = await uploadFile(file, `documents/${docId}/${file.name}`);
 
-           // 2. Update Firestore
            const docRef = doc(db, "documents", docId);
            await updateDoc(docRef, {
-               url: fakeUrl,
-               status: 'uploaded', // Reset status as requested
-               rejectionReason: null, // Clear any previous rejection
+               url: fileUrl,
+               status: 'uploaded',
+               rejectionReason: null,
                updatedAt: new Date().toISOString(),
                replacedAt: new Date().toISOString()
            });
 
-           // 3. Log
            const docSnap = await getDoc(docRef);
            if (docSnap.exists()) {
                const docData = docSnap.data() as Document;
@@ -335,14 +310,10 @@ const useDataStore = create<DataState>((set, get) => ({
 
   updateOTStage: async (otId: string, stage: OTStage) => {
       try {
-          // STRICT LOGIC: Prevents jumping to 'finalizado' accidentally
           if (stage === 'finalizado') {
               console.warn("Attempting to finalize OT. This should only be done by Admin via strict close process.");
-              // In future, check for role or specific conditions here
           }
 
-          // Specific Logic for Terms Acceptance (if context matches)
-          // If previous stage was 'solicitud' and new is 'finalizado', BLOCK IT
           const otRef = doc(db, "ots", otId);
           await updateDoc(otRef, {
               stage,
@@ -356,31 +327,6 @@ const useDataStore = create<DataState>((set, get) => ({
            throw e;
       }
   },
-
-  loadMockData: (role, _id) => {
-      // Loads comprehensive mock data from mockData.js
-      console.log("loadMockData: Loading premium mock dataset");
-      set({ loading: true });
-       setTimeout(() => {
-        if (role === 'client' || role === 'client-admin') {
-            set({
-                ots: MOCK_OTS,
-                documents: MOCK_DOCS.filter(d => !d.isVaultEligible), 
-                vaultDocuments: MOCK_DOCS.filter(d => d.isVaultEligible),
-                logs: MOCK_LOGS as any[],
-                loading: false
-            });
-        } else if (role === 'spi-admin') {
-            set({
-                ots: MOCK_OTS,
-                documents: MOCK_DOCS,
-                vaultDocuments: MOCK_DOCS.filter(d => d.isVaultEligible),
-                logs: MOCK_LOGS as any[],
-                loading: false
-            });
-        }
-    }, 500);
-  }
 
 }));
 

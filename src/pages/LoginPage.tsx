@@ -1,19 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useAuthStore, { UserRole } from '../store/useAuthStore';
+import useAuthStore from '../store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Shield, Mail, ArrowRight, CheckCircle, Loader2 } from 'lucide-react';
+import { Shield, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 const LoginPage = () => {
-    const { user, devLogin } = useAuthStore();
+    const { user, signIn } = useAuthStore();
     const navigate = useNavigate();
 
-    const [step, setStep] = useState<'email' | 'code'>('email');
     const [email, setEmail] = useState('');
-    const [otp, setOtp] = useState(['', '', '', '', '', '']);
-    const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -25,65 +23,46 @@ const LoginPage = () => {
         }
     }, [user, navigate]);
 
-    // Handle OTP auto-trigger
-    useEffect(() => {
-        if (step === 'code' && otp.every(v => v !== '') && otp.join('').length === 6) {
-            const finalCode = otp.join('');
-            autoVerify(finalCode);
+    const getFirebaseErrorMessage = (code: string): string => {
+        switch (code) {
+            case 'auth/invalid-email':
+                return 'El correo electrónico no es válido.';
+            case 'auth/user-disabled':
+                return 'Esta cuenta ha sido deshabilitada.';
+            case 'auth/user-not-found':
+                return 'No existe una cuenta con este correo electrónico.';
+            case 'auth/wrong-password':
+                return 'La contraseña es incorrecta.';
+            case 'auth/invalid-credential':
+                return 'Credenciales inválidas. Verifica tu correo y contraseña.';
+            case 'auth/too-many-requests':
+                return 'Demasiados intentos fallidos. Intenta más tarde.';
+            default:
+                return 'Error al iniciar sesión. Intenta nuevamente.';
         }
-    }, [otp, step]);
+    };
 
-    const handleSendCode = async (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        
+
         if (!email.includes('@')) {
             setError('Ingresa un email válido');
             return;
         }
-
-        setIsLoading(true);
-        setTimeout(() => {
-            setIsLoading(false);
-            setStep('code');
-        }, 1200);
-    };
-
-    const autoVerify = async (finalCode: string) => {
-        setError('');
-        setIsLoading(true);
-
-        setTimeout(() => {
-            setIsLoading(false);
-            if (finalCode === '123456') {
-                let role: UserRole = 'client';
-                if (email.includes('admin') || email.includes('spi')) role = 'spi-admin';
-                else if (email.includes('manager') || email.includes('jefe')) role = 'client-admin';
-                devLogin(role);
-            } else {
-                setError('Código incorrecto. Intenta con 123456');
-                setOtp(['', '', '', '', '', '']);
-                inputRefs.current[0]?.focus();
-            }
-        }, 1200);
-    };
-
-    const handleOtpChange = (index: number, value: string) => {
-        if (value.length > 1) value = value[value.length - 1];
-        if (!/^\d*$/.test(value)) return;
-
-        const newOtp = [...otp];
-        newOtp[index] = value;
-        setOtp(newOtp);
-
-        if (value && index < 5) {
-            inputRefs.current[index + 1]?.focus();
+        if (!password) {
+            setError('Ingresa tu contraseña');
+            return;
         }
-    };
 
-    const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
-        if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            inputRefs.current[index - 1]?.focus();
+        setIsLoading(true);
+        try {
+            await signIn(email, password);
+        } catch (err: any) {
+            const code = err?.code || '';
+            setError(getFirebaseErrorMessage(code));
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -117,7 +96,7 @@ const LoginPage = () => {
                     </div>
 
                     <div className="flex flex-wrap justify-center gap-3 mt-8">
-                        {["IA Integrada", "Bóveda Documental", "Firma Digital"].map((feat) => (
+                        {["Registro de Marcas", "Gestión Documental", "Firma Digital"].map((feat) => (
                             <span key={feat} className="bg-white/10 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-sm uppercase tracking-wider">
                                 {feat}
                             </span>
@@ -136,119 +115,61 @@ const LoginPage = () => {
                     <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 animate-fade-scale shadow-blue-500/5">
                         <div className="mb-8">
                             <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-                                {step === 'email' ? 'Bienvenido' : 'Verifica tu acceso'}
+                                Bienvenido
                             </h2>
                             <p className="text-slate-500 text-sm mt-1">
-                                {step === 'email' 
-                                    ? 'Ingresa tu correo para comenzar la sesión' 
-                                    : `Ingresa el código enviado a ${email}`}
+                                Ingresa tus credenciales para acceder al sistema
                             </p>
                         </div>
 
-                        {step === 'email' ? (
-                            <form onSubmit={handleSendCode} className="space-y-5">
-                                <div className="space-y-2">
-                                    <Label htmlFor="email" className="text-slate-700 font-semibold ml-1">Correo Electrónico</Label>
-                                    <div className="relative">
-                                        <Mail className="absolute left-3.5 top-3 h-5 w-5 text-slate-400" />
-                                        <Input 
-                                            id="email" 
-                                            type="email" 
-                                            placeholder="nombre@empresa.com" 
-                                            className="h-11 pl-11 rounded-xl border-slate-200 bg-white focus-visible:ring-blue-600 focus-visible:border-blue-600"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            autoFocus
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                                
-                                {error && <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg text-center animate-shake">{error}</p>}
-
-                                <Button type="submit" className="w-full btn-primary h-11" disabled={isLoading}>
-                                    {isLoading ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            Continuar <ArrowRight className="ml-2 h-4 w-4" />
-                                        </>
-                                    )}
-                                </Button>
-
-                                <div className="mt-8 pt-6 border-t border-slate-100">
-                                    <p className="text-[11px] uppercase tracking-widest text-slate-400 font-bold mb-4">Accesos rápidos Demo</p>
-                                    <div className="flex flex-wrap gap-x-4 gap-y-2">
-                                        {[
-                                            { label: 'Admin', email: 'admin@spi.cl' },
-                                            { label: 'Gerente', email: 'manager@demo.com' },
-                                            { label: 'Cliente', email: 'usuario@demo.com' }
-                                        ].map((demo) => (
-                                            <button 
-                                                key={demo.label}
-                                                type="button" 
-                                                onClick={() => setEmail(demo.email)} 
-                                                className="text-slate-400 hover:text-blue-600 underline underline-offset-4 text-xs font-medium transition-colors"
-                                            >
-                                                {demo.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </form>
-                        ) : (
-                            <div className="space-y-6">
-                                <div className="flex justify-between gap-2">
-                                    {otp.map((val, i) => (
-                                        <input
-                                            key={i}
-                                            ref={(el) => { inputRefs.current[i] = el; }}
-                                            type="text"
-                                            maxLength={1}
-                                            value={val}
-                                            onChange={(e) => handleOtpChange(i, e.target.value)}
-                                            onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                                            className="w-10 h-12 text-center text-xl font-mono font-bold border-2 border-slate-200 rounded-xl focus:border-blue-600 focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all bg-white text-slate-900"
-                                            autoFocus={i === 0}
-                                        />
-                                    ))}
-                                </div>
-
-                                {error && <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg text-center">{error}</p>}
-                                
-                                <p className="text-xs text-slate-400 text-center">
-                                    Usa el código <strong className="text-slate-900">123456</strong> para validar la demo
-                                </p>
-
-                                <div className="flex flex-col gap-3">
-                                    <Button 
-                                        onClick={() => autoVerify(otp.join(''))} 
-                                        className="w-full btn-primary h-11" 
-                                        disabled={isLoading || otp.join('').length < 6}
-                                    >
-                                        {isLoading ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando...
-                                            </>
-                                        ) : (
-                                            <>
-                                                Verificar Código <CheckCircle className="ml-2 h-4 w-4" />
-                                            </>
-                                        )}
-                                    </Button>
-                                    
-                                    <button 
-                                        type="button" 
-                                        className="text-slate-400 hover:text-slate-900 text-xs font-medium transition-colors py-2" 
-                                        onClick={() => { setStep('email'); setOtp(['','','','','','']); setError(''); }}
-                                    >
-                                        Volver a ingresar correo
-                                    </button>
+                        <form onSubmit={handleLogin} className="space-y-5">
+                            <div className="space-y-2">
+                                <Label htmlFor="email" className="text-slate-700 font-semibold ml-1">Correo Electrónico</Label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3.5 top-3 h-5 w-5 text-slate-400" />
+                                    <Input 
+                                        id="email" 
+                                        type="email" 
+                                        placeholder="nombre@empresa.com" 
+                                        className="h-11 pl-11 rounded-xl border-slate-200 bg-white focus-visible:ring-blue-600 focus-visible:border-blue-600"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        autoFocus
+                                        required
+                                    />
                                 </div>
                             </div>
-                        )}
+
+                            <div className="space-y-2">
+                                <Label htmlFor="password" className="text-slate-700 font-semibold ml-1">Contraseña</Label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3.5 top-3 h-5 w-5 text-slate-400" />
+                                    <Input 
+                                        id="password" 
+                                        type="password" 
+                                        placeholder="••••••••" 
+                                        className="h-11 pl-11 rounded-xl border-slate-200 bg-white focus-visible:ring-blue-600 focus-visible:border-blue-600"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            
+                            {error && <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg text-center animate-shake">{error}</p>}
+
+                            <Button type="submit" className="w-full btn-primary h-11" disabled={isLoading}>
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Ingresando...
+                                    </>
+                                ) : (
+                                    <>
+                                        Iniciar Sesión <ArrowRight className="ml-2 h-4 w-4" />
+                                    </>
+                                )}
+                            </Button>
+                        </form>
                         
                         <div className="mt-12 text-center">
                             <p className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">

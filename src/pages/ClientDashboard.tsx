@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import useDataStore from '../store/useDataStore';
 import useAuthStore from '../store/useAuthStore';
 import { Button } from '@/components/ui/button';
@@ -85,6 +86,7 @@ const ClientDashboard = () => {
     const { user } = useAuthStore();
     const { ots, loading } = useDataStore();
     const [selectedOT, setSelectedOT] = useState<OT | null>(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (user?.uid) {
@@ -184,7 +186,7 @@ const ClientDashboard = () => {
                     <p className="text-slate-500 mt-2 text-center max-w-xs mb-8">
                       Inicia tu primera solicitud de Propiedad Intelectual para comenzar la gestión inteligente.
                     </p>
-                    <Button className="btn-primary px-8 h-12 shadow-blue-500/20">
+                    <Button onClick={() => navigate('/client/nueva-solicitud')} className="btn-primary px-8 h-12 shadow-blue-500/20">
                       Nueva Solicitud
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>

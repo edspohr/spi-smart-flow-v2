@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
 import ClientDashboard from './pages/ClientDashboard';
 import ClientVault from './pages/ClientVault';
+import NewRequestPage from './pages/NewRequestPage';
 import ClientAdminDashboard from './pages/ClientAdminDashboard';
 import SPIAdminDashboard from './pages/SPIAdminDashboard';
 
@@ -21,7 +22,7 @@ export default function AppRouter() {
             <Route element={<ProtectedRoute allowedRoles={['client', 'client-admin']} />}>
                 <Route path="/client" element={<ClientDashboard />} />
                 <Route path="/client/vault" element={<ClientVault />} />
-                <Route path="/client/vault" element={<ClientVault />} />
+                <Route path="/client/nueva-solicitud" element={<NewRequestPage />} />
             </Route>
 
             {/* Client Admin Routes */}

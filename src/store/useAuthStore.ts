@@ -1,10 +1,14 @@
-import { create } from 'zustand';
-import { auth, db } from '../lib/firebase';
-import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { create } from "zustand";
+import { auth, db } from "../lib/firebase";
+import {
+  onAuthStateChanged,
+  signOut as firebaseSignOut,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 
 // Define types for roles
-export type UserRole = 'client' | 'client-admin' | 'spi-admin';
+export type UserRole = "client" | "client-admin" | "spi-admin";
 
 export interface UserProfile {
   uid: string;
@@ -21,9 +25,7 @@ interface AuthState {
   setUser: (user: UserProfile | null) => void;
   initializeAuthListener: () => () => void;
   logout: () => Promise<void>;
-  
-  // Method to simulate login for testing/dev
-  devLogin: (role: UserRole) => void;
+  signIn: (email: string, password: string) => Promise<void>;
 }
 
 const useAuthStore = create<AuthState>((set) => ({
@@ -41,7 +43,7 @@ const useAuthStore = create<AuthState>((set) => ({
           // Fetch additional user role from Firestore
           const docRef = doc(db, "users", firebaseUser.uid);
           const docSnap = await getDoc(docRef);
-          
+
           if (docSnap.exists()) {
             const userData = docSnap.data();
             set({
@@ -49,24 +51,24 @@ const useAuthStore = create<AuthState>((set) => ({
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
                 displayName: firebaseUser.displayName,
-                role: userData.role || 'client', // Default to client
-                companyId: userData.companyId
+                role: userData.role || "client", // Default to client
+                companyId: userData.companyId,
               },
               loading: false,
-              initialized: true
+              initialized: true,
             });
           } else {
-             // Fallback if user document doesn't exist (e.g. just signed up)
-             set({
+            // Fallback if user document doesn't exist (e.g. just signed up)
+            set({
               user: {
                 uid: firebaseUser.uid,
                 email: firebaseUser.email,
                 displayName: firebaseUser.displayName,
-                role: 'client',
-                companyId: 'demo-company-1'
+                role: "client",
+                companyId: "demo-company-1",
               },
               loading: false,
-              initialized: true
+              initialized: true,
             });
           }
         } catch (error) {
@@ -85,20 +87,16 @@ const useAuthStore = create<AuthState>((set) => ({
     set({ user: null });
   },
 
-  // Mock Login for Dev/Testing (Bypasses Firebase Auth)
-  devLogin: (role: UserRole) => {
-    set({
-      user: {
-        uid: role === 'client' ? 'mock-client-123' : `mock-${role}-123`,
-        email: `${role}@example.com`,
-        displayName: `Mock ${role.toUpperCase()}`,
-        role: role,
-        companyId: role === 'spi-admin' ? undefined : 'demo-company-1'
-      },
-      loading: false,
-      initialized: true
-    });
-  }
+  signIn: async (email: string, password: string) => {
+    set({ loading: true });
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // The onAuthStateChanged listener will handle setting the user
+    } catch (error) {
+      set({ loading: false });
+      throw error;
+    }
+  },
 }));
 
 export default useAuthStore;

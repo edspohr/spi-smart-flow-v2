@@ -1,9 +1,8 @@
 /* eslint-disable react/prop-types */
 import { useMemo } from 'react';
 import { Clock } from 'lucide-react';
-// @ts-ignore
-import { useData } from '../../context/DataContext';
 import { cn } from '../../lib/utils';
+import { differenceInDays } from 'date-fns';
 
 const COLUMNS = [
   { id: 'solicitud', title: 'Solicitud', color: 'border-t-amber-500', chip: 'bg-amber-100 text-amber-700' },
@@ -34,9 +33,18 @@ interface KanbanBoardProps {
   onSelectOt: (ot: any) => void;
 }
 
-export default function KanbanBoard({ userOts, onSelectOt }: KanbanBoardProps) {
-  const { getTimeStatus } = useData();
+function getTimeStatus(ot: any) {
+  const now = new Date();
+  const start = new Date(ot.createdAt);
+  const daysElapsed = differenceInDays(now, start);
+  let discount = 0;
+  let surcharge = 0;
+  if (daysElapsed <= 30) discount = 10;
+  else if (daysElapsed > 90) surcharge = 10;
+  return { discount, surcharge, daysElapsed };
+}
 
+export default function KanbanBoard({ userOts, onSelectOt }: KanbanBoardProps) {
   const otsByStage = useMemo(() => {
     const groups: Record<string, any[]> = COLUMNS.reduce((acc, col) => ({ ...acc, [col.id]: [] }), {});
     userOts.forEach((ot: any) => {
@@ -73,7 +81,7 @@ export default function KanbanBoard({ userOts, onSelectOt }: KanbanBoardProps) {
                   <div className="flex items-start gap-2 mb-2">
                     <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", DOT_COLORS[ot.stage] || "bg-slate-400")} />
                     <h4 className="font-semibold text-slate-800 text-sm leading-tight line-clamp-2">
-                      {ot.title}
+                      {ot.title || ot.brandName || 'Sin título'}
                     </h4>
                   </div>
                   
@@ -86,10 +94,9 @@ export default function KanbanBoard({ userOts, onSelectOt }: KanbanBoardProps) {
                   <div className="flex items-center justify-between mt-auto pt-2">
                     <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
                       <Clock size={12} />
-                      <span>{new Date(ot.createdAt).toLocaleDateString()}</span>
+                      <span>{ot.createdAt ? new Date(ot.createdAt).toLocaleDateString() : '—'}</span>
                     </div>
 
-                    {/* Urgency Badge */}
                     <div className={cn(
                       "text-[10px] py-0.5 px-2 rounded-full font-bold uppercase tracking-tight",
                       discount > 0 ? "bg-emerald-50 text-emerald-600 border border-emerald-100" :
