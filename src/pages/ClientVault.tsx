@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import useDataStore from '../store/useDataStore';
+import useDocumentStore from '../store/useDocumentStore';
 import useAuthStore from '../store/useAuthStore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,14 +10,15 @@ import { cn } from '@/lib/utils';
 
 const ClientVault = () => {
     const { user } = useAuthStore();
-    const { vaultDocuments, loading } = useDataStore();
+    const { vaultDocuments, loading } = useDocumentStore();
+    const subscribeToClientDocuments = useDocumentStore((s) => s.subscribeToClientDocuments);
 
     useEffect(() => {
         if (user?.uid) {
-            const unsubscribe = useDataStore.getState().subscribeToClientData(user.uid);
+            const unsubscribe = subscribeToClientDocuments(user.uid);
             return () => unsubscribe();
         }
-    }, [user]);
+    }, [user, subscribeToClientDocuments]);
 
     if (loading) {
         return (

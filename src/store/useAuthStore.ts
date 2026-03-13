@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { auth, db } from "../lib/firebase";
-import { onAuthStateChanged, signOut as firebaseSignOut, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseSignOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 // Define types for roles
@@ -14,23 +14,28 @@ export interface UserProfile {
   companyId?: string;
 }
 
+const MAGIC_LINK_EMAIL_KEY = 'spi_magic_link_email';
+
+const actionCodeSettings = {
+  url: window.location.origin,
+  handleCodeInApp: true,
+};
+
 interface AuthState {
   user: UserProfile | null;
   loading: boolean;
   initialized: boolean;
-  isSigningUp: boolean;
   setUser: (user: UserProfile | null) => void;
   initializeAuthListener: () => () => void;
   logout: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string, companyName: string, companyId?: string) => Promise<void>;
+  sendMagicLink: (email: string) => Promise<void>;
+  completeMagicLinkSignIn: () => Promise<boolean>;
 }
 
 const useAuthStore = create<AuthState>((set) => ({
   user: null,
   loading: true,
   initialized: false,
-  isSigningUp: false,
 
   setUser: (user) => set({ user, loading: false }),
 
@@ -39,7 +44,6 @@ const useAuthStore = create<AuthState>((set) => ({
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          // Fetch additional user role from Firestore
           const docRef = doc(db, "users", firebaseUser.uid);
           const docSnap = await getDoc(docRef);
 
@@ -57,42 +61,24 @@ const useAuthStore = create<AuthState>((set) => ({
               initialized: true,
             });
           } else {
-            // Check if we are in the middle of a signUp
-            const { isSigningUp } = useAuthStore.getState();
-            
-            if (isSigningUp) {
-              // Waiting for signUp function to finish its work
-              return;
-            }
-
-            // Auto-heal: Create Firestore document for existing Auth user
+            // Auto-heal: new magic-link user with no Firestore doc yet
             const guestDoc = {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuario',
-                role: "guest",
-                companyId: "",
-                createdAt: new Date().toISOString()
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.email?.split('@')[0] || 'Usuario',
+              role: "guest" as UserRole,
+              companyId: "",
+              createdAt: new Date().toISOString(),
             };
-            
             try {
-                await setDoc(docRef, guestDoc);
+              await setDoc(docRef, guestDoc);
             } catch (e) {
-                console.warn("No se pudo auto-reparar el perfil de usuario:", e);
+              console.warn("No se pudo crear el perfil de usuario:", e);
             }
-
-            // Fallback if user document doesn't exist
-            set({
-              user: guestDoc as any,
-              loading: false,
-              initialized: true,
-            });
+            set({ user: guestDoc, loading: false, initialized: true });
           }
         } catch (error: any) {
-          // If it's a permission error, it's likely the doc hasn't been created/rules not deployed
-          // We still set a minimal guest user to avoid blocking the UI if they just signed up
-          console.warn("Aviso: No se pudo obtener el perfil de Firestore (posible falta de permisos o documento inexistente):", error.message);
-          
+          console.warn("Aviso: No se pudo obtener el perfil de Firestore:", error.message);
           set({
             user: {
               uid: firebaseUser.uid,
@@ -117,55 +103,33 @@ const useAuthStore = create<AuthState>((set) => ({
     set({ user: null });
   },
 
-  signIn: async (email: string, password: string) => {
+  sendMagicLink: async (email: string) => {
+    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+    localStorage.setItem(MAGIC_LINK_EMAIL_KEY, email);
+  },
+
+  completeMagicLinkSignIn: async () => {
+    if (!isSignInWithEmailLink(auth, window.location.href)) return false;
+
+    let email = localStorage.getItem(MAGIC_LINK_EMAIL_KEY);
+    if (!email) {
+      // Fallback: ask the user (different browser/device scenario)
+      email = window.prompt('Por favor, confirma tu correo electrónico para completar el acceso:');
+    }
+    if (!email) return false;
+
     set({ loading: true });
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      // The onAuthStateChanged listener will handle setting the user
+      await signInWithEmailLink(auth, email, window.location.href);
+      localStorage.removeItem(MAGIC_LINK_EMAIL_KEY);
+      // Clean the URL so refreshing doesn't re-trigger the link
+      window.history.replaceState(null, '', window.location.pathname);
+      return true;
     } catch (error) {
       set({ loading: false });
       throw error;
     }
   },
-
-  signUp: async (email: string, password: string, displayName: string, companyName: string, companyId?: string) => {
-    set({ loading: true, isSigningUp: true });
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const firebaseUser = userCredential.user;
-
-      // Update profile with displayName
-      await updateProfile(firebaseUser, { displayName });
-
-      // Create Firestore document
-      const userDoc = {
-        uid: firebaseUser.uid,
-        email,
-        displayName,
-        companyId: companyId || companyName,
-        role: 'guest' as UserRole,
-        createdAt: new Date().toISOString()
-      };
-
-      await setDoc(doc(db, 'users', firebaseUser.uid), userDoc);
-      
-      // Update state immediately so the UI transitions
-      set({
-        user: {
-          uid: firebaseUser.uid,
-          email,
-          displayName,
-          role: 'guest',
-          companyId: companyId || companyName
-        },
-        loading: false,
-        isSigningUp: false
-      });
-    } catch (error) {
-      set({ loading: false, isSigningUp: false });
-      throw error;
-    }
-  }
 }));
 
 export default useAuthStore;

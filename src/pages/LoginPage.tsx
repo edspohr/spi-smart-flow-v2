@@ -1,119 +1,64 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
-import useDataStore from '../store/useDataStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, ArrowRight, Loader2, User, Building, Building2 } from 'lucide-react';
+import { Mail, ArrowRight, Loader2, MailCheck, RefreshCw } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 const LoginPage = () => {
-    const { user, signIn, signUp } = useAuthStore();
-    const { companies, subscribeToCompanies } = useDataStore();
+    const { user, sendMagicLink, completeMagicLinkSignIn } = useAuthStore();
     const navigate = useNavigate();
 
-    // Toggle between Login and Register
-    const [isRegistering, setIsRegistering] = useState(false);
-
-    // Form states
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [displayName, setDisplayName] = useState('');
-    const [companyName, setCompanyName] = useState('');
-    const [selectedCompanyId, setSelectedCompanyId] = useState('');
-    const [isNewCompany, setIsNewCompany] = useState(false);
-    const [confirmPassword, setConfirmPassword] = useState('');
-    
+    const [emailSent, setEmailSent] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
+    // Handle magic link callback on page load
     useEffect(() => {
-        if (isRegistering) {
-            const unsubscribe = subscribeToCompanies();
-            return () => unsubscribe();
-        }
-    }, [isRegistering, subscribeToCompanies]);
+        const handleCallback = async () => {
+            try {
+                await completeMagicLinkSignIn();
+            } catch (err: any) {
+                setError('El enlace de acceso es inválido o ha expirado. Solicita uno nuevo.');
+            }
+        };
+        handleCallback();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
+    // Redirect once authenticated
     useEffect(() => {
         if (user && !isLoading) {
             if (user.role === 'spi-admin') navigate('/spi-admin');
             else if (user.role === 'client') navigate('/client');
-            else if (user.role === 'guest') navigate('/guest');
             else navigate('/guest');
         }
     }, [user, navigate, isLoading]);
 
-    const getFirebaseErrorMessage = (code: string): string => {
-        switch (code) {
-            case 'auth/invalid-email':
-                return 'El correo electrónico no es válido.';
-            case 'auth/user-disabled':
-                return 'Esta cuenta ha sido deshabilitada.';
-            case 'auth/user-not-found':
-                return 'No existe una cuenta con este correo electrónico.';
-            case 'auth/wrong-password':
-                return 'La contraseña es incorrecta.';
-            case 'auth/invalid-credential':
-                return 'Credenciales inválidas. Verifica tu correo y contraseña.';
-            case 'auth/too-many-requests':
-                return 'Demasiados intentos fallidos. Intenta más tarde.';
-            case 'auth/email-already-in-use':
-                return 'Este correo electrónico ya está en uso.';
-            case 'auth/weak-password':
-                return 'La contraseña es muy débil (mínimo 6 caracteres).';
-            default:
-                return 'Ocurrió un error. Intenta nuevamente.';
-        }
-    };
-
-    const handleLogin = async (e: React.FormEvent) => {
+    const handleSendLink = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
 
         if (!email.includes('@')) {
-            setError('Ingresa un email válido');
-            return;
-        }
-        if (!password) {
-            setError('Ingresa tu contraseña');
+            setError('Ingresa un correo electrónico válido.');
             return;
         }
 
         setIsLoading(true);
         try {
-            await signIn(email, password);
+            await sendMagicLink(email);
+            setEmailSent(true);
         } catch (err: any) {
-            setError(getFirebaseErrorMessage(err?.code || ''));
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleRegister = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-
-        const finalCompanyName = isNewCompany ? companyName : companies.find(c => c.id === selectedCompanyId)?.name || '';
-        const finalCompanyId = isNewCompany ? undefined : selectedCompanyId;
-
-        if (!displayName || (!isNewCompany && !selectedCompanyId) || (isNewCompany && !companyName) || !email || !password || !confirmPassword) {
-            setError('Todos los campos son obligatorios');
-            return;
-        }
-        if (password !== confirmPassword) {
-            setError('Las contraseñas no coinciden');
-            return;
-        }
-        if (password.length < 6) {
-            setError('La contraseña debe tener al menos 6 caracteres');
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            await signUp(email, password, displayName, finalCompanyName, finalCompanyId);
-        } catch (err: any) {
-            setError(getFirebaseErrorMessage(err?.code || ''));
+            const code = err?.code || '';
+            if (code === 'auth/invalid-email') {
+                setError('El correo electrónico no es válido.');
+            } else if (code === 'auth/too-many-requests') {
+                setError('Demasiados intentos. Intenta más tarde.');
+            } else {
+                setError('No se pudo enviar el enlace. Intenta nuevamente.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -121,9 +66,8 @@ const LoginPage = () => {
 
     return (
         <div className="min-h-screen w-full flex overflow-hidden bg-white">
-            {/* LEFT PANEL: Branding & Visuals (Hidden on mobile) */}
+            {/* LEFT PANEL: Branding */}
             <div className="hidden md:flex md:w-[45%] bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 relative flex-col justify-center items-center p-12 overflow-hidden">
-                {/* Abstract Background Grid */}
                 <div className="absolute inset-0 opacity-10">
                     <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
                         <defs>
@@ -163,167 +107,85 @@ const LoginPage = () => {
             </div>
 
             {/* RIGHT PANEL: Auth Form */}
-            <div className="w-full md:w-[55%] bg-slate-50 flex items-center justify-center p-8 relative overflow-y-auto">
-                <div className="w-full max-w-sm my-8">
+            <div className="w-full md:w-[55%] bg-slate-50 flex items-center justify-center p-8 relative">
+                <div className="w-full max-w-sm">
                     <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 animate-fade-scale shadow-blue-500/5">
-                        <div className="mb-8 text-center sm:text-left">
-                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
-                                {isRegistering ? 'Crea tu cuenta' : 'Bienvenido'}
-                            </h2>
-                            <p className="text-slate-500 text-sm mt-1">
-                                {isRegistering ? 'Completa tus datos para registrarte' : 'Ingresa tus credenciales para acceder al sistema'}
-                            </p>
-                        </div>
 
-                        <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
-                            {isRegistering && (
-                                <>
+                        {!emailSent ? (
+                            <>
+                                <div className="mb-8 text-center sm:text-left">
+                                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Bienvenido</h2>
+                                    <p className="text-slate-500 text-sm mt-1">
+                                        Ingresa tu correo y te enviaremos un enlace de acceso seguro.
+                                    </p>
+                                </div>
+
+                                <form onSubmit={handleSendLink} className="space-y-4">
                                     <div className="space-y-1">
-                                        <Label htmlFor="displayName" className="text-slate-700 font-semibold ml-1">Nombre Completo</Label>
+                                        <Label htmlFor="email" className="text-slate-700 font-semibold ml-1">Correo Electrónico</Label>
                                         <div className="relative">
-                                            <User className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                                            <Input 
-                                                id="displayName" 
-                                                type="text" 
-                                                placeholder="Juan Pérez" 
+                                            <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                placeholder="nombre@empresa.com"
                                                 className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
-                                                value={displayName}
-                                                onChange={(e) => setDisplayName(e.target.value)}
+                                                value={email}
+                                                onChange={(e) => setEmail(e.target.value)}
                                                 required
+                                                autoFocus
                                             />
                                         </div>
                                     </div>
-                                    
-                                    <div className="space-y-1">
-                                        <Label className="text-slate-700 font-semibold ml-1">Empresa</Label>
-                                        {!isNewCompany ? (
-                                            <div className="space-y-2">
-                                                <div className="relative">
-                                                    <Building2 className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                                                    <select
-                                                        className="w-full h-10 pl-10 pr-4 rounded-xl border border-slate-200 bg-white text-sm focus:ring-2 focus:ring-blue-500 outline-none appearance-none font-medium"
-                                                        value={selectedCompanyId}
-                                                        onChange={(e) => setSelectedCompanyId(e.target.value)}
-                                                        required
-                                                    >
-                                                        <option value="" disabled>Selecciona tu empresa...</option>
-                                                        {companies.map(c => (
-                                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setIsNewCompany(true)}
-                                                    className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline ml-1"
-                                                >
-                                                    + Mi empresa no está en la lista
-                                                </button>
-                                            </div>
+
+                                    {error && (
+                                        <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg text-center animate-shake">
+                                            {error}
+                                        </p>
+                                    )}
+
+                                    <Button type="submit" className="w-full btn-primary h-11 mt-4" disabled={isLoading}>
+                                        {isLoading ? (
+                                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando enlace...</>
                                         ) : (
-                                            <div className="space-y-2">
-                                                <div className="relative">
-                                                    <Building className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                                                    <Input 
-                                                        id="companyName" 
-                                                        type="text" 
-                                                        placeholder="Nombre de tu nueva empresa" 
-                                                        className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
-                                                        value={companyName}
-                                                        onChange={(e) => setCompanyName(e.target.value)}
-                                                        required
-                                                    />
-                                                </div>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setIsNewCompany(false)}
-                                                    className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:underline ml-1"
-                                                >
-                                                    ← Volver a la lista
-                                                </button>
-                                            </div>
+                                            <>Enviar enlace de acceso <ArrowRight className="ml-2 h-4 w-4" /></>
                                         )}
-                                    </div>
-                                </>
-                            )}
-
-                            <div className="space-y-1">
-                                <Label htmlFor="email" className="text-slate-700 font-semibold ml-1">Correo Electrónico</Label>
-                                <div className="relative">
-                                    <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                                    <Input 
-                                        id="email" 
-                                        type="email" 
-                                        placeholder="nombre@empresa.com" 
-                                        className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div className="space-y-1">
-                                <Label htmlFor="password" className="text-slate-700 font-semibold ml-1">Contraseña</Label>
-                                <div className="relative">
-                                    <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                                    <Input 
-                                        id="password" 
-                                        type="password" 
-                                        placeholder="••••••••" 
-                                        className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {isRegistering && (
-                                <div className="space-y-1">
-                                    <Label htmlFor="confirmPassword" className="text-slate-700 font-semibold ml-1">Confirmar Contraseña</Label>
-                                    <div className="relative">
-                                        <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                                        <Input 
-                                            id="confirmPassword" 
-                                            type="password" 
-                                            placeholder="••••••••" 
-                                            className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
-                                            value={confirmPassword}
-                                            onChange={(e) => setConfirmPassword(e.target.value)}
-                                            required
-                                        />
+                                    </Button>
+                                </form>
+                            </>
+                        ) : (
+                            <div className="text-center py-4 space-y-5">
+                                <div className="flex justify-center">
+                                    <div className="bg-blue-50 rounded-full p-4">
+                                        <MailCheck className="h-10 w-10 text-blue-600" />
                                     </div>
                                 </div>
-                            )}
-                            
-                            {error && <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg text-center animate-shake">{error}</p>}
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Revisa tu bandeja</h2>
+                                    <p className="text-slate-500 text-sm mt-2 leading-relaxed">
+                                        Enviamos un enlace de acceso a<br />
+                                        <span className="font-semibold text-slate-700">{email}</span>
+                                    </p>
+                                    <p className="text-slate-400 text-xs mt-3">
+                                        El enlace expira en 1 hora. Revisa también tu carpeta de spam.
+                                    </p>
+                                </div>
 
-                            <Button type="submit" className="w-full btn-primary h-11 mt-4" disabled={isLoading}>
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isRegistering ? 'Registrando...' : 'Ingresando...'}
-                                    </>
-                                ) : (
-                                    <>
-                                        {isRegistering ? 'Registrarse' : 'Iniciar Sesión'} <ArrowRight className="ml-2 h-4 w-4" />
-                                    </>
+                                {error && (
+                                    <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg animate-shake">
+                                        {error}
+                                    </p>
                                 )}
-                            </Button>
-                        </form>
 
-                        <div className="mt-6 text-center">
-                            <button 
-                                onClick={() => {
-                                    setIsRegistering(!isRegistering);
-                                    setError('');
-                                }}
-                                className="text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-                            >
-                                {isRegistering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate aquí'}
-                            </button>
-                        </div>
-                        
+                                <button
+                                    onClick={() => { setEmailSent(false); setError(''); }}
+                                    className="flex items-center gap-1.5 mx-auto text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
+                                >
+                                    <RefreshCw className="h-3.5 w-3.5" /> Usar otro correo
+                                </button>
+                            </div>
+                        )}
+
                         <div className="mt-8 text-center">
                             <p className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">
                                 © 2026 SPI Smart Flow · Acceso Seguro

@@ -1,21 +1,26 @@
 import { useEffect, useState } from 'react';
-import useDataStore, { OT } from '../store/useDataStore';
+import useOTStore from '../store/useOTStore';
+import useDocumentStore from '../store/useDocumentStore';
 import useAuthStore from '../store/useAuthStore';
+import type { OT } from '../store/types';
 import { FileText } from 'lucide-react';
 import OTDetailsModal from '@/components/OTDetailsModal';
 import KanbanBoard from '@/components/dashboard/KanbanBoard';
 
 const ClientDashboard = () => {
     const { user } = useAuthStore();
-    const { ots, loading } = useDataStore();
+    const { ots, loading } = useOTStore();
+    const subscribeToClientOTs = useOTStore((s) => s.subscribeToClientOTs);
+    const subscribeToClientDocuments = useDocumentStore((s) => s.subscribeToClientDocuments);
     const [selectedOT, setSelectedOT] = useState<OT | null>(null);
 
     useEffect(() => {
         if (user?.uid) {
-            const unsubscribe = useDataStore.getState().subscribeToClientData(user.uid);
-            return () => unsubscribe();
+            const unsubOTs = subscribeToClientOTs(user.uid);
+            const unsubDocs = subscribeToClientDocuments(user.uid);
+            return () => { unsubOTs(); unsubDocs(); };
         }
-    }, [user]);
+    }, [user, subscribeToClientOTs, subscribeToClientDocuments]);
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
