@@ -3,23 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
-
-// Login states
-type LoginStep = 'email' | 'password';
 
 const LoginPage = () => {
     const { user, signIn } = useAuthStore();
     const navigate = useNavigate();
 
-    const [step, setStep] = useState<LoginStep>('email');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Redirect once authenticated
     useEffect(() => {
         if (user && !isLoading) {
             if (user.role === 'spi-admin') navigate('/spi-admin');
@@ -28,34 +23,16 @@ const LoginPage = () => {
         }
     }, [user, navigate, isLoading]);
 
-    // Step 1 — email submitted: always go to password
-    const handleEmailContinue = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!email.includes('@')) {
-            setError('Ingresa un correo electrónico válido.');
-            return;
-        }
-        setStep('password');
-    };
-
-    // Step 2a — password login (admin)
-    const handlePasswordLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-
-        if (!password) {
-            setError('Ingresa tu contraseña.');
-            return;
-        }
-
         setIsLoading(true);
         try {
             await signIn(email, password);
         } catch (err: any) {
             const code = err?.code || '';
             if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') {
-                setError('Contraseña incorrecta. Verifica tus credenciales.');
+                setError('Correo o contraseña incorrectos.');
             } else if (code === 'auth/user-disabled') {
                 setError('Esta cuenta ha sido deshabilitada.');
             } else if (code === 'auth/too-many-requests') {
@@ -66,12 +43,6 @@ const LoginPage = () => {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const resetToEmail = () => {
-        setStep('email');
-        setPassword('');
-        setError('');
     };
 
     return (
@@ -114,99 +85,62 @@ const LoginPage = () => {
             </div>
 
             {/* RIGHT PANEL */}
-            <div className="w-full md:w-[55%] bg-slate-50 flex items-center justify-center p-8 relative">
+            <div className="w-full md:w-[55%] bg-slate-50 flex items-center justify-center p-8">
                 <div className="w-full max-w-sm">
                     <div className="bg-white rounded-2xl shadow-xl border border-slate-100 p-8 animate-fade-scale shadow-blue-500/5">
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Iniciar Sesión</h2>
+                            <p className="text-slate-500 text-sm mt-1">Ingresa tus credenciales para acceder.</p>
+                        </div>
 
-                        {/* ── STEP 1: Email ─────────────────────────────── */}
-                        {step === 'email' && (
-                            <>
-                                <div className="mb-8 text-center sm:text-left">
-                                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Bienvenido</h2>
-                                    <p className="text-slate-500 text-sm mt-1">
-                                        Ingresa tu correo electrónico para continuar.
-                                    </p>
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <div className="space-y-1">
+                                <Label htmlFor="email" className="text-slate-700 font-semibold ml-1">Correo Electrónico</Label>
+                                <div className="relative">
+                                    <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        placeholder="nombre@empresa.com"
+                                        className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                        autoFocus
+                                    />
                                 </div>
-                                <form onSubmit={handleEmailContinue} className="space-y-4">
-                                    <div className="space-y-1">
-                                        <Label htmlFor="email" className="text-slate-700 font-semibold ml-1">Correo Electrónico</Label>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                                            <Input
-                                                id="email"
-                                                type="email"
-                                                placeholder="nombre@empresa.com"
-                                                className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
-                                                value={email}
-                                                onChange={(e) => setEmail(e.target.value)}
-                                                required
-                                                autoFocus
-                                            />
-                                        </div>
-                                    </div>
-                                    {error && (
-                                        <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg text-center animate-shake">
-                                            {error}
-                                        </p>
-                                    )}
-                                    <Button type="submit" className="w-full btn-primary h-11 mt-4" disabled={isLoading}>
-                                        {isLoading ? (
-                                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando...</>
-                                        ) : (
-                                            <>Continuar <ArrowRight className="ml-2 h-4 w-4" /></>
-                                        )}
-                                    </Button>
-                                </form>
-                            </>
-                        )}
+                            </div>
 
-                        {/* ── STEP 2: Password ──────────────────── */}
-                        {step === 'password' && (
-                            <>
-                                <div className="mb-8">
-                                    <button
-                                        onClick={resetToEmail}
-                                        className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-slate-600 transition-colors mb-5"
-                                    >
-                                        <ArrowLeft className="h-3.5 w-3.5" /> Cambiar correo
-                                    </button>
-                                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Ingresa tu contraseña</h2>
-                                    <p className="text-slate-500 text-sm mt-1">
-                                        <span className="font-medium text-slate-700">{email}</span>
-                                    </p>
+                            <div className="space-y-1">
+                                <Label htmlFor="password" className="text-slate-700 font-semibold ml-1">Contraseña</Label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
+                                    <Input
+                                        id="password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        required
+                                    />
                                 </div>
-                                <form onSubmit={handlePasswordLogin} className="space-y-4">
-                                    <div className="space-y-1">
-                                        <Label htmlFor="password" className="text-slate-700 font-semibold ml-1">Contraseña</Label>
-                                        <div className="relative">
-                                            <Lock className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
-                                            <Input
-                                                id="password"
-                                                type="password"
-                                                placeholder="••••••••"
-                                                className="h-10 pl-10 rounded-xl border-slate-200 bg-white"
-                                                value={password}
-                                                onChange={(e) => setPassword(e.target.value)}
-                                                required
-                                                autoFocus
-                                            />
-                                        </div>
-                                    </div>
-                                    {error && (
-                                        <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg text-center animate-shake">
-                                            {error}
-                                        </p>
-                                    )}
-                                    <Button type="submit" className="w-full btn-primary h-11 mt-4" disabled={isLoading}>
-                                        {isLoading ? (
-                                            <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Ingresando...</>
-                                        ) : (
-                                            <>Iniciar Sesión <ArrowRight className="ml-2 h-4 w-4" /></>
-                                        )}
-                                    </Button>
-                                </form>
-                            </>
-                        )}
+                            </div>
+
+                            {error && (
+                                <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg text-center animate-shake">
+                                    {error}
+                                </p>
+                            )}
+
+                            <Button type="submit" className="w-full btn-primary h-11 mt-2" disabled={isLoading}>
+                                {isLoading ? (
+                                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Ingresando...</>
+                                ) : (
+                                    <>Iniciar Sesión <ArrowRight className="ml-2 h-4 w-4" /></>
+                                )}
+                            </Button>
+                        </form>
 
                         <div className="mt-8 text-center">
                             <p className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">
