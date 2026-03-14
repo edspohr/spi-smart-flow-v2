@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { auth, db } from "../lib/firebase";
-import { onAuthStateChanged, signOut as firebaseSignOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseSignOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 // Define types for roles
@@ -21,6 +21,14 @@ const actionCodeSettings = {
   handleCodeInApp: true,
 };
 
+// Domains whose users authenticate with email + password (SPI internal team)
+export const ADMIN_DOMAINS = ['spohr.cl', 'spiamericas.com'];
+
+export function isAdminEmail(email: string): boolean {
+  const domain = email.split('@')[1]?.toLowerCase() ?? '';
+  return ADMIN_DOMAINS.includes(domain);
+}
+
 interface AuthState {
   user: UserProfile | null;
   loading: boolean;
@@ -28,6 +36,7 @@ interface AuthState {
   setUser: (user: UserProfile | null) => void;
   initializeAuthListener: () => () => void;
   logout: () => Promise<void>;
+  signIn: (email: string, password: string) => Promise<void>;
   sendMagicLink: (email: string) => Promise<void>;
   completeMagicLinkSignIn: () => Promise<boolean>;
 }
@@ -101,6 +110,17 @@ const useAuthStore = create<AuthState>((set) => ({
   logout: async () => {
     await firebaseSignOut(auth);
     set({ user: null });
+  },
+
+  signIn: async (email: string, password: string) => {
+    set({ loading: true });
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      // onAuthStateChanged handles the rest
+    } catch (error) {
+      set({ loading: false });
+      throw error;
+    }
   },
 
   sendMagicLink: async (email: string) => {
