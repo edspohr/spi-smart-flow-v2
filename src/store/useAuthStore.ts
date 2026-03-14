@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { auth, db } from "../lib/firebase";
-import { onAuthStateChanged, signOut as firebaseSignOut, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, signInWithEmailAndPassword } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseSignOut, signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 // Define types for roles
@@ -14,20 +14,6 @@ export interface UserProfile {
   companyId?: string;
 }
 
-const MAGIC_LINK_EMAIL_KEY = 'spi_magic_link_email';
-
-const actionCodeSettings = {
-  url: window.location.origin,
-  handleCodeInApp: true,
-};
-
-// Domains whose users authenticate with email + password (SPI internal team)
-export const ADMIN_DOMAINS = ['spohr.cl', 'spiamericas.com'];
-
-export function isAdminEmail(email: string): boolean {
-  const domain = email.split('@')[1]?.toLowerCase() ?? '';
-  return ADMIN_DOMAINS.includes(domain);
-}
 
 interface AuthState {
   user: UserProfile | null;
@@ -37,8 +23,6 @@ interface AuthState {
   initializeAuthListener: () => () => void;
   logout: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  sendMagicLink: (email: string) => Promise<void>;
-  completeMagicLinkSignIn: () => Promise<boolean>;
 }
 
 const useAuthStore = create<AuthState>((set) => ({
@@ -123,33 +107,6 @@ const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  sendMagicLink: async (email: string) => {
-    await sendSignInLinkToEmail(auth, email, actionCodeSettings);
-    localStorage.setItem(MAGIC_LINK_EMAIL_KEY, email);
-  },
-
-  completeMagicLinkSignIn: async () => {
-    if (!isSignInWithEmailLink(auth, window.location.href)) return false;
-
-    let email = localStorage.getItem(MAGIC_LINK_EMAIL_KEY);
-    if (!email) {
-      // Fallback: ask the user (different browser/device scenario)
-      email = window.prompt('Por favor, confirma tu correo electrónico para completar el acceso:');
-    }
-    if (!email) return false;
-
-    set({ loading: true });
-    try {
-      await signInWithEmailLink(auth, email, window.location.href);
-      localStorage.removeItem(MAGIC_LINK_EMAIL_KEY);
-      // Clean the URL so refreshing doesn't re-trigger the link
-      window.history.replaceState(null, '', window.location.pathname);
-      return true;
-    } catch (error) {
-      set({ loading: false });
-      throw error;
-    }
-  },
 }));
 
 export default useAuthStore;

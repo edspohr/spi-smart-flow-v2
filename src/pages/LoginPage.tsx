@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useAuthStore, { isAdminEmail } from '../store/useAuthStore';
+import useAuthStore from '../store/useAuthStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, ArrowRight, ArrowLeft, Loader2, MailCheck, RefreshCw } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 // Login states
-type LoginStep = 'email' | 'password' | 'magic_sent';
+type LoginStep = 'email' | 'password';
 
 const LoginPage = () => {
-    const { user, signIn, sendMagicLink, completeMagicLinkSignIn } = useAuthStore();
+    const { user, signIn } = useAuthStore();
     const navigate = useNavigate();
 
     const [step, setStep] = useState<LoginStep>('email');
@@ -18,20 +18,6 @@ const LoginPage = () => {
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-
-    // Handle magic link callback on page load
-    useEffect(() => {
-        const handleCallback = async () => {
-            try {
-                await completeMagicLinkSignIn();
-            } catch {
-                setError('El enlace de acceso es inválido o ha expirado. Solicita uno nuevo.');
-                setStep('email');
-            }
-        };
-        handleCallback();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
 
     // Redirect once authenticated
     useEffect(() => {
@@ -42,32 +28,15 @@ const LoginPage = () => {
         }
     }, [user, navigate, isLoading]);
 
-    // Step 1 — email submitted: route to password or magic link
-    const handleEmailContinue = async (e: React.FormEvent) => {
+    // Step 1 — email submitted: always go to password
+    const handleEmailContinue = (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-
         if (!email.includes('@')) {
             setError('Ingresa un correo electrónico válido.');
             return;
         }
-
-        if (isAdminEmail(email)) {
-            setStep('password');
-        } else {
-            setIsLoading(true);
-            try {
-                await sendMagicLink(email);
-                setStep('magic_sent');
-            } catch (err: any) {
-                const code = err?.code || '';
-                if (code === 'auth/invalid-email') setError('El correo electrónico no es válido.');
-                else if (code === 'auth/too-many-requests') setError('Demasiados intentos. Intenta más tarde.');
-                else setError('No se pudo enviar el enlace. Intenta nuevamente.');
-            } finally {
-                setIsLoading(false);
-            }
-        }
+        setStep('password');
     };
 
     // Step 2a — password login (admin)
@@ -191,7 +160,7 @@ const LoginPage = () => {
                             </>
                         )}
 
-                        {/* ── STEP 2a: Password (admin) ──────────────────── */}
+                        {/* ── STEP 2: Password ──────────────────── */}
                         {step === 'password' && (
                             <>
                                 <div className="mb-8">
@@ -201,9 +170,9 @@ const LoginPage = () => {
                                     >
                                         <ArrowLeft className="h-3.5 w-3.5" /> Cambiar correo
                                     </button>
-                                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Acceso interno</h2>
+                                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Ingresa tu contraseña</h2>
                                     <p className="text-slate-500 text-sm mt-1">
-                                        Equipo SPI · <span className="font-medium text-slate-700">{email}</span>
+                                        <span className="font-medium text-slate-700">{email}</span>
                                     </p>
                                 </div>
                                 <form onSubmit={handlePasswordLogin} className="space-y-4">
@@ -237,38 +206,6 @@ const LoginPage = () => {
                                     </Button>
                                 </form>
                             </>
-                        )}
-
-                        {/* ── STEP 2b: Magic link sent (client) ─────────── */}
-                        {step === 'magic_sent' && (
-                            <div className="text-center py-4 space-y-5">
-                                <div className="flex justify-center">
-                                    <div className="bg-blue-50 rounded-full p-4">
-                                        <MailCheck className="h-10 w-10 text-blue-600" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Revisa tu bandeja</h2>
-                                    <p className="text-slate-500 text-sm mt-2 leading-relaxed">
-                                        Enviamos un enlace de acceso a<br />
-                                        <span className="font-semibold text-slate-700">{email}</span>
-                                    </p>
-                                    <p className="text-slate-400 text-xs mt-3">
-                                        El enlace expira en 1 hora. Revisa también tu carpeta de spam.
-                                    </p>
-                                </div>
-                                {error && (
-                                    <p className="text-sm text-red-600 font-medium bg-red-50 p-2 rounded-lg animate-shake">
-                                        {error}
-                                    </p>
-                                )}
-                                <button
-                                    onClick={resetToEmail}
-                                    className="flex items-center gap-1.5 mx-auto text-sm font-semibold text-blue-600 hover:text-blue-700 transition-colors"
-                                >
-                                    <RefreshCw className="h-3.5 w-3.5" /> Usar otro correo
-                                </button>
-                            </div>
                         )}
 
                         <div className="mt-8 text-center">

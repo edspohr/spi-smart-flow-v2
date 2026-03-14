@@ -45,13 +45,10 @@ No test suite is configured.
 - **Path alias:** `@` → `./src`
 
 ### Authentication
-Passwordless magic-link flow via Firebase `sendSignInLinkToEmail` / `signInWithEmailLink`. No passwords. Registration is admin-only (via Firebase Console).
+Email + password for all users via `signInWithEmailAndPassword`. Registration is admin-only (via Firebase Console — create user, set password, then set their role + companyId in Firestore `users` collection).
 
-- `sendMagicLink(email)` stores the email in `localStorage` under `spi_magic_link_email` and sends the link
-- `completeMagicLinkSignIn()` is called on every page load to handle the callback URL
-- New users without a Firestore document are auto-healed to a `guest` role profile on first sign-in
-
-**Requires:** Email link provider enabled in Firebase Console → Authentication → Sign-in method.
+- New users without a Firestore document are auto-healed to a `guest` role on first sign-in
+- Magic link is disabled (was unreliable); can be re-enabled later via `useAuthStore` if needed
 
 ### User Roles & Routing
 Three roles defined in `src/AppRouter.tsx`:
