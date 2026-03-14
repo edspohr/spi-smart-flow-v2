@@ -1,212 +1,210 @@
-import { useEffect, useState } from 'react';
-import useDataStore, { OT } from '../store/useDataStore';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { useEffect, useState } from "react";
+import useOTStore from "../store/useOTStore";
+import useDocumentStore from "../store/useDocumentStore";
+import useAuthStore from "../store/useAuthStore";
 import { 
-    Search,
-    ShieldCheck, 
-    ListFilter
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { useNavigate } from 'react-router-dom';
-import OTDetailsModal from '@/components/OTDetailsModal';
-import KanbanBoard from '@/components/dashboard/KanbanBoard';
-
-const STAGE_CONFIG: Record<string, { label: string; badge: string }> = {
-    solicitud: { label: 'Solicitud', badge: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-    pago_adelanto: { label: 'Pago Inicial', badge: 'bg-sky-500/10 text-sky-400 border-sky-500/20' },
-    gestion: { label: 'En Gestión', badge: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' },
-    pago_cierre: { label: 'Pago Final', badge: 'bg-purple-500/10 text-purple-400 border-purple-500/20' },
-    finalizado: { label: 'Finalizado', badge: 'bg-slate-800 text-slate-300 border-slate-700' }
-};
-
-const AREA_CONFIG: Record<string, { badge: string; color: string; fill: string }> = {
-    PI: { badge: 'bg-blue-500/10 text-blue-400 border-blue-500/20', color: 'bg-blue-900/40 text-blue-400 border border-blue-500/30', fill: '#3b82f6' },
-    AR: { badge: 'bg-amber-500/10 text-amber-500 border-amber-500/20', color: 'bg-amber-900/40 text-amber-500 border border-amber-500/30', fill: '#f59e0b' }
-};
+  Search, 
+  LayoutGrid, 
+  List, 
+  FileText,
+  AlertCircle,
+  ExternalLink,
+  Filter
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { KanbanBoard } from "@/components/dashboard/KanbanBoard";
+import { OTStatusBadge } from "@/components/OTStatusBadge";
+import OTDetailsModal from "@/components/OTDetailsModal";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 const SPIAdminDashboard = () => {
-    const navigate = useNavigate();
-    const { ots, subscribeToAllOTs } = useDataStore(); 
-    const [selectedOT, setSelectedOT] = useState<OT | null>(null);
-    const [activeTab, setActiveTab] = useState("kanban");
-    const [searchTerm, setSearchTerm] = useState("");
-    const [filterCompany, setFilterCompany] = useState("all");
-    
-    useEffect(() => {
-        const unsubscribe = subscribeToAllOTs();
-        return () => unsubscribe();
-    }, [subscribeToAllOTs]);
+  const { user } = useAuthStore();
+  const { ots, subscribeToAllOTs } = useOTStore();
+  const { documents, subscribeToAllVaultDocuments } = useDocumentStore();
+  
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedOT, setSelectedOT] = useState<any | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const getDeadlineBadge = (deadline: string) => {
-        const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-        if (days < 2) return <Badge className="bg-rose-500/10 text-rose-400 border-rose-500/20 rounded-lg text-[10px] font-black uppercase tracking-tighter">Vence Hoy</Badge>;
-        if (days < 5) return <Badge className="bg-amber-500/10 text-amber-400 border-amber-500/20 rounded-lg text-[10px] font-black uppercase tracking-tighter">{days}d faltan</Badge>;
-        return <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20 rounded-lg text-[10px] font-black uppercase tracking-tighter">A tiempo</Badge>;
+  useEffect(() => {
+    const unsubOTs = subscribeToAllOTs();
+    const unsubDocs = subscribeToAllVaultDocuments();
+    return () => {
+      unsubOTs();
+      unsubDocs();
     };
+  }, [subscribeToAllOTs, subscribeToAllVaultDocuments]);
 
-    const companies = Array.from(new Set(ots.map(ot => ot.companyId))).filter(Boolean);
+  const filteredOTs = ots.filter(ot => 
+    ot.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ot.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ot.companyId?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-    const filteredOTs = ots.filter(ot => {
-        const matchesSearch = ot.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                             ot.companyId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             ot.id.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesCompany = filterCompany === "all" || ot.companyId === filterCompany;
-        return matchesSearch && matchesCompany;
-    });
+  const pendingDocs = documents.filter(d => 
+    d.status === 'uploaded' || d.status === 'validating_ai' || d.status === 'rejected'
+  );
 
-    return (
-        <div className="space-y-6 p-6 max-w-[1800px] mx-auto animate-fade-in h-[calc(100vh-2rem)] flex flex-col">
-            {/* Header */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 shrink-0">
-                <div>
-                    <h1 className="text-3xl font-black text-slate-50 tracking-tight flex items-center gap-3">
-                        Torre de Control <ShieldCheck className="text-blue-500 h-7 w-7" />
-                    </h1>
-                    <p className="text-slate-400 text-sm font-medium">Gestión unificada de operaciones de Propiedad Intelectual.</p>
-                </div>
-                <div className="flex gap-3">
-                     <Button 
-                        onClick={() => navigate('/spi-admin/nueva-solicitud')}
-                        className="btn-primary rounded-xl h-10 px-4 shadow-lg shadow-blue-900/40 font-bold transition-all border border-blue-500/50"
-                     >
-                        Nueva Operación
-                     </Button>
-                </div>
-            </div>
+  const openOTDetails = (ot: any) => {
+    setSelectedOT(ot);
+    setIsModalOpen(true);
+  };
 
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 space-y-4">
-                <div className="flex justify-between items-center shrink-0">
-                    <TabsList className="bg-slate-900/80 p-1 rounded-xl w-fit border border-slate-800">
-                        <TabsTrigger value="kanban" className="rounded-lg px-6 py-2 font-black data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400 text-xs uppercase tracking-widest transition-all">
-                            Kanban Global
-                        </TabsTrigger>
-                        <TabsTrigger value="solicitudes" className="rounded-lg px-6 py-2 font-black data-[state=active]:bg-slate-800 data-[state=active]:text-white text-slate-400 text-xs uppercase tracking-widest transition-all">
-                            Lista Maestra
-                        </TabsTrigger>
-                    </TabsList>
+  if (!user) return null;
 
-                    <div className="flex gap-3 items-center">
-                            <div className="relative w-64">
-                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                                <input 
-                                    type="text" 
-                                    placeholder="Buscar..." 
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-800/50 border border-slate-700 rounded-xl focus:ring-1 focus:ring-blue-500 transition-all font-semibold text-xs placeholder:text-slate-500 text-slate-200"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                />
-                            </div>
-                            <div className="relative">
-                                <ListFilter className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
-                                <select 
-                                    className="pl-9 pr-8 py-2 bg-slate-800/50 border border-slate-700 rounded-xl focus:ring-1 focus:ring-blue-500 transition-all font-bold text-xs text-slate-300 appearance-none min-w-[140px]"
-                                    value={filterCompany}
-                                    onChange={(e) => setFilterCompany(e.target.value)}
-                                >
-                                    <option value="all">Todas las Empresas</option>
-                                    {companies.map(c => (
-                                        <option key={c} value={c}>{c}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                </div>
-
-                <TabsContent value="kanban" className="flex-1 min-h-0 m-0 outline-none">
-                    <div className="h-full bg-slate-900/30 border border-slate-800 rounded-[2rem] overflow-hidden flex flex-col">
-                        <div className="flex-1 overflow-auto p-4">
-                            <KanbanBoard userOts={filteredOTs} onSelectOt={setSelectedOT} />
-                        </div>
-                    </div>
-                </TabsContent>
-
-                <TabsContent value="solicitudes" className="flex-1 min-h-0 m-0 outline-none">
-                    <Card className="h-full rounded-[2rem] bg-slate-900/30 border-slate-800 shadow-2xl overflow-hidden flex flex-col">
-                         <div className="flex-1 overflow-auto">
-                            <table className="w-full border-collapse">
-                                 <thead className="bg-slate-900/60 sticky top-0 z-10 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-slate-800">
-                                    <tr>
-                                        <th className="px-8 py-5 text-left">Referencia</th>
-                                        <th className="px-8 py-5 text-left">Empresa</th>
-                                        <th className="px-8 py-5 text-left">Etapa</th>
-                                        <th className="px-8 py-5 text-center">Deadline</th>
-                                        <th className="px-8 py-5 text-right">Detalles</th>
-                                    </tr>
-                                </thead>
-                                 <tbody className="divide-y divide-slate-800/40">
-                                     {filteredOTs.map((ot, idx) => {
-                                        const areaKey = ot.area || 'PI';
-                                        const areaCfg = AREA_CONFIG[areaKey];
-
-                                        return (
-                                        <tr key={ot.id} className={cn(
-                                          "group transition-all hover:bg-slate-800/40 cursor-pointer",
-                                          idx % 2 === 0 ? "bg-slate-900/10" : "bg-transparent"
-                                        )}
-                                        onClick={() => setSelectedOT(ot)}
-                                        >
-                                             <td className="px-8 py-5">
-                                                 <div className="flex items-center gap-4">
-                                                   <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm", areaCfg.color)}>
-                                                      {areaKey}
-                                                   </div>
-                                                   <div>
-                                                      <span className="font-black text-slate-100 block group-hover:text-blue-400 transition-colors tracking-tight text-sm">
-                                                        {ot.title}
-                                                      </span>
-                                                      <span className="text-[10px] font-mono font-bold text-slate-600 uppercase">
-                                                          OT-{ot.id.split('-')[1] || ot.id}
-                                                      </span>
-                                                   </div>
-                                                 </div>
-                                             </td>
-                                             <td className="px-8 py-5">
-                                                 <div className="flex items-center gap-3">
-                                                    <Avatar className="h-7 w-7 rounded-lg border border-slate-700">
-                                                       <AvatarFallback className="bg-slate-800 text-slate-400 text-[10px] font-black">{ot.companyId?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                                                    </Avatar>
-                                                    <span className="font-bold text-slate-300 text-sm">{ot.companyId}</span>
-                                                 </div>
-                                             </td>
-                                             <td className="px-8 py-5">
-                                                 <Badge className={cn("px-3 py-1 shadow-none rounded-lg text-[10px] font-black tracking-widest uppercase border", STAGE_CONFIG[ot.stage].badge)}>
-                                                     {STAGE_CONFIG[ot.stage].label}
-                                                 </Badge>
-                                             </td>
-                                             <td className="px-8 py-5 text-center">
-                                                 {getDeadlineBadge(ot.deadline)}
-                                             </td>
-                                             <td className="px-8 py-5 text-right">
-                                                 <Button 
-                                                    variant="ghost" 
-                                                    size="sm"
-                                                    className="rounded-lg hover:bg-blue-600/20 hover:text-blue-400 transition-all font-bold text-slate-400"
-                                                >
-                                                     Ver
-                                                 </Button>
-                                             </td>
-                                         </tr>
-                                     )})}
-                                 </tbody>
-                            </table>
-                         </div>
-                    </Card>
-                </TabsContent>
-            </Tabs>
-
-            {selectedOT && (
-                <OTDetailsModal 
-                    open={!!selectedOT}
-                    onOpenChange={(open) => !open && setSelectedOT(null)}
-                    ot={selectedOT}
-                />
-            )}
+  return (
+    <div className="space-y-8 animate-fade-in pb-10">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div>
+          <h1 className="text-4xl font-black text-white tracking-tight">Torre de Control SPI</h1>
+          <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.3em] mt-2">Visión Global de Operaciones</p>
         </div>
-    );
+        
+        <div className="flex items-center gap-4 w-full md:w-auto">
+          <div className="relative flex-1 md:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+            <Input 
+              placeholder="Buscar por Marca, OT o Empresa..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-12 h-12 bg-slate-900/50 border-slate-800 text-white rounded-2xl focus:ring-blue-500 transition-all font-bold"
+            />
+          </div>
+          <Button variant="outline" className="h-12 w-12 rounded-2xl border-slate-800 bg-slate-900/50 p-0 hover:bg-slate-800">
+            <Filter className="h-4 w-4 text-slate-400" />
+          </Button>
+        </div>
+      </div>
+
+      <Tabs defaultValue="kanban" className="w-full">
+        <div className="flex justify-between items-center mb-6">
+          <TabsList className="bg-slate-900/50 p-1 rounded-2xl border border-slate-800">
+            <TabsTrigger value="kanban" className="rounded-xl px-6 py-2 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <LayoutGrid className="w-4 h-4 mr-2" /> Kanban
+            </TabsTrigger>
+            <TabsTrigger value="list" className="rounded-xl px-6 py-2 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+              <List className="w-4 h-4 mr-2" /> Listado
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="rounded-xl px-6 py-2 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-rose-600 data-[state=active]:text-white">
+              <AlertCircle className="w-4 h-4 mr-2" /> Revisión ({pendingDocs.length})
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="kanban" className="mt-0 outline-none">
+          <KanbanBoard ots={filteredOTs} onOTClick={openOTDetails} />
+        </TabsContent>
+
+        <TabsContent value="list" className="mt-0 outline-none">
+          <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-sm">
+            <ScrollArea className="h-[65vh]">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-slate-900/80 backdrop-blur-md z-10 border-b border-slate-800">
+                  <tr>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Operación (OT)</th>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Empresa</th>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 text-center">Etapa Actual</th>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Último Cambio</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/50">
+                  {filteredOTs.map((ot) => (
+                    <tr 
+                      key={ot.id} 
+                      onClick={() => openOTDetails(ot)}
+                      className="group hover:bg-blue-600/5 transition-colors cursor-pointer"
+                    >
+                      <td className="p-6">
+                        <div className="flex flex-col">
+                          <span className="font-black text-white group-hover:text-blue-400 transition-colors uppercase tracking-tight">{ot.title || ot.brandName}</span>
+                          <span className="text-[10px] font-bold text-slate-600 font-mono mt-1">ID: {ot.id.substring(0, 10)}</span>
+                        </div>
+                      </td>
+                      <td className="p-6">
+                        <Badge variant="outline" className="bg-slate-800/50 text-slate-400 border-slate-700 font-black text-[9px] px-3 py-1">
+                          {ot.companyId}
+                        </Badge>
+                      </td>
+                      <td className="p-6 text-center">
+                        <OTStatusBadge stage={ot.stage} dark />
+                      </td>
+                      <td className="p-6">
+                        <span className="text-xs font-bold text-slate-500">
+                          {ot.updatedAt ? format(new Date(ot.updatedAt), "d MMM, HH:mm", { locale: es }) : '—'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollArea>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="pending" className="mt-0 outline-none">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {pendingDocs.map((doc) => (
+              <div key={doc.id} className="bg-slate-900/40 border border-slate-800 p-6 rounded-[2rem] group hover:border-rose-500/30 transition-all flex flex-col justify-between h-48">
+                <div className="flex justify-between items-start">
+                  <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-500 flex items-center justify-center border border-rose-500/20">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <Badge className={cn(
+                    "px-3 py-0.5 text-[8px] font-black uppercase tracking-widest",
+                    doc.status === 'rejected' ? "bg-rose-500/20 text-rose-500" : "bg-blue-500/20 text-blue-500"
+                  )}>
+                    {doc.status}
+                  </Badge>
+                </div>
+                
+                <div>
+                  <h4 className="font-black text-slate-200 uppercase tracking-tight line-clamp-1">{doc.name}</h4>
+                  <p className="text-[10px] font-bold text-slate-500 mt-1 uppercase tracking-widest">{doc.otId}</p>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                   <button 
+                      onClick={() => window.open(doc.url, '_blank')}
+                      className="text-[10px] font-black text-blue-500 uppercase flex items-center gap-1 hover:text-blue-400 transition-colors"
+                   >
+                     Ver Documento <ExternalLink className="w-3 h-3" />
+                   </button>
+                   <Button 
+                      size="sm" 
+                      onClick={() => openOTDetails(ots.find(o => o.id === doc.otId))}
+                      className="bg-slate-800 hover:bg-slate-700 text-white font-black text-[9px] uppercase tracking-widest px-4 h-8 rounded-lg"
+                   >
+                      Revisar OT
+                   </Button>
+                </div>
+              </div>
+            ))}
+            {pendingDocs.length === 0 && (
+              <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-[3rem]">
+                 <Check className="h-12 w-12 text-blue-500/20 mx-auto mb-4" />
+                 <p className="text-slate-500 font-bold uppercase tracking-widest">No hay documentos pendientes</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      {selectedOT && (
+        <OTDetailsModal 
+          ot={selectedOT}
+          open={isModalOpen}
+          onOpenChange={setIsModalOpen}
+        />
+      )}
+    </div>
+  );
 };
 
 export default SPIAdminDashboard;

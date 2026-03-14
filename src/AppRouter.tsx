@@ -9,6 +9,7 @@ import GuestDashboard from './pages/GuestDashboard';
 import SPIAdminDashboard from './pages/SPIAdminDashboard';
 import SPIVault from './pages/SPIVault';
 import CompaniesPage from './pages/CompaniesPage';
+import PICompletionPage from './pages/PICompletionPage';
 
 export default function AppRouter() {
   return (
@@ -23,6 +24,7 @@ export default function AppRouter() {
             <Route element={<ProtectedRoute allowedRoles={['client']} />}>
                 <Route path="/client" element={<ClientDashboard />} />
                 <Route path="/client/vault" element={<ClientVault />} />
+                <Route path="/client/ot/:otId/completar" element={<PICompletionPage />} />
             </Route>
 
             {/* Guest Route */}

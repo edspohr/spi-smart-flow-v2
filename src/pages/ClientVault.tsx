@@ -1,17 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import useDocumentStore from '../store/useDocumentStore';
 import useAuthStore from '../store/useAuthStore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, Download, Search, HardDrive, Filter, Clock, AlertCircle, FileText, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Download, Search, HardDrive, Clock, AlertCircle, FileText, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge'; 
-import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const ClientVault = () => {
     const { user } = useAuthStore();
     const { vaultDocuments, loading } = useDocumentStore();
     const subscribeToClientDocuments = useDocumentStore((s) => s.subscribeToClientDocuments);
+    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         if (user?.uid) {
@@ -19,6 +21,23 @@ const ClientVault = () => {
             return () => unsubscribe();
         }
     }, [user, subscribeToClientDocuments]);
+
+    const vaultDocs = vaultDocuments.filter(d => 
+        ['poder_legal', 'cedula', 'certificado_constitucion'].includes(d.type)
+    ).filter(d => 
+        d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        d.type.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const getExpiryStatus = (validUntil?: string) => {
+        if (!validUntil) return 'indefinido';
+        const days = Math.ceil(
+            (new Date(validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+        );
+        if (days < 0) return 'vencido';
+        if (days <= 30) return 'proximo';
+        return 'vigente';
+    };
 
     if (loading) {
         return (
@@ -48,13 +67,13 @@ const ClientVault = () => {
                             Bóveda Documental
                         </h1>
                         <p className="text-slate-300 font-semibold mt-3 text-lg leading-relaxed">
-                            Tus documentos validados por nuestra IA, listos para ser reutilizados en nuevas gestiones.
+                            Tus documentos validados, listos para ser reutilizados en nuevas gestiones.
                         </p>
                     </div>
 
                     <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 border border-white/10 flex items-center gap-6">
                         <div className="text-center">
-                            <div className="text-3xl font-black text-white">{vaultDocuments.length}</div>
+                            <div className="text-3xl font-black text-white">{vaultDocs.length}</div>
                             <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Activos</div>
                         </div>
                         <div className="h-8 w-px bg-white/10" />
@@ -71,90 +90,98 @@ const ClientVault = () => {
                   <div className="relative w-full md:w-96 group">
                      <Search className="absolute left-4 top-4 h-4 w-4 text-slate-400 font-bold" />
                      <Input 
-                        placeholder="Buscar por nombre, tipo o fecha..." 
+                        placeholder="Buscar en la bóveda..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
                         className="pl-12 pr-4 py-6 bg-white border-slate-100 rounded-2xl shadow-sm focus:ring-4 focus:ring-blue-50 transition-all font-semibold placeholder:text-slate-400" 
                      />
-                  </div>
-                  <div className="flex gap-3 w-full md:w-auto">
-                    <Button variant="outline" className="flex-1 md:flex-none h-12 rounded-2xl border-slate-100 bg-white font-bold shadow-sm">
-                        <Filter className="h-4 w-4 mr-2" /> Filtros
-                    </Button>
-
                   </div>
              </div>
 
              {/* Documents Grid */}
              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-                {vaultDocuments.map((doc, idx) => {
+                {vaultDocs.map((doc, idx) => {
+                    const status = getExpiryStatus(doc.validUntil);
                     const expiryDate = doc.validUntil ? new Date(doc.validUntil) : null;
-                    const isExpired = expiryDate ? expiryDate < new Date() : false;
-                    const daysToExpiry = expiryDate ? Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
+                    const days = expiryDate ? Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
 
                     return (
-                    <Card 
-                        key={doc.id} 
-                        className="relative rounded-[2rem] border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-blue-200/30 transition-all duration-300 group overflow-hidden bg-white"
-                        style={{ animationDelay: `${idx * 100}ms` }}
-                    >
-                        <CardHeader className="p-6 pb-0">
-                             <div className="flex justify-between items-start">
-                                <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 transition-transform group-hover:scale-110">
-                                    <FileText className="h-7 w-7" />
+                        <Card 
+                            key={doc.id} 
+                            className="relative rounded-[2rem] border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-blue-200/30 transition-all duration-300 group overflow-hidden bg-white"
+                            style={{ animationDelay: `${idx * 100}ms` }}
+                        >
+                            {status === 'vencido' && (
+                                <div className="bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest py-2 px-4 flex items-center gap-2">
+                                    <AlertCircle className="h-3 w-3" />
+                                    Documento vencido — será solicitado en tu próxima operación
                                 </div>
-                                <div className="flex flex-col items-end gap-2">
-                                    <Badge className="bg-emerald-100 text-emerald-700 border-none px-3 py-1 font-black uppercase text-[9px] tracking-widest rounded-lg">
-                                        Validado
-                                    </Badge>
-                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">ID: {doc.id.substring(0, 8)}</span>
+                            )}
+                            {status === 'proximo' && (
+                                <div className="bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest py-2 px-4 flex items-center gap-2">
+                                    <Clock className="h-3 w-3" />
+                                    Este documento vence en {days} días
                                 </div>
-                             </div>
-                             <CardTitle className="mt-6 text-xl font-black text-slate-800 line-clamp-1" title={doc.name}>
-                                {doc.name}
-                             </CardTitle>
-                             <CardDescription className="text-xs font-bold text-blue-600 uppercase tracking-wide">
-                                {doc.type.replace('_', ' ')}
-                             </CardDescription>
-                        </CardHeader>
-                        
-                        <CardContent className="p-6">
-                            <div className="space-y-6">
-                                <div className={cn(
-                                    "p-4 rounded-2xl flex items-center justify-between border transition-colors",
-                                    isExpired ? "bg-rose-50 border-rose-100" : (daysToExpiry && daysToExpiry < 30 ? "bg-amber-50 border-amber-100" : "bg-slate-50 border-slate-100")
-                                )}>
-                                    <div className="flex items-center gap-3">
-                                        {isExpired ? <AlertCircle className="h-5 w-5 text-rose-500" /> : <Clock className="h-5 w-5 text-slate-400" />}
-                                        <div>
-                                            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Expiración</p>
-                                            <p className={cn("text-xs font-bold font-mono tracking-tight", isExpired ? "text-rose-600" : "text-slate-700")}>
-                                                {expiryDate ? expiryDate.toLocaleDateString() : 'INDETERMINADA'}
-                                            </p>
+                            )}
+
+                            <CardHeader className="p-6 pb-0">
+                                <div className="flex justify-between items-start">
+                                    <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 transition-transform group-hover:scale-110">
+                                        <FileText className="h-7 w-7" />
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2">
+                                        {status === 'vigente' && (
+                                            <Badge className="bg-emerald-100 text-emerald-700 border-none px-3 py-1 font-black uppercase text-[9px] tracking-widest rounded-lg">
+                                                Vigente
+                                            </Badge>
+                                        )}
+                                        {status === 'indefinido' && (
+                                            <Badge className="bg-slate-100 text-slate-600 border-none px-3 py-1 font-black uppercase text-[9px] tracking-widest rounded-lg">
+                                                Sin vencimiento
+                                            </Badge>
+                                        )}
+                                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">ID: {doc.id.substring(0, 8)}</span>
+                                    </div>
+                                </div>
+                                <CardTitle className="mt-6 text-xl font-black text-slate-800 line-clamp-1" title={doc.name}>
+                                    {doc.name}
+                                </CardTitle>
+                                <CardDescription className="text-xs font-bold text-blue-600 uppercase tracking-wide">
+                                    {doc.type.replace('_', ' ')}
+                                </CardDescription>
+                            </CardHeader>
+                            
+                            <CardContent className="p-6">
+                                <div className="space-y-6">
+                                    <div className="p-4 rounded-2xl flex items-center justify-between border border-slate-100 bg-slate-50">
+                                        <div className="flex items-center gap-3">
+                                            <Calendar className="h-5 w-5 text-slate-400" />
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Expiración</p>
+                                                <p className="text-xs font-bold text-slate-700">
+                                                    {expiryDate ? format(expiryDate, "d 'de' MMMM, yyyy", { locale: es }) : 'INDETERMINADA'}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
-                                    {daysToExpiry && daysToExpiry > 0 && !isExpired && (
-                                        <div className="text-[10px] font-black px-2 py-1 rounded-lg bg-emerald-100 text-emerald-700 uppercase tracking-tighter">
-                                            {daysToExpiry}d restantes
-                                        </div>
-                                    )}
-                                </div>
 
-                                <div className="flex gap-2">
-                                    <Button variant="outline" className="flex-1 h-12 rounded-2xl font-black uppercase text-[10px] tracking-widest border-slate-100 hover:bg-slate-50 transition-all text-slate-500 shadow-sm">
-                                        <ChevronRight className="h-4 w-4 mr-2" /> Detalles
-                                    </Button>
-                                    <Button className="h-12 w-12 rounded-2xl bg-slate-900 border-none hover:bg-slate-800 shadow-xl shadow-slate-900/20 text-white p-0 flex items-center justify-center transition-all active:scale-90">
-                                        <Download className="h-5 w-5" />
-                                    </Button>
+                                    <div className="flex gap-2">
+                                        <Button variant="outline" className="flex-1 h-12 rounded-2xl font-black uppercase text-[10px] tracking-widest border-slate-100 hover:bg-slate-50 transition-all text-slate-500 shadow-sm" onClick={() => window.open(doc.url, '_blank')}>
+                                            <ChevronRight className="h-4 w-4 mr-2" /> Ver Documento
+                                        </Button>
+                                        <Button className="h-12 w-12 rounded-2xl bg-slate-900 border-none hover:bg-slate-800 shadow-xl shadow-slate-900/20 text-white p-0 flex items-center justify-center transition-all active:scale-90">
+                                            <Download className="h-5 w-5" />
+                                        </Button>
+                                    </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
+                            </CardContent>
+                        </Card>
                     );
                 })}
              </div>
 
              {/* Empty State */}
-             {vaultDocuments.length === 0 && (
+             {vaultDocs.length === 0 && (
                 <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-slate-100 flex flex-col items-center">
                     <div className="w-24 h-24 bg-slate-50 rounded-[2rem] flex items-center justify-center mb-6">
                         <HardDrive className="h-12 w-12 text-slate-200" />
@@ -163,13 +190,31 @@ const ClientVault = () => {
                     <p className="mt-2 text-slate-400 font-semibold max-w-xs mx-auto">
                         Los documentos que valides en tus trámites aparecerán aquí automáticamente para tu conveniencia.
                     </p>
-                    <Button className="mt-8 btn-primary px-8 h-12 rounded-2xl font-bold shadow-lg shadow-blue-500/20">
-                        Ir al Tablero Principal
-                    </Button>
                 </div>
              )}
         </div>
     );
 };
+
+// Simple helper component to replace missing import if needed
+const Calendar = ({ className }: { className?: string }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="24" 
+    height="24" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
+    <line x1="16" x2="16" y1="2" y2="6"/>
+    <line x1="8" x2="8" y1="2" y2="6"/>
+    <line x1="3" x2="21" y1="10" y2="10"/>
+  </svg>
+);
 
 export default ClientVault;

@@ -1,5 +1,15 @@
-export type OTStage = 'solicitud' | 'pago_adelanto' | 'gestion' | 'pago_cierre' | 'finalizado';
-export type DocumentStatus = 'pending' | 'uploaded' | 'validated' | 'rejected' | 'validating_ai' | 'ocr_processed' | 'awaiting_signature' | 'vault_matched';
+export type OTStage = 
+  | 'solicitud_recibida'
+  | 'pago_pendiente'
+  | 'en_validacion'
+  | 'preparacion_documentos'
+  | 'presentacion_entidad'
+  | 'en_analisis_entidad'
+  | 'concedida'
+  | 'finalizada';
+
+export type DocumentStatus = 'pending' | 'uploaded' | 'validated' | 'rejected' | 
+  'validating_ai' | 'ocr_processed' | 'awaiting_signature' | 'vault_matched';
 
 export interface OT {
   id: string;
@@ -12,13 +22,18 @@ export interface OT {
   amount: number;
   discountPercentage?: number;
   createdAt: string;
+  updatedAt?: string;
   deadline: string;
   status?: string;
   brandName?: string;
   description?: string;
   colors?: string[];
+  pantone?: string;
   logoUrl?: string;
   signatureUrl?: string;
+  pipefyCardId?: string;
+  source?: 'pipefy' | 'manual';
+  internalNotes?: string;
 }
 
 export interface Document {
@@ -60,3 +75,10 @@ export interface Company {
   contactEmail?: string;
   createdAt: string;
 }
+
+export type PIDocumentType = 
+  | 'poder_legal' 
+  | 'cedula' 
+  | 'logo' 
+  | 'certificado_constitucion' 
+  | 'unknown';

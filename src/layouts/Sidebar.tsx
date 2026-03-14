@@ -23,12 +23,12 @@ const Sidebar = () => {
     switch (user.role) {
       case 'client':
         return [
-          { href: '/client', label: 'Tablero Operativo', icon: LayoutDashboard },
+          { href: '/client', label: 'Mis Operaciones', icon: LayoutDashboard },
           { href: '/client/vault', label: 'Bóveda Smart', icon: ShieldCheck },
         ];
       case 'spi-admin':
         return [
-          { href: '/spi-admin', label: 'Torre de Control', icon: Command },
+          { href: '/spi-admin', label: 'Dashboard SPI', icon: Command },
           { href: '/spi-admin/nueva-solicitud', label: 'Nueva Operación', icon: Files },
           { href: '/spi-admin/vault', label: 'Bóveda Global', icon: ShieldCheck },
           { href: '/spi-admin/companies', label: 'Empresas Clientes', icon: Users },

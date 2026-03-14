@@ -21,6 +21,7 @@ interface OTState {
   // CRUD
   createOT: (otData: Partial<OT>) => Promise<void>;
   updateOTStage: (otId: string, stage: OTStage) => Promise<void>;
+  updateOTDetails: (otId: string, data: Partial<OT>) => Promise<void>;
 }
 
 const useOTStore = create<OTState>((set) => ({
@@ -93,6 +94,12 @@ const useOTStore = create<OTState>((set) => ({
     const otRef = doc(db, 'ots', otId);
     await updateDoc(otRef, { stage, updatedAt: new Date().toISOString() });
     await logAction('system', otId, `Etapa actualizada a: ${stage}`);
+  },
+
+  updateOTDetails: async (otId, data) => {
+    const otRef = doc(db, 'ots', otId);
+    await updateDoc(otRef, { ...data, updatedAt: new Date().toISOString() });
+    await logAction('system', otId, `Detalles de OT actualizados`);
   },
 }));
 
