@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
+import { toast } from 'sonner';
 import useDataStore, { Company } from '../store/useDataStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-    Plus, 
-    Pencil, 
-    Trash2, 
+import {
+    Plus,
+    Pencil,
+    Trash2,
     Search,
     Building2,
     Users,
@@ -21,6 +22,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import ClientList from '@/components/admin/ClientList';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +32,8 @@ const CompaniesPage = () => {
     const [activeTab, setActiveTab] = useState<'companies' | 'users'>('companies');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [formData, setFormData] = useState({
         name: "",
         industry: "",
@@ -80,18 +84,28 @@ const CompaniesPage = () => {
         try {
             if (editingCompany) {
                 await updateCompany(editingCompany.id, formData);
+                toast.success('Empresa actualizada correctamente');
             } else {
                 await createCompany(formData);
+                toast.success('Empresa creada correctamente');
             }
             setIsDialogOpen(false);
         } catch (error) {
-            console.error("Error saving company:", error);
+            toast.error('Error al guardar la empresa. Intenta nuevamente.');
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (confirm("¿Estás seguro de que deseas eliminar esta empresa?")) {
-            await deleteCompany(id);
+    const handleDeleteConfirm = async () => {
+        if (!deleteTarget) return;
+        setIsDeleting(true);
+        try {
+            await deleteCompany(deleteTarget.id);
+            toast.success(`Empresa "${deleteTarget.name}" eliminada`);
+            setDeleteTarget(null);
+        } catch {
+            toast.error('Error al eliminar la empresa');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -213,7 +227,7 @@ const CompaniesPage = () => {
                                             <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(company)} className="h-8 w-8 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg">
                                                 <Pencil className="h-4 w-4" />
                                             </Button>
-                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(company.id)} className="h-8 w-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg">
+                                            <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(company)} className="h-8 w-8 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg">
                                                 <Trash2 className="h-4 w-4" />
                                             </Button>
                                         </div>
@@ -247,7 +261,19 @@ const CompaniesPage = () => {
                 </div>
             )}
 
-            {/* Dialog */}
+            {/* Delete Confirmation */}
+            <ConfirmDialog
+                open={!!deleteTarget}
+                onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+                title="Eliminar Empresa"
+                description={`¿Estás seguro de que deseas eliminar "${deleteTarget?.name}"? Esta acción no se puede deshacer.`}
+                confirmLabel="Sí, eliminar"
+                confirmVariant="destructive"
+                onConfirm={handleDeleteConfirm}
+                loading={isDeleting}
+            />
+
+            {/* Create/Edit Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="bg-slate-900 border-slate-800 text-slate-50 max-w-md rounded-[2.5rem]">
                     <DialogHeader>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import useDataStore, { uploadFile } from '../store/useDataStore';
 import useAuthStore from '../store/useAuthStore';
 import SignaturePad from '@/components/SignaturePad';
@@ -61,6 +62,7 @@ const NewRequestPage = () => {
             setIsSigning(false);
         } catch (err) {
             console.error("Error uploading signature:", err);
+            toast.error("Error al guardar la firma. Intenta nuevamente.");
         } finally {
             setIsUploadingSignature(false);
         }

@@ -3,14 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import useOTStore from '../store/useOTStore';
 import useDocumentStore from '../store/useDocumentStore';
 import useAuthStore from '../store/useAuthStore';
-import { 
-  Check, 
-  ChevronRight, 
+import {
+  Check,
+  ChevronRight,
   Palette,
   Camera,
   Briefcase,
   ShieldCheck,
-  ArrowLeft
+  ArrowLeft,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,8 @@ const PICompletionPage = () => {
   const [pantone, setPantone] = useState("");
   const [brandClass, setBrandClass] = useState("");
   
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [vaultSuggestions, setVaultSuggestions] = useState<{
     cedula?: any;
     poder_legal?: any;
@@ -55,13 +58,16 @@ const PICompletionPage = () => {
   }, [user, checkVaultForReuse]);
 
   const handleUpdateBrandInfo = async () => {
-    if (!otId) return;
+    if (!otId || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await updateOTDetails(otId, { pantone, brandClass } as any);
       setStep(2);
       toast.success("Información de marca actualizada");
     } catch (error) {
       toast.error("Error al actualizar información");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -71,7 +77,8 @@ const PICompletionPage = () => {
   };
 
   const handleVaultLink = async (type: 'cedula' | 'poder_legal', doc: any) => {
-    if (!otId) return;
+    if (!otId || isSubmitting) return;
+    setIsSubmitting(true);
     try {
       await linkVaultDocument(otId, doc);
       toast.success(`${type === 'cedula' ? 'Cédula' : 'Poder'} vinculado desde bóveda`);
@@ -82,6 +89,8 @@ const PICompletionPage = () => {
       }
     } catch (error) {
       toast.error("Error al vincular documento");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -168,12 +177,16 @@ const PICompletionPage = () => {
 
             {step === 1 && (
               <div className="mt-10">
-                <Button 
+                <Button
                   onClick={handleUpdateBrandInfo}
-                  className="w-full md:w-auto h-14 px-10 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-xs group"
+                  disabled={isSubmitting}
+                  className="w-full md:w-auto h-14 px-10 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-xs group disabled:opacity-60"
                 >
-                  Continuar al Siguiente Paso
-                  <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  {isSubmitting ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando...</>
+                  ) : (
+                    <>Continuar al Siguiente Paso<ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" /></>
+                  )}
                 </Button>
               </div>
             )}
@@ -245,7 +258,8 @@ const PICompletionPage = () => {
                     </div>
                     <Button 
                       onClick={() => handleVaultLink('poder_legal', vaultSuggestions.poder_legal)}
-                      className="h-12 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px]"
+                      disabled={isSubmitting}
+                      className="h-12 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] disabled:opacity-60"
                     >
                       Reutilizar de Bóveda
                     </Button>
@@ -301,7 +315,8 @@ const PICompletionPage = () => {
                     </div>
                     <Button 
                       onClick={() => handleVaultLink('cedula', vaultSuggestions.cedula)}
-                      className="h-12 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px]"
+                      disabled={isSubmitting}
+                      className="h-12 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] disabled:opacity-60"
                     >
                       Reutilizar de Bóveda
                     </Button>

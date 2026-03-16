@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
+import { Toaster } from 'sonner';
 import AppRouter from './AppRouter';
 import useAuthStore from './store/useAuthStore';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   const initializeAuthListener = useAuthStore(state => state.initializeAuthListener);
@@ -11,7 +13,10 @@ function App() {
   }, [initializeAuthListener]);
 
   return (
-    <AppRouter />
+    <ErrorBoundary>
+      <AppRouter />
+      <Toaster position="top-right" richColors closeButton />
+    </ErrorBoundary>
   );
 }
 

@@ -6,36 +6,27 @@ import { differenceInDays } from 'date-fns';
 import { OTStage } from '../../store/types';
 
 const COLUMNS: { id: OTStage; title: string; color: string; chip: string }[] = [
-  { id: 'solicitud_recibida', title: 'Solicitud', color: 'border-t-amber-500', chip: 'bg-amber-100 text-amber-700' },
-  { id: 'pago_pendiente', title: 'Pago', color: 'border-t-sky-500', chip: 'bg-sky-100 text-sky-700' },
-  { id: 'en_validacion', title: 'Validación', color: 'border-t-blue-500', chip: 'bg-blue-100 text-blue-700' },
-  { id: 'preparacion_documentos', title: 'Documentos', color: 'border-t-indigo-500', chip: 'bg-indigo-100 text-indigo-700' },
-  { id: 'presentacion_entidad', title: 'Presentación', color: 'border-t-purple-500', chip: 'bg-purple-100 text-purple-700' },
-  { id: 'en_analisis_entidad', title: 'Análisis', color: 'border-t-orange-500', chip: 'bg-orange-100 text-orange-700' },
-  { id: 'concedida', title: 'OT Concedida', color: 'border-t-emerald-500', chip: 'bg-emerald-100 text-emerald-700' },
-  { id: 'finalizada', title: 'Finalizado', color: 'border-t-slate-500', chip: 'bg-slate-100 text-slate-700' },
+  { id: 'solicitud',     title: 'Solicitud',     color: 'border-t-amber-500',   chip: 'bg-amber-100 text-amber-700' },
+  { id: 'pago_adelanto', title: 'Pago Adelanto',  color: 'border-t-sky-500',     chip: 'bg-sky-100 text-sky-700' },
+  { id: 'gestion',       title: 'En Gestión',     color: 'border-t-blue-500',    chip: 'bg-blue-100 text-blue-700' },
+  { id: 'pago_cierre',   title: 'Pago Cierre',    color: 'border-t-indigo-500',  chip: 'bg-indigo-100 text-indigo-700' },
+  { id: 'finalizado',    title: 'Finalizado',     color: 'border-t-emerald-500', chip: 'bg-emerald-100 text-emerald-700' },
 ];
 
 const STAGE_BORDER_COLORS: Record<OTStage, string> = {
-  solicitud_recibida: 'border-b-amber-500',
-  pago_pendiente: 'border-b-sky-500',
-  en_validacion: 'border-b-blue-500',
-  preparacion_documentos: 'border-b-indigo-500',
-  presentacion_entidad: 'border-b-purple-500',
-  en_analisis_entidad: 'border-b-orange-500',
-  concedida: 'border-b-emerald-500',
-  finalizada: 'border-b-slate-500'
+  solicitud:     'border-b-amber-500',
+  pago_adelanto: 'border-b-sky-500',
+  gestion:       'border-b-blue-500',
+  pago_cierre:   'border-b-indigo-500',
+  finalizado:    'border-b-emerald-500',
 };
 
 const DOT_COLORS: Record<OTStage, string> = {
-  solicitud_recibida: 'bg-amber-500',
-  pago_pendiente: 'bg-sky-500',
-  en_validacion: 'bg-blue-500',
-  preparacion_documentos: 'bg-indigo-500',
-  presentacion_entidad: 'bg-purple-500',
-  en_analisis_entidad: 'bg-orange-500',
-  concedida: 'bg-emerald-500',
-  finalizada: 'bg-slate-500'
+  solicitud:     'bg-amber-500',
+  pago_adelanto: 'bg-sky-500',
+  gestion:       'bg-blue-500',
+  pago_cierre:   'bg-indigo-500',
+  finalizado:    'bg-emerald-500',
 };
 
 interface KanbanBoardProps {
@@ -74,13 +65,13 @@ export function KanbanBoard({ ots, onOTClick }: KanbanBoardProps) {
               {otsByStage[col.id].length}
             </span>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {otsByStage[col.id].map((ot: any) => {
                const { discount, surcharge } = getTimeStatus(ot);
-               
+
                return (
-                <div 
+                <div
                   key={ot.id}
                   onClick={() => onOTClick(ot)}
                   className={cn(
@@ -94,7 +85,7 @@ export function KanbanBoard({ ots, onOTClick }: KanbanBoardProps) {
                       {ot.title || ot.brandName || 'Sin título'}
                     </h4>
                   </div>
-                  
+
                   <div className="mb-4">
                     <span className="inline-block bg-slate-800/50 text-slate-500 font-black text-[8px] uppercase px-2 py-1 rounded-lg border border-slate-700/50 tracking-widest">
                       {ot.serviceType}
@@ -113,14 +104,14 @@ export function KanbanBoard({ ots, onOTClick }: KanbanBoardProps) {
                       surcharge > 0 ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" :
                       "bg-slate-800 text-slate-600 border border-slate-700"
                     )}>
-                      {discount > 0 ? "🎯 Bono" : 
-                       surcharge > 0 ? "⚠️ Recargo" : "En Fecha"}
+                      {discount > 0 ? "Bono" :
+                       surcharge > 0 ? "Recargo" : "En Fecha"}
                     </div>
                   </div>
                 </div>
               );
             })}
-            
+
             {otsByStage[col.id].length === 0 && (
               <div className="flex flex-col items-center justify-center h-24 text-slate-700 border-2 border-dashed border-slate-800/50 rounded-2xl bg-slate-900/20">
                 <span className="text-[10px] font-black uppercase tracking-widest opacity-20">Vacío</span>

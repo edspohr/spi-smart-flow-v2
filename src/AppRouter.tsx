@@ -9,7 +9,10 @@ import GuestDashboard from './pages/GuestDashboard';
 import SPIAdminDashboard from './pages/SPIAdminDashboard';
 import SPIVault from './pages/SPIVault';
 import CompaniesPage from './pages/CompaniesPage';
+import UsersPage from './pages/UsersPage';
 import PICompletionPage from './pages/PICompletionPage';
+import NotFoundPage from './pages/NotFoundPage';
+import UnauthorizedPage from './pages/UnauthorizedPage';
 
 export default function AppRouter() {
   return (
@@ -38,12 +41,14 @@ export default function AppRouter() {
                 <Route path="/spi-admin/nueva-solicitud" element={<NewRequestPage />} />
                 <Route path="/spi-admin/vault" element={<SPIVault />} />
                 <Route path="/spi-admin/companies" element={<CompaniesPage />} />
+                <Route path="/spi-admin/users" element={<UsersPage />} />
             </Route>
 
         </Route>
 
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route path="/" element={<Navigate to="/login" replace />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );

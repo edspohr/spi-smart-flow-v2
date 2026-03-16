@@ -1,14 +1,21 @@
 import { useState, useEffect } from "react";
 import {
+  collection, query, where, orderBy, onSnapshot,
+} from "firebase/firestore";
+import { db } from "../lib/firebase";
+import {
   Dialog,
   DialogContent,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { OTStatusBadge } from "./OTStatusBadge";
 import {
@@ -22,7 +29,9 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  ArrowRight
+  ArrowRight,
+  History,
+  ChevronDown,
 } from "lucide-react";
 import useOTStore from "../store/useOTStore";
 import useDocumentStore from "../store/useDocumentStore";
@@ -30,7 +39,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { OTStage, DocumentStatus } from "../store/types";
+import { OTStage, Log, DocumentVersion } from "../store/types";
 
 interface OTDetailsModalProps {
   ot: any;
@@ -40,31 +49,55 @@ interface OTDetailsModalProps {
 
 const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
   const { updateOTStage, updateOTDetails, loading: otLoading } = useOTStore();
-  const { documents, updateDocumentStatus } = useDocumentStore();
+  const { documents, updateDocumentStatus, getDocumentVersions } = useDocumentStore();
   const [internalNotes, setInternalNotes] = useState(ot.internalNotes || "");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null); // docId
+  const [rejectReason, setRejectReason] = useState("");
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [otLogs, setOtLogs] = useState<Log[]>([]);
+  const [expandedVersions, setExpandedVersions] = useState<string | null>(null); // docId
+  const [versions, setVersions] = useState<Record<string, DocumentVersion[]>>({}); // docId → versions
 
   useEffect(() => {
     setInternalNotes(ot.internalNotes || "");
   }, [ot]);
 
+  useEffect(() => {
+    if (!open) {
+      setOtLogs([]);
+      setExpandedVersions(null);
+      setVersions({});
+      return;
+    }
+    const q = query(
+      collection(db, 'logs'),
+      where('otId', '==', ot.id),
+      orderBy('timestamp', 'desc')
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      setOtLogs(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Log)));
+    });
+    return unsub;
+  }, [open, ot.id]);
+
   const otDocuments = documents.filter((d) => d.otId === ot.id);
 
   const handleAdvanceStage = async () => {
     const stages: OTStage[] = [
-      "solicitud_recibida",
-      "pago_pendiente",
-      "en_validacion",
-      "preparacion_documentos",
-      "presentacion_entidad",
-      "en_analisis_entidad",
-      "concedida",
-      "finalizada"
+      "solicitud",
+      "pago_adelanto",
+      "gestion",
+      "pago_cierre",
+      "finalizado",
     ];
     const currentIndex = stages.indexOf(ot.stage);
-    if (currentIndex < stages.length - 1) {
+    if (currentIndex === -1 || currentIndex >= stages.length - 1) return;
+    try {
       await updateOTStage(ot.id, stages[currentIndex + 1]);
       toast.success(`Etapa avanzada a: ${stages[currentIndex + 1]}`);
+    } catch {
+      toast.error("Error al avanzar la etapa");
     }
   };
 
@@ -80,16 +113,48 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
     }
   };
 
-  const handleDocAction = async (docId: string, status: DocumentStatus) => {
-    let reason = "";
-    if (status === 'rejected') {
-      reason = prompt("Razón del rechazo:") || "No cumple los requisitos";
+  const handleApproveDoc = async (docId: string) => {
+    try {
+      await updateDocumentStatus(docId, 'validated');
+      toast.success('Documento aprobado');
+    } catch {
+      toast.error('Error al aprobar el documento');
     }
-    await updateDocumentStatus(docId, status, reason);
-    toast.info(`Documento ${status === 'validated' ? 'Aprobado' : 'Rechazado'}`);
+  };
+
+  const handleRejectDoc = async () => {
+    if (!rejectTarget) return;
+    setIsRejecting(true);
+    try {
+      await updateDocumentStatus(rejectTarget, 'rejected', rejectReason || 'No cumple los requisitos');
+      toast.info('Documento rechazado');
+      setRejectTarget(null);
+      setRejectReason("");
+    } catch {
+      toast.error('Error al rechazar el documento');
+    } finally {
+      setIsRejecting(false);
+    }
+  };
+
+  const handleToggleVersions = async (docId: string) => {
+    if (expandedVersions === docId) {
+      setExpandedVersions(null);
+      return;
+    }
+    setExpandedVersions(docId);
+    if (!versions[docId]) {
+      try {
+        const v = await getDocumentVersions(docId);
+        setVersions((prev) => ({ ...prev, [docId]: v }));
+      } catch {
+        setVersions((prev) => ({ ...prev, [docId]: [] }));
+      }
+    }
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[90vh] bg-[#0B1121] border-slate-800 p-0 overflow-hidden flex flex-col rounded-[2.5rem]">
         <DialogHeader className="p-8 pb-0 flex flex-row justify-between items-start">
@@ -213,35 +278,73 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                       </div>
 
                       <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-800">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => window.open(doc.url, "_blank")}
                           className="bg-slate-800 border-slate-700 text-white font-black text-[9px] uppercase tracking-widest h-9 px-4 rounded-xl hover:bg-slate-700"
                         >
                           Visualizar <ExternalLink size={12} className="ml-1" />
                         </Button>
-                        
+
                         {doc.status !== 'validated' && (
-                          <Button 
+                          <Button
                             size="sm"
-                            onClick={() => handleDocAction(doc.id, 'validated')}
+                            onClick={() => handleApproveDoc(doc.id)}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[9px] uppercase tracking-widest h-9 px-4 rounded-xl"
                           >
                             Aprobar <CheckCircle2 size={12} className="ml-1" />
                           </Button>
                         )}
-                        
+
                         {doc.status !== 'rejected' && (
-                          <Button 
-                             size="sm"
-                             onClick={() => handleDocAction(doc.id, 'rejected')}
-                             className="bg-rose-600 hover:bg-rose-700 text-white font-black text-[9px] uppercase tracking-widest h-9 px-4 rounded-xl"
+                          <Button
+                            size="sm"
+                            onClick={() => { setRejectTarget(doc.id); setRejectReason(""); }}
+                            className="bg-rose-600 hover:bg-rose-700 text-white font-black text-[9px] uppercase tracking-widest h-9 px-4 rounded-xl"
                           >
                             Rechazar <XCircle size={12} className="ml-1" />
                           </Button>
                         )}
+
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleToggleVersions(doc.id)}
+                          className="ml-auto text-slate-500 hover:text-slate-300 font-black text-[9px] uppercase tracking-widest h-9 px-3 rounded-xl gap-1"
+                        >
+                          <History size={12} /> Versiones
+                          <ChevronDown size={12} className={cn("transition-transform", expandedVersions === doc.id && "rotate-180")} />
+                        </Button>
                       </div>
+
+                      {/* Version history */}
+                      {expandedVersions === doc.id && (
+                        <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
+                          {(versions[doc.id] ?? []).length === 0 ? (
+                            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest text-center py-2">
+                              Sin versiones anteriores
+                            </p>
+                          ) : (
+                            (versions[doc.id] ?? []).map((v, i) => (
+                              <div key={v.id} className="flex items-center justify-between bg-slate-800/30 px-4 py-2.5 rounded-xl">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-[9px] font-black text-slate-600 uppercase">v{(versions[doc.id] ?? []).length - i}</span>
+                                  <span className="text-xs font-bold text-slate-400">
+                                    {format(new Date(v.replacedAt), "d MMM yyyy, HH:mm", { locale: es })}
+                                  </span>
+                                </div>
+                                <button
+                                  onClick={() => window.open(v.url, '_blank')}
+                                  className="text-[9px] font-black text-blue-500 uppercase flex items-center gap-1 hover:text-blue-400"
+                                >
+                                  Ver <ExternalLink size={10} />
+                                </button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
                    </div>
                  ))}
                  {otDocuments.length === 0 && (
@@ -255,8 +358,8 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
 
             <TabsContent value="history" className="mt-0">
                <div className="space-y-4">
-                 {ot.logs?.sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((log: any, i: number) => (
-                   <div key={i} className="flex gap-4 items-start bg-slate-900/40 p-5 rounded-2xl border border-slate-800/50">
+                 {otLogs.map((log) => (
+                   <div key={log.id} className="flex gap-4 items-start bg-slate-900/40 p-5 rounded-2xl border border-slate-800/50">
                       <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-blue-400 shrink-0">
                         <Activity size={18} />
                       </div>
@@ -264,21 +367,66 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                         <p className="text-sm font-bold text-slate-200">{log.action}</p>
                         <div className="flex items-center gap-3 mt-1">
                           <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-1">
-                             <User size={10} /> {log.userId === 'admin' ? "SPI Admin" : "Sistema"}
+                             <User size={10} /> {log.userId === 'system' || log.userId === 'pipefy' ? "Sistema" : "SPI Admin"}
                           </span>
                           <span className="text-[10px] font-black text-slate-600 flex items-center gap-1">
-                             <Clock size={10} /> {format(new Date(log.timestamp), "d MMM, HH:mm", { locale: es })}
+                             <Clock size={10} /> {log.timestamp ? format(new Date(log.timestamp as string), "d MMM, HH:mm", { locale: es }) : '—'}
                           </span>
                         </div>
                       </div>
                    </div>
                  ))}
+                 {otLogs.length === 0 && (
+                   <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-[2.5rem]">
+                     <Activity className="h-10 w-10 text-slate-700 mx-auto mb-4" />
+                     <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Sin actividad registrada</p>
+                   </div>
+                 )}
                </div>
             </TabsContent>
           </ScrollArea>
         </Tabs>
       </DialogContent>
     </Dialog>
+
+    {/* Reject Document Dialog */}
+    <Dialog open={!!rejectTarget} onOpenChange={(open) => { if (!open) { setRejectTarget(null); setRejectReason(""); } }}>
+      <DialogContent className="max-w-sm rounded-[2rem] bg-[#0B1121] border-slate-800 text-white">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-black tracking-tight">Rechazar Documento</DialogTitle>
+          <DialogDescription className="text-slate-400 font-medium">
+            Indica la razón del rechazo para que el cliente pueda corregirlo.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="py-2 space-y-2">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Razón del rechazo</Label>
+          <Textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Ej: El documento está vencido, la firma no coincide..."
+            className="bg-slate-800/50 border-slate-700 text-white rounded-xl resize-none min-h-[100px] font-medium"
+          />
+        </div>
+        <DialogFooter className="gap-2">
+          <Button
+            variant="ghost"
+            disabled={isRejecting}
+            onClick={() => { setRejectTarget(null); setRejectReason(""); }}
+            className="rounded-xl font-bold text-slate-400"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={handleRejectDoc}
+            disabled={isRejecting}
+            className="bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl px-6 disabled:opacity-60"
+          >
+            {isRejecting ? 'Rechazando...' : 'Confirmar Rechazo'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 

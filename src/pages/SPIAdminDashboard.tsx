@@ -2,14 +2,19 @@ import { useEffect, useState } from "react";
 import useOTStore from "../store/useOTStore";
 import useDocumentStore from "../store/useDocumentStore";
 import useAuthStore from "../store/useAuthStore";
-import { 
-  Search, 
-  LayoutGrid, 
-  List, 
+import {
+  Search,
+  LayoutGrid,
+  List,
   FileText,
   AlertCircle,
   ExternalLink,
-  Filter
+  Filter,
+  Check,
+  Activity,
+  Download,
+  User,
+  Clock,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,10 +27,11 @@ import OTDetailsModal from "@/components/OTDetailsModal";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const SPIAdminDashboard = () => {
   const { user } = useAuthStore();
-  const { ots, subscribeToAllOTs } = useOTStore();
+  const { ots, logs, loading: otsLoading, subscribeToAllOTs, subscribeToRecentLogs } = useOTStore();
   const { documents, subscribeToAllVaultDocuments } = useDocumentStore();
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -35,11 +41,13 @@ const SPIAdminDashboard = () => {
   useEffect(() => {
     const unsubOTs = subscribeToAllOTs();
     const unsubDocs = subscribeToAllVaultDocuments();
+    const unsubLogs = subscribeToRecentLogs(200);
     return () => {
       unsubOTs();
       unsubDocs();
+      unsubLogs();
     };
-  }, [subscribeToAllOTs, subscribeToAllVaultDocuments]);
+  }, [subscribeToAllOTs, subscribeToAllVaultDocuments, subscribeToRecentLogs]);
 
   const filteredOTs = ots.filter(ot => 
     ot.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -54,6 +62,25 @@ const SPIAdminDashboard = () => {
   const openOTDetails = (ot: any) => {
     setSelectedOT(ot);
     setIsModalOpen(true);
+  };
+
+  const exportLogsCSV = () => {
+    const header = ['Fecha', 'OT ID', 'Usuario', 'Acción', 'Tipo'];
+    const rows = logs.map((l) => [
+      l.timestamp ? format(new Date(l.timestamp), "yyyy-MM-dd HH:mm:ss") : '',
+      l.otId,
+      l.userId,
+      `"${l.action.replace(/"/g, '""')}"`,
+      l.type,
+    ]);
+    const csv = [header, ...rows].map((r) => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `spi-actividad-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (!user) return null;
@@ -95,11 +122,27 @@ const SPIAdminDashboard = () => {
             <TabsTrigger value="pending" className="rounded-xl px-6 py-2 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-rose-600 data-[state=active]:text-white">
               <AlertCircle className="w-4 h-4 mr-2" /> Revisión ({pendingDocs.length})
             </TabsTrigger>
+            <TabsTrigger value="activity" className="rounded-xl px-6 py-2 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-slate-600 data-[state=active]:text-white">
+              <Activity className="w-4 h-4 mr-2" /> Actividad
+            </TabsTrigger>
           </TabsList>
         </div>
 
         <TabsContent value="kanban" className="mt-0 outline-none">
-          <KanbanBoard ots={filteredOTs} onOTClick={openOTDetails} />
+          {otsLoading ? (
+            <div className="flex gap-4 overflow-x-hidden">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="min-w-[280px] w-[280px] flex flex-col gap-4">
+                  <Skeleton className="h-14 w-full bg-slate-800/60 rounded-[2rem]" />
+                  {Array.from({ length: 3 }).map((_, j) => (
+                    <Skeleton key={j} className="h-28 w-full bg-slate-800/40 rounded-[1.5rem]" />
+                  ))}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <KanbanBoard ots={filteredOTs} onOTClick={openOTDetails} />
+          )}
         </TabsContent>
 
         <TabsContent value="list" className="mt-0 outline-none">
@@ -194,10 +237,58 @@ const SPIAdminDashboard = () => {
             )}
           </div>
         </TabsContent>
+
+        <TabsContent value="activity" className="mt-0 outline-none">
+          <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+                Últimas {logs.length} acciones del sistema
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={exportLogsCSV}
+                disabled={logs.length === 0}
+                className="h-9 px-4 rounded-xl border-slate-700 bg-slate-800/50 text-slate-300 hover:bg-slate-700 font-black text-[9px] uppercase tracking-widest gap-2"
+              >
+                <Download className="w-3.5 h-3.5" /> Exportar CSV
+              </Button>
+            </div>
+            <ScrollArea className="h-[60vh]">
+              <div className="divide-y divide-slate-800/50">
+                {logs.map((log) => (
+                  <div key={log.id} className="flex gap-4 items-start px-6 py-4 hover:bg-slate-800/20 transition-colors">
+                    <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-blue-400 shrink-0 mt-0.5">
+                      <Activity size={16} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-200 truncate">{log.action}</p>
+                      <div className="flex items-center gap-4 mt-1">
+                        <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-1">
+                          <User size={10} /> {log.userId === 'system' || log.userId === 'pipefy' ? 'Sistema' : log.userId.substring(0, 8)}
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-600 flex items-center gap-1">
+                          <Clock size={10} /> {log.timestamp ? format(new Date(log.timestamp), "d MMM yyyy, HH:mm", { locale: es }) : '—'}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-[9px] font-mono text-slate-600 shrink-0 mt-1">{log.otId.substring(0, 8)}</span>
+                  </div>
+                ))}
+                {logs.length === 0 && (
+                  <div className="py-20 text-center">
+                    <Activity className="h-10 w-10 text-slate-700 mx-auto mb-4" />
+                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Sin actividad registrada</p>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        </TabsContent>
       </Tabs>
 
       {selectedOT && (
-        <OTDetailsModal 
+        <OTDetailsModal
           ot={selectedOT}
           open={isModalOpen}
           onOpenChange={setIsModalOpen}

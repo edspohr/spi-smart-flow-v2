@@ -1,10 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
-import { 
-  LayoutDashboard, 
-  Files, 
-  Users, 
-  ShieldCheck, 
+import {
+  LayoutDashboard,
+  Files,
+  Users,
+  UserCog,
+  ShieldCheck,
   LogOut,
   Command
 } from 'lucide-react';
@@ -32,6 +33,7 @@ const Sidebar = () => {
           { href: '/spi-admin/nueva-solicitud', label: 'Nueva Operación', icon: Files },
           { href: '/spi-admin/vault', label: 'Bóveda Global', icon: ShieldCheck },
           { href: '/spi-admin/companies', label: 'Empresas Clientes', icon: Users },
+          { href: '/spi-admin/users', label: 'Usuarios', icon: UserCog },
         ];
       case 'guest':
         return [];

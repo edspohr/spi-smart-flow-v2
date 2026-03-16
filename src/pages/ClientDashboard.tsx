@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
@@ -81,9 +82,18 @@ const ClientDashboard = () => {
   };
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <Loader2 className="h-10 w-10 text-blue-600 animate-spin" />
-      <p className="text-slate-500 font-medium animate-pulse">Cargando tu tablero...</p>
+    <div className="max-w-6xl mx-auto space-y-8 pb-20">
+      <Skeleton className="h-32 w-full rounded-[2.5rem]" />
+      {Array.from({ length: 3 }).map((_, i) => (
+        <div key={i} className="bg-white rounded-[2.5rem] border border-slate-100 p-8 space-y-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-6 w-16" />
+          </div>
+          <Skeleton className="h-8 w-64" />
+          <Skeleton className="h-12 w-full rounded-2xl" />
+        </div>
+      ))}
     </div>
   );
 

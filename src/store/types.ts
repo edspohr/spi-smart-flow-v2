@@ -1,12 +1,9 @@
-export type OTStage = 
-  | 'solicitud_recibida'
-  | 'pago_pendiente'
-  | 'en_validacion'
-  | 'preparacion_documentos'
-  | 'presentacion_entidad'
-  | 'en_analisis_entidad'
-  | 'concedida'
-  | 'finalizada';
+export type OTStage =
+  | 'solicitud'
+  | 'pago_adelanto'
+  | 'gestion'
+  | 'pago_cierre'
+  | 'finalizado';
 
 export type DocumentStatus = 'pending' | 'uploaded' | 'validated' | 'rejected' | 
   'validating_ai' | 'ocr_processed' | 'awaiting_signature' | 'vault_matched';
@@ -76,7 +73,28 @@ export interface Company {
   createdAt: string;
 }
 
-export type PIDocumentType = 
+export interface DocumentVersion {
+  id: string;
+  url: string;
+  status: DocumentStatus;
+  replacedAt: string;
+  replacedBy: string;  // userId
+  uploadedAt?: string;
+}
+
+export type UserRole = 'spi-admin' | 'client' | 'guest';
+
+export interface AppUser {
+  id: string;
+  email: string;
+  displayName?: string;
+  role: UserRole;
+  companyId?: string;
+  disabled?: boolean;
+  createdAt?: string;
+}
+
+export type PIDocumentType =
   | 'poder_legal' 
   | 'cedula' 
   | 'logo' 

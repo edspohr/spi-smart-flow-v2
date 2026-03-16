@@ -1,5 +1,6 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { Firestore } from "firebase-admin/firestore";
+import * as Sentry from "@sentry/node";
 
 type OTStage = 'solicitud' | 'pago_adelanto' | 'gestion' | 'pago_cierre' | 'finalizado';
 
@@ -25,9 +26,23 @@ function getFieldValue(fields: any[], fieldName: string): string | null {
   return field ? field.value : null;
 }
 
+/**
+ * Parses a date string safely. Returns a valid ISO string or the fallback.
+ * Prevents crashes from `new Date('invalid').toISOString()`.
+ */
+function safeISODate(raw: string | null, fallbackMs = Date.now() + 86400000 * 7): string {
+  if (!raw) return new Date(fallbackMs).toISOString();
+  const d = new Date(raw);
+  if (isNaN(d.getTime())) {
+    console.warn(`[pipefy] Invalid date string: "${raw}", using fallback.`);
+    return new Date(fallbackMs).toISOString();
+  }
+  return d.toISOString();
+}
+
 export const registerPipefyHandlers = (db: Firestore) => {
 
-  const createOTFromPipefy = onRequest(async (req, res) => {
+  const createOTFromPipefy = onRequest({ timeoutSeconds: 30 }, async (req, res) => {
     try {
       const payload = req.body;
       console.log("Received Pipefy Webhook:", JSON.stringify(payload, null, 2));
@@ -108,7 +123,7 @@ export const registerPipefyHandlers = (db: Firestore) => {
         if (rawPaymentTerms !== null) updates.paymentTerms = rawPaymentTerms;
 
         const rawDeadline = getFieldValue(fields, 'fecha límite');
-        if (rawDeadline !== null) updates.deadline = new Date(rawDeadline).toISOString();
+        if (rawDeadline !== null) updates.deadline = safeISODate(rawDeadline);
 
         const otDoc = otSnapshot.docs[0];
         await otDoc.ref.update(updates);
@@ -144,6 +159,8 @@ export const registerPipefyHandlers = (db: Firestore) => {
         const userDoc = userSnapshot.docs[0];
         clientId = userDoc.id;
         companyId = (userDoc.data() as any).companyId || 'default-company';
+      } else {
+        console.warn(`[pipefy] No user found for email "${clientEmail}". OT will be created as orphan (clientId=pipefy-guest). Manual assignment required.`);
       }
 
       const otData = {
@@ -156,9 +173,7 @@ export const registerPipefyHandlers = (db: Firestore) => {
         stage: 'solicitud' as OTStage,
         status: 'pending',
         createdAt: new Date().toISOString(),
-        deadline: deadlineStr
-          ? new Date(deadlineStr).toISOString()
-          : new Date(Date.now() + 86400000 * 7).toISOString(),
+        deadline: safeISODate(deadlineStr),
         companyId,
         clientId,
         source: 'pipefy',
@@ -206,6 +221,7 @@ export const registerPipefyHandlers = (db: Firestore) => {
 
     } catch (error) {
       console.error('Error processing Pipefy webhook:', error);
+      Sentry.captureException(error, { extra: { payload: req.body } });
       res.status(500).send('Internal Server Error');
     }
   });

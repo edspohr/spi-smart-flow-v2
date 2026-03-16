@@ -52,19 +52,7 @@ export async function analyzeDocument(
         resolve(result.data);
       } catch (error) {
         console.error("Error calling Cloud Function:", error);
-        // Fallback mock for dev/demo when function is unavailable
-        console.warn("Falling back to local mock.");
-        setTimeout(() => {
-          resolve({
-            documentType: "unknown",
-            name: "Fallback Mock",
-            rut: "11.111.111-1",
-            validUntil: null,
-            confidence: 0.1,
-            requiresManualReview: true,
-            autoApproved: false,
-          });
-        }, 1000);
+        reject(error);
       }
     };
 

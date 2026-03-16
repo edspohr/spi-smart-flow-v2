@@ -2,11 +2,23 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { defineSecret } from "firebase-functions/params";
+import * as Sentry from "@sentry/node";
 
 import { registerPipefyHandlers } from './pipefy';
 import { registerReminderHandlers } from './reminders';
 
 admin.initializeApp();
+
+// Sentry: only initializes when SENTRY_DSN env var is set in the Functions environment.
+// Set it via: firebase functions:config:set sentry.dsn="https://..."
+// or as a plain environment variable in the Cloud Functions console.
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.FUNCTIONS_EMULATOR ? 'development' : 'production',
+    tracesSampleRate: 0.1,
+  });
+}
 const db = admin.firestore();
 
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
@@ -20,7 +32,9 @@ interface AnalyzeDocumentData {
   otId?: string;   // OT ID for audit log linkage
 }
 
-export const analyzeDocument = onCall({ secrets: [geminiApiKey] }, async (request) => {
+export const analyzeDocument = onCall(
+  { secrets: [geminiApiKey], timeoutSeconds: 60, memory: '512MiB' },
+  async (request) => {
   // 1. Security Check
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
@@ -100,7 +114,58 @@ export const analyzeDocument = onCall({ secrets: [geminiApiKey] }, async (reques
 
   } catch (error) {
     console.error("Error analyzing document:", error);
+    Sentry.captureException(error, { extra: { docId, otId, mimeType } });
     throw new HttpsError("internal", "An error occurred while analyzing the document.");
+  }
+});
+
+// Create User (Admin SDK — spi-admin only)
+interface CreateUserData {
+  email: string;
+  password: string;
+  displayName: string;
+  role: 'spi-admin' | 'client' | 'guest';
+  companyId?: string;
+}
+
+export const createUser = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Must be authenticated.');
+  }
+
+  // Verify caller is spi-admin
+  const callerDoc = await db.collection('users').doc(request.auth.uid).get();
+  if (!callerDoc.exists || (callerDoc.data() as any)?.role !== 'spi-admin') {
+    throw new HttpsError('permission-denied', 'Only SPI admins can create users.');
+  }
+
+  const { email, password, displayName, role, companyId } = request.data as CreateUserData;
+  if (!email || !password || !role) {
+    throw new HttpsError('invalid-argument', 'email, password and role are required.');
+  }
+
+  try {
+    const userRecord = await admin.auth().createUser({ email, password, displayName });
+    await db.collection('users').doc(userRecord.uid).set({
+      email,
+      displayName: displayName || '',
+      role,
+      companyId: companyId || '',
+      disabled: false,
+      createdAt: new Date().toISOString(),
+    });
+    await db.collection('logs').add({
+      otId: 'system',
+      userId: request.auth.uid,
+      action: `Usuario creado: ${email} (${role})`,
+      type: 'system',
+      timestamp: new Date().toISOString(),
+    });
+    return { uid: userRecord.uid };
+  } catch (error) {
+    console.error('Error creating user:', error);
+    Sentry.captureException(error, { extra: { email, role } });
+    throw new HttpsError('internal', (error as any).message || 'Error creating user.');
   }
 });
 
