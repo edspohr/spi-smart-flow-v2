@@ -1,16 +1,17 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { Firestore } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 import * as Sentry from "@sentry/node";
 
 type OTStage = 'solicitud' | 'pago_adelanto' | 'gestion' | 'pago_cierre' | 'finalizado';
 
-// Maps Pipefy phase names (lowercase substrings) to OT stages
+// ── Phase → Stage mapping (real Pipefy pipe phase names) ──────────────────────
 const PHASE_TO_STAGE: Array<{ keywords: string[]; stage: OTStage }> = [
-  { keywords: ['solicitud', 'recepción', 'recepcion', 'inicio', 'nueva'], stage: 'solicitud' },
-  { keywords: ['pago adelanto', 'cobro inicial', 'adelanto'], stage: 'pago_adelanto' },
-  { keywords: ['gestión', 'gestion', 'proceso', 'tramite', 'trámite'], stage: 'gestion' },
-  { keywords: ['pago cierre', 'cobro final', 'cierre'], stage: 'pago_cierre' },
-  { keywords: ['finalizado', 'completado', 'terminado', 'entregado'], stage: 'finalizado' },
+  { keywords: ['asignando'],  stage: 'solicitud'     },
+  { keywords: ['en proceso'], stage: 'pago_adelanto' },
+  { keywords: ['en espera'],  stage: 'gestion'       },
+  { keywords: ['hecho'],      stage: 'finalizado'    },
+  { keywords: ['cancelado'],  stage: 'finalizado'    },
 ];
 
 function mapPhaseToStage(phaseName: string): OTStage | null {
@@ -40,6 +41,225 @@ function safeISODate(raw: string | null, fallbackMs = Date.now() + 86400000 * 7)
   return d.toISOString();
 }
 
+// ── Helper 1: Parse Titular connection field ───────────────────────────────────
+
+function parseTitular(fields: any[]): {
+  companyName: string;
+  clientEmail: string;
+  clientName: string;
+  clientPhone: string;
+  pipefyTitularId: string;
+} {
+  const field = fields.find((f: any) =>
+    f.name?.toLowerCase().includes('titular')
+  );
+
+  if (!field) return {
+    companyName: 'Sin Titular', clientEmail: '',
+    clientName: '', clientPhone: '', pipefyTitularId: '',
+  };
+
+  let data: Record<string, any> | null = null;
+  try {
+    if (Array.isArray(field.array_value) && field.array_value.length > 0) {
+      data = field.array_value[0];
+    } else if (typeof field.value === 'object' && field.value !== null) {
+      data = field.value;
+    } else if (typeof field.value === 'string' && field.value.trim().startsWith('{')) {
+      data = JSON.parse(field.value);
+    }
+  } catch (e) {
+    console.warn('[pipefy] Could not parse Titular field:', e);
+  }
+
+  if (!data) return {
+    companyName: String(field.value || 'Sin Titular'),
+    clientEmail: '', clientName: '', clientPhone: '', pipefyTitularId: '',
+  };
+
+  const getVal = (keywords: string[]): string => {
+    const key = Object.keys(data!).find((k) =>
+      keywords.some((kw) => k.toLowerCase().includes(kw.toLowerCase()))
+    );
+    return key ? String(data![key] || '') : '';
+  };
+
+  return {
+    companyName:     getVal(['razón social', 'razon social']),
+    clientEmail:     getVal(['e-mail contacto propiedad int', 'email contacto propiedad int']),
+    clientName:      getVal(['nombre y apellido contacto propiedad int']),
+    clientPhone:     getVal(['celular contacto propiedad']),
+    pipefyTitularId: getVal(['id pipefy']),
+  };
+}
+
+// ── Helper 2: Find or create Company in Firestore ─────────────────────────────
+
+async function findOrCreateCompany(
+  db: Firestore,
+  companyName: string,
+  pipefyTitularId: string
+): Promise<string> {
+  if (pipefyTitularId) {
+    const snap = await db.collection('companies')
+      .where('pipefyTitularId', '==', pipefyTitularId)
+      .limit(1).get();
+    if (!snap.empty) return snap.docs[0].id;
+  }
+
+  const snapName = await db.collection('companies')
+    .where('name', '==', companyName)
+    .limit(1).get();
+  if (!snapName.empty) return snapName.docs[0].id;
+
+  const ref = await db.collection('companies').add({
+    name:            companyName,
+    pipefyTitularId: pipefyTitularId || '',
+    createdAt:       new Date().toISOString(),
+    createdBy:       'pipefy',
+    status:          'active',
+  });
+  console.log(`[pipefy] Company created: ${ref.id} (${companyName})`);
+  return ref.id;
+}
+
+// ── Helper 3: Find or create Client user in Firestore (no Firebase Auth) ──────
+
+async function findOrCreateClientUser(
+  db: Firestore,
+  clientEmail: string,
+  clientName: string,
+  clientPhone: string,
+  companyId: string
+): Promise<string> {
+  if (!clientEmail) {
+    console.warn('[pipefy] No client email in Titular — using pipefy-guest');
+    return 'pipefy-guest';
+  }
+
+  const snap = await db.collection('users')
+    .where('email', '==', clientEmail)
+    .limit(1).get();
+  if (!snap.empty) return snap.docs[0].id;
+
+  const ref = await db.collection('users').add({
+    email:       clientEmail,
+    displayName: clientName || clientEmail,
+    phone:       clientPhone || '',
+    companyId,
+    role:        'client',
+    createdAt:   new Date().toISOString(),
+    createdBy:   'pipefy',
+    authLinked:  false,
+  });
+  console.log(`[pipefy] Client user created: ${ref.id} (${clientEmail})`);
+  return ref.id;
+}
+
+// ── Helper 4: Find or create SPI staff user (Auth + Firestore) ───────────────
+
+async function findOrCreateSPIUser(
+  db: Firestore,
+  email: string,
+  displayName: string
+): Promise<string | null> {
+
+  // Empty email — cannot resolve, return null gracefully
+  if (!email || !email.trim()) {
+    console.warn('[pipefy] Encargado email is empty — assignedToId will be null');
+    return null;
+  }
+
+  const normalizedEmail = email.toLowerCase().trim();
+
+  // Step 1 — Check Firestore first (fastest, covers most cases)
+  const snap = await db.collection('users')
+    .where('email', '==', normalizedEmail)
+    .limit(1).get();
+
+  if (!snap.empty) {
+    console.log(`[pipefy] SPI user found in Firestore: ${snap.docs[0].id}`);
+    return snap.docs[0].id;
+  }
+
+  // Step 2 — Not in Firestore — create Firebase Auth user
+  const auth = getAuth();
+  let authUid: string;
+  let authLinked = true;
+
+  try {
+    const authUser = await auth.createUser({
+      email:         normalizedEmail,
+      displayName:   displayName || normalizedEmail,
+      password:      'SPI2026!',
+      emailVerified: false,
+    });
+    authUid = authUser.uid;
+    console.log(
+      `[pipefy] Firebase Auth user created: ${authUid} (${normalizedEmail})` +
+      ` — temp password: SPI2026!`
+    );
+
+    // Set custom claim so the frontend can read the role from the token
+    await auth.setCustomUserClaims(authUid, { role: 'spi-staff' });
+
+  } catch (authError: any) {
+
+    if (authError.code === 'auth/email-already-exists') {
+      // Auth exists but Firestore doesn't — recover by fetching the uid
+      console.warn(
+        `[pipefy] Auth user already exists for ${normalizedEmail} — ` +
+        `linking to new Firestore doc`
+      );
+      const existing = await auth.getUserByEmail(normalizedEmail);
+      authUid = existing.uid;
+      authLinked = true;
+
+    } else {
+      // Unexpected error — create Firestore-only doc as fallback
+      console.error(
+        `[pipefy] Auth creation failed for ${normalizedEmail}:`, authError
+      );
+      const fallbackRef = await db.collection('users').add({
+        email:       normalizedEmail,
+        displayName: displayName || normalizedEmail,
+        phone:       '',
+        companyId:   null,
+        role:        'spi-staff',
+        createdAt:   new Date().toISOString(),
+        createdBy:   'pipefy',
+        authLinked:  false,
+      });
+      console.log(
+        `[pipefy] SPI user created (Firestore only, authLinked: false): ` +
+        `${fallbackRef.id}`
+      );
+      return fallbackRef.id;
+    }
+  }
+
+  // Step 3 — Create Firestore document using the Auth uid as the doc id
+  // This ensures Auth uid === Firestore doc id (standard Firebase pattern)
+  await db.collection('users').doc(authUid).set({
+    email:       normalizedEmail,
+    displayName: displayName || normalizedEmail,
+    phone:       '',
+    companyId:   null,
+    role:        'spi-staff',
+    createdAt:   new Date().toISOString(),
+    createdBy:   'pipefy',
+    authLinked,
+  });
+
+  console.log(
+    `[pipefy] SPI staff user fully created: ${authUid} ` +
+    `(${normalizedEmail}), authLinked: ${authLinked}`
+  );
+  return authUid;
+}
+
+// ── Webhook handler ───────────────────────────────────────────────────────────
+
 export const registerPipefyHandlers = (db: Firestore) => {
 
   const createOTFromPipefy = onRequest({ timeoutSeconds: 30 }, async (req, res) => {
@@ -55,7 +275,7 @@ export const registerPipefyHandlers = (db: Firestore) => {
       const { card } = payload.data;
       const eventType: string = payload.action || 'card.create';
 
-      // ── Card Move: sync stage ──────────────────────────────────────────────
+      // ── Card Move: sync stage ────────────────────────────────────────────────
       if (eventType === 'card.move') {
         const phaseName: string = card.current_phase?.name || '';
         const newStage = mapPhaseToStage(phaseName);
@@ -66,7 +286,6 @@ export const registerPipefyHandlers = (db: Firestore) => {
           return;
         }
 
-        // Find the OT by pipefyCardId
         const otSnapshot = await db.collection('ots')
           .where('pipefyCardId', '==', String(card.id))
           .limit(1)
@@ -85,12 +304,12 @@ export const registerPipefyHandlers = (db: Firestore) => {
         });
 
         await db.collection('logs').add({
-          otId: otDoc.id,
-          userId: 'pipefy',
-          action: `Etapa actualizada vía Pipefy: "${phaseName}" → ${newStage}`,
-          type: 'system',
+          otId:      otDoc.id,
+          userId:    'pipefy',
+          action:    `Etapa actualizada vía Pipefy: "${phaseName}" → ${newStage}`,
+          type:      'system',
           timestamp: new Date().toISOString(),
-          metadata: { phaseName, newStage, cardId: card.id },
+          metadata:  { phaseName, newStage, cardId: card.id },
         });
 
         console.log(`OT ${otDoc.id} stage updated to ${newStage} via Pipefy move`);
@@ -98,8 +317,8 @@ export const registerPipefyHandlers = (db: Firestore) => {
         return;
       }
 
-      // ── Card Field Update: sync payment/service data ───────────────────────
-      if (eventType === 'card.field.update') {
+      // ── Card Field Update: sync payment/service data ─────────────────────────
+      if (eventType === 'card.field_update') {
         const otSnapshot = await db.collection('ots')
           .where('pipefyCardId', '==', String(card.id))
           .limit(1)
@@ -129,12 +348,12 @@ export const registerPipefyHandlers = (db: Firestore) => {
         await otDoc.ref.update(updates);
 
         await db.collection('logs').add({
-          otId: otDoc.id,
-          userId: 'pipefy',
-          action: `Datos actualizados vía Pipefy: ${Object.keys(updates).filter(k => k !== 'updatedAt').join(', ')}`,
-          type: 'system',
+          otId:      otDoc.id,
+          userId:    'pipefy',
+          action:    `Datos actualizados vía Pipefy: ${Object.keys(updates).filter((k) => k !== 'updatedAt').join(', ')}`,
+          type:      'system',
           timestamp: new Date().toISOString(),
-          metadata: { cardId: card.id, updates },
+          metadata:  { cardId: card.id, updates },
         });
 
         console.log(`OT ${otDoc.id} fields updated via Pipefy:`, updates);
@@ -142,82 +361,107 @@ export const registerPipefyHandlers = (db: Firestore) => {
         return;
       }
 
-      // ── Card Create: create new OT ─────────────────────────────────────────
+      // ── Card Create: resolve Titular → Company → Client → SPI assignee ───────
       const fields: any[] = card.fields || [];
-      const clientEmail = getFieldValue(fields, 'email') || 'cliente@example.com';
-      const serviceType = getFieldValue(fields, 'tipo de servicio') || 'General';
-      const amount = parseFloat(getFieldValue(fields, 'monto') || '0');
-      const deadlineStr = getFieldValue(fields, 'fecha límite');
-      const fees = parseFloat(getFieldValue(fields, 'honorarios') || '0');
-      const paymentTerms = getFieldValue(fields, 'condiciones de pago') || 'Contado';
 
-      let clientId = 'pipefy-guest';
-      let companyId = 'default-company';
+      const titular           = parseTitular(fields);
+      const actividadAsignada = getFieldValue(fields, 'actividad asignada') || card.title;
+      const marcaAsunto       = getFieldValue(fields, 'marca o asunto')     || '';
+      const encargadoEmail    = getFieldValue(fields, 'encargado de actividad') || '';
+      const encargadoDisplayName =
+        getFieldValue(fields, 'encargado nome') ||
+        getFieldValue(fields, 'nombre encargado') ||
+        getFieldValue(fields, 'encargado nombre') ||
+        encargadoEmail.split('@')[0].replace(/[._]/g, ' ');
+      const assignedByNombre  = getFieldValue(fields, 'quién asigna')       || '';
+      const amount            = parseFloat(getFieldValue(fields, 'monto')   || '0');
+      const fees              = parseFloat(getFieldValue(fields, 'honorarios') || '0');
+      const paymentTerms      = getFieldValue(fields, 'condiciones de pago') || 'Contado';
+      const deadlineStr       = getFieldValue(fields, 'fecha límite');
 
-      const userSnapshot = await db.collection('users').where('email', '==', clientEmail).limit(1).get();
-      if (!userSnapshot.empty) {
-        const userDoc = userSnapshot.docs[0];
-        clientId = userDoc.id;
-        companyId = (userDoc.data() as any).companyId || 'default-company';
-      } else {
-        console.warn(`[pipefy] No user found for email "${clientEmail}". OT will be created as orphan (clientId=pipefy-guest). Manual assignment required.`);
-      }
+      const companyId = await findOrCreateCompany(
+        db, titular.companyName, titular.pipefyTitularId
+      );
 
-      const otData = {
-        pipefyCardId: String(card.id),
-        title: card.title,
-        serviceType,
+      const [clientId, assignedToId] = await Promise.all([
+        findOrCreateClientUser(
+          db, titular.clientEmail, titular.clientName,
+          titular.clientPhone, companyId
+        ),
+        findOrCreateSPIUser(db, encargadoEmail, encargadoDisplayName),
+      ]);
+
+      const otData: Record<string, any> = {
+        pipefyCardId:     String(card.id),
+        title:            actividadAsignada,
+        brandName:        marcaAsunto,
+        serviceType:      actividadAsignada,
+        titularName:      titular.companyName,
+        encargadoEmail,
+        assignedToId:     assignedToId || null,
+        assignedByNombre,
         amount,
         fees,
         paymentTerms,
-        stage: 'solicitud' as OTStage,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        deadline: safeISODate(deadlineStr),
+        stage:            'solicitud' as OTStage,
+        status:           'pending',
+        createdAt:        new Date().toISOString(),
+        updatedAt:        new Date().toISOString(),
+        deadline:         safeISODate(deadlineStr),
         companyId,
         clientId,
-        source: 'pipefy',
+        source:           'pipefy',
       };
 
       const docRef = await db.collection('ots').add(otData);
       console.log(`OT Created from Pipefy: ${docRef.id}`);
 
       const defaultDocs = [
-        { name: 'Poder Simple', type: 'sign', isVaultEligible: true },
-        { name: 'Logo de la Marca', type: 'upload', isVaultEligible: true },
-        { name: 'Descripción de la Actividad', type: 'text', isVaultEligible: false },
+        { name: 'Poder Simple',     type: 'poder_legal', isVaultEligible: true  },
+        { name: 'Logo de la Marca', type: 'logo',        isVaultEligible: false },
       ];
 
-      if (serviceType.toLowerCase().includes('sanitaria')) {
-        defaultDocs.push({ name: 'Resolución Sanitaria Anterior', type: 'upload', isVaultEligible: true });
-      }
-
       const batch = db.batch();
-      defaultDocs.forEach((docDef) => {
-        const newDocRef = db.collection('documents').doc();
-        batch.set(newDocRef, {
-          otId: docRef.id,
+      defaultDocs.forEach((d) => {
+        const ref = db.collection('documents').doc();
+        batch.set(ref, {
+          otId:           docRef.id,
           clientId,
           companyId,
-          name: docDef.name,
-          type: docDef.type,
-          status: 'pending',
-          isVaultEligible: docDef.isVaultEligible,
-          createdAt: new Date().toISOString(),
+          name:           d.name,
+          type:           d.type,
+          status:         'pending',
+          isVaultEligible: d.isVaultEligible,
+          createdAt:      new Date().toISOString(),
         });
       });
       await batch.commit();
-      console.log(`Created ${defaultDocs.length} default documents for OT ${docRef.id}`);
 
       await db.collection('logs').add({
-        otId: docRef.id,
-        userId: 'system',
-        action: `Solicitud creada vía Pipefy (Card: ${card.id})`,
-        type: 'system',
+        otId:      docRef.id,
+        userId:    'system',
+        action:    `OT created via Pipefy. Titular: ${titular.companyName}. Encargado: ${encargadoEmail}`,
+        type:      'system',
         timestamp: new Date().toISOString(),
+        metadata: {
+          cardId:        card.id,
+          companyId,
+          clientId,
+          assignedToId:  assignedToId || null,
+          encargadoEmail,
+          titularEmail:  titular.clientEmail,
+          authLinked:    titular.clientEmail ? false : null,
+        },
       });
 
-      res.status(200).send({ success: true, otId: docRef.id });
+      res.status(200).send({
+        success:      true,
+        otId:         docRef.id,
+        companyId,
+        clientId,
+        assignedToId: assignedToId || null,
+      });
+      return;
 
     } catch (error) {
       console.error('Error processing Pipefy webhook:', error);

@@ -1,17 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.triggerDeadlinesCheck = exports.checkDocumentDeadlines = exports.createOTFromPipefy = exports.analyzeDocument = void 0;
+exports.triggerDeadlinesCheck = exports.checkDocumentDeadlines = exports.createOTFromPipefy = exports.createUser = exports.analyzeDocument = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const generative_ai_1 = require("@google/generative-ai");
 const params_1 = require("firebase-functions/params");
+const Sentry = require("@sentry/node");
 const pipefy_1 = require("./pipefy");
 const reminders_1 = require("./reminders");
 admin.initializeApp();
+// Sentry: only initializes when SENTRY_DSN env var is set in the Functions environment.
+// Set it via: firebase functions:config:set sentry.dsn="https://..."
+// or as a plain environment variable in the Cloud Functions console.
+if (process.env.SENTRY_DSN) {
+    Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        environment: process.env.FUNCTIONS_EMULATOR ? 'development' : 'production',
+        tracesSampleRate: 0.1,
+    });
+}
 const db = admin.firestore();
 const geminiApiKey = (0, params_1.defineSecret)("GEMINI_API_KEY");
 const AUTO_APPROVE_CONFIDENCE_THRESHOLD = 0.85;
-exports.analyzeDocument = (0, https_1.onCall)({ secrets: [geminiApiKey] }, async (request) => {
+exports.analyzeDocument = (0, https_1.onCall)({ secrets: [geminiApiKey], timeoutSeconds: 60, memory: '512MiB' }, async (request) => {
     // 1. Security Check
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
@@ -79,7 +90,47 @@ exports.analyzeDocument = (0, https_1.onCall)({ secrets: [geminiApiKey] }, async
     }
     catch (error) {
         console.error("Error analyzing document:", error);
+        Sentry.captureException(error, { extra: { docId, otId, mimeType } });
         throw new https_1.HttpsError("internal", "An error occurred while analyzing the document.");
+    }
+});
+exports.createUser = (0, https_1.onCall)(async (request) => {
+    var _a;
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'Must be authenticated.');
+    }
+    // Verify caller is spi-admin
+    const callerDoc = await db.collection('users').doc(request.auth.uid).get();
+    if (!callerDoc.exists || ((_a = callerDoc.data()) === null || _a === void 0 ? void 0 : _a.role) !== 'spi-admin') {
+        throw new https_1.HttpsError('permission-denied', 'Only SPI admins can create users.');
+    }
+    const { email, password, displayName, role, companyId } = request.data;
+    if (!email || !password || !role) {
+        throw new https_1.HttpsError('invalid-argument', 'email, password and role are required.');
+    }
+    try {
+        const userRecord = await admin.auth().createUser({ email, password, displayName });
+        await db.collection('users').doc(userRecord.uid).set({
+            email,
+            displayName: displayName || '',
+            role,
+            companyId: companyId || '',
+            disabled: false,
+            createdAt: new Date().toISOString(),
+        });
+        await db.collection('logs').add({
+            otId: 'system',
+            userId: request.auth.uid,
+            action: `Usuario creado: ${email} (${role})`,
+            type: 'system',
+            timestamp: new Date().toISOString(),
+        });
+        return { uid: userRecord.uid };
+    }
+    catch (error) {
+        console.error('Error creating user:', error);
+        Sentry.captureException(error, { extra: { email, role } });
+        throw new https_1.HttpsError('internal', error.message || 'Error creating user.');
     }
 });
 // Pipefy Webhook
