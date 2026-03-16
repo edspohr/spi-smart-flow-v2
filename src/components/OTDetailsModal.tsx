@@ -29,12 +29,13 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  ArrowRight,
   History,
   ChevronDown,
 } from "lucide-react";
 import useOTStore from "../store/useOTStore";
 import useDocumentStore from "../store/useDocumentStore";
+import useAuthStore from "../store/useAuthStore";
+import { logAction } from "../lib/logAction";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -47,10 +48,21 @@ interface OTDetailsModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const STAGE_ORDER: OTStage[] = [
+  'solicitud', 'pago_adelanto', 'gestion', 'pago_cierre', 'finalizado',
+];
+const STAGE_LABELS: Record<OTStage, string> = {
+  solicitud: 'Solicitud', pago_adelanto: 'Pago Inicial',
+  gestion: 'En Gestión',  pago_cierre: 'Pago Final',
+  finalizado: 'Finalizado',
+};
+
 const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
-  const { updateOTStage, updateOTDetails, loading: otLoading } = useOTStore();
+  const { updateOTStage, updateOTDetails } = useOTStore();
   const { documents, updateDocumentStatus, getDocumentVersions } = useDocumentStore();
+  const { user } = useAuthStore();
   const [internalNotes, setInternalNotes] = useState(ot.internalNotes || "");
+  const [internalNote, setInternalNote] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const [rejectTarget, setRejectTarget] = useState<string | null>(null); // docId
   const [rejectReason, setRejectReason] = useState("");
@@ -58,6 +70,11 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
   const [otLogs, setOtLogs] = useState<Log[]>([]);
   const [expandedVersions, setExpandedVersions] = useState<string | null>(null); // docId
   const [versions, setVersions] = useState<Record<string, DocumentVersion[]>>({}); // docId → versions
+
+  const nextStage = (() => {
+    const i = STAGE_ORDER.indexOf(ot.stage);
+    return i < STAGE_ORDER.length - 1 ? STAGE_ORDER[i + 1] : null;
+  })();
 
   useEffect(() => {
     setInternalNotes(ot.internalNotes || "");
@@ -82,24 +99,6 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
   }, [open, ot.id]);
 
   const otDocuments = documents.filter((d) => d.otId === ot.id);
-
-  const handleAdvanceStage = async () => {
-    const stages: OTStage[] = [
-      "solicitud",
-      "pago_adelanto",
-      "gestion",
-      "pago_cierre",
-      "finalizado",
-    ];
-    const currentIndex = stages.indexOf(ot.stage);
-    if (currentIndex === -1 || currentIndex >= stages.length - 1) return;
-    try {
-      await updateOTStage(ot.id, stages[currentIndex + 1]);
-      toast.success(`Etapa avanzada a: ${stages[currentIndex + 1]}`);
-    } catch {
-      toast.error("Error al avanzar la etapa");
-    }
-  };
 
   const handleSaveNotes = async () => {
     setIsSavingNotes(true);
@@ -160,7 +159,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
         <DialogHeader className="p-8 pb-0 flex flex-row justify-between items-start">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <OTStatusBadge stage={ot.stage} dark />
+              <OTStatusBadge stage={ot.stage} size="sm" />
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">OT: {ot.id.substring(0, 10)}</span>
             </div>
             <DialogTitle className="text-3xl font-black text-white tracking-tight uppercase">
@@ -168,15 +167,6 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
             </DialogTitle>
           </div>
           
-          <div className="flex gap-3">
-             <Button 
-                onClick={handleAdvanceStage} 
-                disabled={otLoading}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest h-12 px-6 rounded-2xl shadow-lg shadow-blue-500/20 group"
-             >
-               Avanzar Etapa <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-             </Button>
-          </div>
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="flex-1 flex flex-col mt-6">
@@ -354,6 +344,35 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                     </div>
                  )}
                </div>
+
+               {user?.role === 'spi-admin' && (
+                 <div className="border-t border-slate-800 pt-4 mt-6 space-y-3">
+                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                     Nota interna — solo visible para el equipo SPI
+                   </p>
+                   <div className="flex gap-2 items-start">
+                     <Textarea
+                       value={internalNote}
+                       onChange={e => setInternalNote(e.target.value)}
+                       placeholder="Agregar nota interna del equipo..."
+                       className="min-h-[72px] text-sm flex-1 bg-slate-800/30 border-slate-700 text-white rounded-xl"
+                     />
+                     <Button
+                       size="sm"
+                       disabled={!internalNote.trim()}
+                       onClick={async () => {
+                         await logAction(user!.uid, ot.id,
+                           `[NOTA INTERNA] ${internalNote.trim()}`);
+                         setInternalNote('');
+                         toast.success('Nota guardada');
+                       }}
+                       className="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl px-4 disabled:opacity-50"
+                     >
+                       Guardar
+                     </Button>
+                   </div>
+                 </div>
+               )}
             </TabsContent>
 
             <TabsContent value="history" className="mt-0">
@@ -386,6 +405,21 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
             </TabsContent>
           </ScrollArea>
         </Tabs>
+
+        {user?.role === 'spi-admin' && (
+          <DialogFooter className="px-8 py-4 border-t border-slate-800">
+            <Button
+              onClick={async () => {
+                await updateOTStage(ot.id, nextStage!);
+                toast.success(`OT avanzada a ${STAGE_LABELS[nextStage!]}`);
+              }}
+              disabled={!nextStage}
+              className="ml-auto bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest h-11 px-6 rounded-xl disabled:opacity-50"
+            >
+              {nextStage ? `Avanzar a ${STAGE_LABELS[nextStage]} →` : 'Finalizado'}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
 

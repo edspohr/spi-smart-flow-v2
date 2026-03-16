@@ -2,10 +2,22 @@ import { useEffect, useState } from 'react';
 import useDataStore from '../store/useDataStore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ShieldCheck, Download, Search, HardDrive, ListFilter, Clock, FileText, Filter } from 'lucide-react';
+import { ShieldCheck, Download, Search, HardDrive, ListFilter, Clock, AlertCircle, FileText, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge'; 
+import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+
+type ExpiryStatus = 'vencido' | 'proximo' | 'vigente' | 'indefinido';
+
+function getExpiryStatus(validUntil?: string): ExpiryStatus {
+  if (!validUntil) return 'indefinido';
+  const days = Math.ceil(
+    (new Date(validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  );
+  if (days < 0)   return 'vencido';
+  if (days <= 30) return 'proximo';
+  return 'vigente';
+}
 
 const SPIVault = () => {
     const { vaultDocuments, loading, subscribeToAllDocuments } = useDataStore();
@@ -105,10 +117,14 @@ const SPIVault = () => {
              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {filteredDocs.map((doc) => {
                     const companyName = doc.validationMetadata?.companyName || (doc as any).companyId || "Empresa Desconocida";
+                    const expiryStatus = getExpiryStatus(doc.validUntil);
+                    const expiryDays = doc.validUntil
+                      ? Math.ceil((new Date(doc.validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                      : null;
 
                     return (
-                    <Card 
-                        key={doc.id} 
+                    <Card
+                        key={doc.id}
                         className="group relative rounded-[2.5rem] border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-blue-200/30 transition-all duration-300 overflow-hidden bg-white flex flex-col h-full"
                     >
                         <CardHeader className="p-6 pb-0 space-y-4 flex-none">
@@ -159,9 +175,33 @@ const SPIVault = () => {
                                 </div>
                             </div>
 
+                            {/* Expiry status banner */}
+                            {expiryStatus === 'vencido' && (
+                                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs font-semibold text-red-700 flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4 shrink-0" />
+                                    Documento vencido — será solicitado en tu próxima operación
+                                </div>
+                            )}
+                            {expiryStatus === 'proximo' && (
+                                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs font-semibold text-amber-700 flex items-center gap-2">
+                                    <Clock className="w-4 h-4 shrink-0" />
+                                    Vence en {expiryDays} días
+                                </div>
+                            )}
+                            {expiryStatus === 'vigente' && (
+                                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[9px] font-black uppercase tracking-widest rounded-lg px-2">
+                                    Vigente
+                                </Badge>
+                            )}
+                            {expiryStatus === 'indefinido' && (
+                                <Badge className="bg-slate-100 text-slate-500 border-slate-200 text-[9px] font-black uppercase tracking-widest rounded-lg px-2">
+                                    Sin fecha de caducidad
+                                </Badge>
+                            )}
+
                             <div className="flex gap-2 mt-auto">
-                                <Button 
-                                    variant="outline" 
+                                <Button
+                                    variant="outline"
                                     onClick={() => doc.url && window.open(doc.url, '_blank')}
                                     disabled={!doc.url}
                                     className="flex-1 h-11 rounded-2xl font-black uppercase text-[10px] tracking-widest border-slate-100 hover:bg-slate-50 transition-all text-slate-500 shadow-sm"

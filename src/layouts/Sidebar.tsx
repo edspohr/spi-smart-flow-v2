@@ -2,12 +2,10 @@ import { Link, useLocation } from 'react-router-dom';
 import useAuthStore from '../store/useAuthStore';
 import {
   LayoutDashboard,
-  Files,
-  Users,
-  UserCog,
+  FileText,
+  Building2,
   ShieldCheck,
   LogOut,
-  Command
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -24,16 +22,14 @@ const Sidebar = () => {
     switch (user.role) {
       case 'client':
         return [
-          { href: '/client', label: 'Mis Operaciones', icon: LayoutDashboard },
-          { href: '/client/vault', label: 'Bóveda Smart', icon: ShieldCheck },
+          { href: '/client',       label: 'Mis Solicitudes',      icon: FileText },
+          { href: '/client/vault', label: 'Bóveda de Documentos', icon: ShieldCheck },
         ];
       case 'spi-admin':
         return [
-          { href: '/spi-admin', label: 'Dashboard SPI', icon: Command },
-          { href: '/spi-admin/nueva-solicitud', label: 'Nueva Operación', icon: Files },
-          { href: '/spi-admin/vault', label: 'Bóveda Global', icon: ShieldCheck },
-          { href: '/spi-admin/companies', label: 'Empresas Clientes', icon: Users },
-          { href: '/spi-admin/users', label: 'Usuarios', icon: UserCog },
+          { href: '/spi-admin',           label: 'Torre de Control', icon: LayoutDashboard },
+          { href: '/spi-admin/companies', label: 'Empresas',          icon: Building2 },
+          { href: '/spi-admin/vault',     label: 'Bóveda Global',     icon: ShieldCheck },
         ];
       case 'guest':
         return [];
@@ -69,12 +65,12 @@ const Sidebar = () => {
               const isActive = location.pathname === link.href;
               return (
                 <li key={link.href} className="list-none group">
-                  <Link 
+                  <Link
                     to={link.href}
                     className={cn(
                       "flex items-center gap-3 px-4 py-3.5 transition-all duration-300 rounded-2xl relative overflow-hidden",
-                      isActive 
-                        ? "bg-blue-600 text-white shadow-xl shadow-blue-600/20" 
+                      isActive
+                        ? "bg-blue-600 text-white shadow-xl shadow-blue-600/20"
                         : "text-slate-400 hover:text-slate-100 hover:bg-white/5"
                     )}
                   >
@@ -91,7 +87,7 @@ const Sidebar = () => {
           </nav>
         </div>
       </div>
-      
+
       {/* 3. Bottom Section: User Info Card */}
       <div className="p-6 mt-auto">
         <div className="bg-white/5 backdrop-blur-md rounded-[2rem] p-5 border border-white/5 group hover:bg-white/10 transition-all duration-300">
@@ -110,16 +106,16 @@ const Sidebar = () => {
               </p>
             </div>
           </div>
-          
+
           <Separator className="my-4 bg-white/5" />
-          
-          <Button 
-            variant="ghost" 
+
+          <Button
+            variant="ghost"
             className="w-full justify-start gap-4 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all duration-300 rounded-xl px-0"
             onClick={() => useAuthStore.getState().logout()}
           >
             <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-rose-500/20 transition-all">
-                <LogOut className="h-4 w-4" />
+              <LogOut className="h-4 w-4" />
             </div>
             <span className="text-xs font-black uppercase tracking-widest">Cerrar Sesión</span>
           </Button>

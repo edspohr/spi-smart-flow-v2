@@ -5,9 +5,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { ShieldCheck, Download, Search, HardDrive, Clock, AlertCircle, FileText, ChevronRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge'; 
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+
+type ExpiryStatus = 'vencido' | 'proximo' | 'vigente' | 'indefinido';
+
+function getExpiryStatus(validUntil?: string): ExpiryStatus {
+  if (!validUntil) return 'indefinido';
+  const days = Math.ceil(
+    (new Date(validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+  );
+  if (days < 0)   return 'vencido';
+  if (days <= 30) return 'proximo';
+  return 'vigente';
+}
 
 const ClientVault = () => {
     const { user } = useAuthStore();
@@ -28,16 +40,6 @@ const ClientVault = () => {
         d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.type.toLowerCase().includes(searchTerm.toLowerCase())
     );
-
-    const getExpiryStatus = (validUntil?: string) => {
-        if (!validUntil) return 'indefinido';
-        const days = Math.ceil(
-            (new Date(validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-        );
-        if (days < 0) return 'vencido';
-        if (days <= 30) return 'proximo';
-        return 'vigente';
-    };
 
     if (loading) {
         return (
@@ -106,42 +108,17 @@ const ClientVault = () => {
                     const days = expiryDate ? Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
 
                     return (
-                        <Card 
-                            key={doc.id} 
+                        <Card
+                            key={doc.id}
                             className="relative rounded-[2rem] border-slate-100 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-blue-200/30 transition-all duration-300 group overflow-hidden bg-white"
                             style={{ animationDelay: `${idx * 100}ms` }}
                         >
-                            {status === 'vencido' && (
-                                <div className="bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest py-2 px-4 flex items-center gap-2">
-                                    <AlertCircle className="h-3 w-3" />
-                                    Documento vencido — será solicitado en tu próxima operación
-                                </div>
-                            )}
-                            {status === 'proximo' && (
-                                <div className="bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest py-2 px-4 flex items-center gap-2">
-                                    <Clock className="h-3 w-3" />
-                                    Este documento vence en {days} días
-                                </div>
-                            )}
-
                             <CardHeader className="p-6 pb-0">
                                 <div className="flex justify-between items-start">
                                     <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 transition-transform group-hover:scale-110">
                                         <FileText className="h-7 w-7" />
                                     </div>
-                                    <div className="flex flex-col items-end gap-2">
-                                        {status === 'vigente' && (
-                                            <Badge className="bg-emerald-100 text-emerald-700 border-none px-3 py-1 font-black uppercase text-[9px] tracking-widest rounded-lg">
-                                                Vigente
-                                            </Badge>
-                                        )}
-                                        {status === 'indefinido' && (
-                                            <Badge className="bg-slate-100 text-slate-600 border-none px-3 py-1 font-black uppercase text-[9px] tracking-widest rounded-lg">
-                                                Sin vencimiento
-                                            </Badge>
-                                        )}
-                                        <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">ID: {doc.id.substring(0, 8)}</span>
-                                    </div>
+                                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">ID: {doc.id.substring(0, 8)}</span>
                                 </div>
                                 <CardTitle className="mt-6 text-xl font-black text-slate-800 line-clamp-1" title={doc.name}>
                                     {doc.name}
@@ -152,7 +129,31 @@ const ClientVault = () => {
                             </CardHeader>
                             
                             <CardContent className="p-6">
-                                <div className="space-y-6">
+                                <div className="space-y-4">
+                                    {/* Expiry status banner */}
+                                    {status === 'vencido' && (
+                                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs font-semibold text-red-700 flex items-center gap-2">
+                                            <AlertCircle className="w-4 h-4 shrink-0" />
+                                            Documento vencido — será solicitado en tu próxima operación
+                                        </div>
+                                    )}
+                                    {status === 'proximo' && (
+                                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs font-semibold text-amber-700 flex items-center gap-2">
+                                            <Clock className="w-4 h-4 shrink-0" />
+                                            Vence en {days} días
+                                        </div>
+                                    )}
+                                    {status === 'vigente' && (
+                                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[9px] font-black uppercase tracking-widest rounded-lg px-2">
+                                            Vigente
+                                        </Badge>
+                                    )}
+                                    {status === 'indefinido' && (
+                                        <Badge className="bg-slate-100 text-slate-500 border-slate-200 text-[9px] font-black uppercase tracking-widest rounded-lg px-2">
+                                            Sin fecha de caducidad
+                                        </Badge>
+                                    )}
+
                                     <div className="p-4 rounded-2xl flex items-center justify-between border border-slate-100 bg-slate-50">
                                         <div className="flex items-center gap-3">
                                             <Calendar className="h-5 w-5 text-slate-400" />

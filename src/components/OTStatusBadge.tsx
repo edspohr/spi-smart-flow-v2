@@ -2,33 +2,34 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { OTStage } from '@/store/types';
 
-const STAGE_CONFIG: Record<OTStage, { label: string; color: string }> = {
-  solicitud:    { label: 'Solicitud',    color: 'bg-amber-100 text-amber-800 border-amber-200' },
-  pago_adelanto: { label: 'Pago Adelanto', color: 'bg-sky-100 text-sky-800 border-sky-200' },
-  gestion:      { label: 'En Gestión',   color: 'bg-blue-100 text-blue-800 border-blue-200' },
-  pago_cierre:  { label: 'Pago Cierre',  color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
-  finalizado:   { label: 'Finalizado',   color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+const CONFIG: Record<OTStage, { label: string; cls: string }> = {
+  solicitud:     { label: 'Solicitud',    cls: 'bg-amber-100 text-amber-800 border-amber-200' },
+  pago_adelanto: { label: 'Pago Inicial', cls: 'bg-sky-100 text-sky-800 border-sky-200' },
+  gestion:       { label: 'En Gestión',   cls: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+  pago_cierre:   { label: 'Pago Final',   cls: 'bg-purple-100 text-purple-800 border-purple-200' },
+  finalizado:    { label: 'Finalizado',   cls: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
 };
 
-interface OTStatusBadgeProps {
+export function OTStatusBadge({
+  stage,
+  size = 'md',
+  dark: _dark,
+}: {
   stage: OTStage;
+  size?: 'sm' | 'md';
+  /** @deprecated kept for backward compatibility, has no effect */
   dark?: boolean;
-}
-
-export const OTStatusBadge = ({ stage, dark }: OTStatusBadgeProps) => {
-  const config = STAGE_CONFIG[stage] || STAGE_CONFIG.solicitud;
-
+}) {
+  const c = CONFIG[stage] ?? CONFIG.solicitud;
   return (
     <Badge
-      variant="outline"
       className={cn(
-        "px-2.5 py-0.5 text-[9px] uppercase font-black tracking-widest border transition-colors",
-        dark
-          ? `bg-slate-800/40 border-slate-700 text-white`
-          : `${config.color} border-current/10`
+        'border font-black uppercase tracking-widest rounded-lg',
+        size === 'sm' ? 'text-[9px] px-2 py-0.5' : 'text-[10px] px-3 py-1',
+        c.cls,
       )}
     >
-      {config.label}
+      {c.label}
     </Badge>
   );
-};
+}
