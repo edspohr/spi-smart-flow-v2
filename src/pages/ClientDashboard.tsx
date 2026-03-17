@@ -7,7 +7,7 @@ import { OTStatusBadge } from '@/components/OTStatusBadge';
 import TimelineStepper from '@/components/dashboard/TimelineStepper';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
 import {
   FileText,
   Loader2,
@@ -76,18 +76,18 @@ const ClientDashboard = () => {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto space-y-8 pb-20">
-        <Skeleton className="h-32 w-full rounded-[2.5rem]" />
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl border border-slate-100 p-8 space-y-4">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-6 w-24" />
-              <Skeleton className="h-6 w-16" />
-            </div>
-            <Skeleton className="h-8 w-64" />
-            <Skeleton className="h-12 w-full rounded-2xl" />
-          </div>
-        ))}
+      <div className="max-w-6xl mx-auto space-y-8 pb-20 pt-4">
+        <Skeleton className="h-32 w-full rounded-[2.5rem] bg-white border border-slate-100 shadow-sm" />
+        <div className="grid grid-cols-3 gap-4">
+          <Skeleton className="h-24 rounded-2xl bg-white border border-slate-100" />
+          <Skeleton className="h-24 rounded-2xl bg-white border border-slate-100" />
+          <Skeleton className="h-24 rounded-2xl bg-white border border-slate-100" />
+        </div>
+        <div className="space-y-6">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       </div>
     );
   }

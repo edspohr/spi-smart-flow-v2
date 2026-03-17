@@ -70,6 +70,8 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
   const [otLogs, setOtLogs] = useState<Log[]>([]);
   const [expandedVersions, setExpandedVersions] = useState<string | null>(null); // docId
   const [versions, setVersions] = useState<Record<string, DocumentVersion[]>>({}); // docId → versions
+  const [isAdvancing, setIsAdvancing] = useState(false);
+  const [isApproving, setIsApproving] = useState<Record<string, boolean>>({});
 
   const nextStage = (() => {
     const i = STAGE_ORDER.indexOf(ot.stage);
@@ -113,11 +115,14 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
   };
 
   const handleApproveDoc = async (docId: string) => {
+    setIsApproving(prev => ({ ...prev, [docId]: true }));
     try {
       await updateDocumentStatus(docId, 'validated');
       toast.success('Documento aprobado');
     } catch {
       toast.error('Error al aprobar el documento');
+    } finally {
+      setIsApproving(prev => ({ ...prev, [docId]: false }));
     }
   };
 
@@ -155,14 +160,14 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl h-[90vh] bg-[#0B1121] border-slate-800 p-0 overflow-hidden flex flex-col rounded-[2.5rem]">
+      <DialogContent className="max-w-5xl h-[90vh] bg-white border-slate-200/60 p-0 overflow-hidden flex flex-col rounded-[2.5rem] shadow-2xl">
         <DialogHeader className="p-8 pb-0 flex flex-row justify-between items-start">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <OTStatusBadge stage={ot.stage} size="sm" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">OT: {ot.id.substring(0, 10)}</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">OT: {ot.id.substring(0, 10)}</span>
             </div>
-            <DialogTitle className="text-3xl font-black text-white tracking-tight uppercase">
+            <DialogTitle className="text-3xl font-black text-slate-900 tracking-tight uppercase">
               {ot.brandName || ot.title}
             </DialogTitle>
           </div>
@@ -170,10 +175,10 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="flex-1 flex flex-col mt-6">
-          <TabsList className="px-8 bg-transparent border-b border-slate-800 h-12 gap-8">
-            <TabsTrigger value="overview" className="bg-transparent text-slate-500 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 px-0 h-12 rounded-none text-[10px] font-black uppercase tracking-widest">Resumen</TabsTrigger>
-            <TabsTrigger value="documents" className="bg-transparent text-slate-500 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 px-0 h-12 rounded-none text-[10px] font-black uppercase tracking-widest">Documentación ({otDocuments.length})</TabsTrigger>
-            <TabsTrigger value="history" className="bg-transparent text-slate-500 data-[state=active]:text-white data-[state=active]:border-b-2 data-[state=active]:border-blue-500 px-0 h-12 rounded-none text-[10px] font-black uppercase tracking-widest">Historial</TabsTrigger>
+          <TabsList className="px-8 bg-transparent border-b border-slate-100 h-14 gap-8">
+            <TabsTrigger value="overview" className="bg-transparent text-slate-400 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 px-0 h-14 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all">Resumen</TabsTrigger>
+            <TabsTrigger value="documents" className="bg-transparent text-slate-400 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 px-0 h-14 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all">Documentación ({otDocuments.length})</TabsTrigger>
+            <TabsTrigger value="history" className="bg-transparent text-slate-400 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 px-0 h-14 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all">Historial</TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1 p-8">
@@ -181,62 +186,62 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
               <div className="grid md:grid-cols-2 gap-8">
                 {/* Left Column: Client Info */}
                 <div className="space-y-6">
-                  <div className="bg-slate-900/50 rounded-3xl p-6 border border-slate-800">
-                    <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] mb-4 flex items-center gap-2">
-                       <User size={14} className="text-blue-500" /> Información del Cliente
+                  <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-sm">
+                    <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center gap-2">
+                       <User size={14} className="text-blue-600" /> Información del Cliente
                     </h3>
                     <div className="space-y-4">
-                      <div className="flex justify-between items-center bg-slate-800/20 p-4 rounded-2xl">
-                        <span className="text-xs font-bold text-slate-400">Empresa</span>
-                        <span className="text-sm font-black text-white flex items-center gap-2">
-                          <Building2 size={14} className="text-slate-500" /> {ot.companyId}
+                      <div className="flex justify-between items-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                        <span className="text-xs font-bold text-slate-500">Empresa</span>
+                        <span className="text-sm font-black text-slate-900 flex items-center gap-2">
+                          <Building2 size={14} className="text-slate-400" /> {ot.companyId}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center bg-slate-800/20 p-4 rounded-2xl">
-                        <span className="text-xs font-bold text-slate-400">Usuario ID</span>
-                        <span className="text-xs font-mono font-bold text-slate-300">{ot.clientId}</span>
+                      <div className="flex justify-between items-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                        <span className="text-xs font-bold text-slate-500">Usuario ID</span>
+                        <span className="text-xs font-mono font-bold text-slate-600">{ot.clientId}</span>
                       </div>
-                      <div className="flex justify-between items-center bg-slate-800/20 p-4 rounded-2xl">
-                        <span className="text-xs font-bold text-slate-400">Fecha Apertura</span>
-                        <span className="text-sm font-black text-white flex items-center gap-2">
-                           <Calendar size={14} className="text-slate-500" /> {ot.createdAt ? format(new Date(ot.createdAt), "d MMMM, yyyy", { locale: es }) : "N/A"}
+                      <div className="flex justify-between items-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                        <span className="text-xs font-bold text-slate-500">Apertura</span>
+                        <span className="text-sm font-black text-slate-900 flex items-center gap-2">
+                           <Calendar size={14} className="text-slate-400" /> {ot.createdAt ? format(new Date(ot.createdAt), "d MMMM, yyyy", { locale: es }) : "N/A"}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="bg-slate-900/50 rounded-3xl p-6 border border-slate-800">
-                    <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] mb-4 flex items-center gap-2">
-                       <MessageSquare size={14} className="text-amber-500" /> Detalles Técnicos
+                  <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-sm">
+                    <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center gap-2">
+                       <MessageSquare size={14} className="text-amber-600" /> Detalles Técnicos
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
-                       <div className="bg-slate-800/20 p-4 rounded-2xl">
-                          <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Clase</p>
-                          <p className="text-sm font-black text-white uppercase">{ot.brandClass || "Pendiente"}</p>
+                       <div className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Clase</p>
+                          <p className="text-sm font-black text-slate-900 uppercase">{ot.brandClass || "Pendiente"}</p>
                        </div>
-                       <div className="bg-slate-800/20 p-4 rounded-2xl">
-                          <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Pantone</p>
-                          <p className="text-sm font-black text-white">{ot.pantone || "N/A"}</p>
+                       <div className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                          <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">Pantone</p>
+                          <p className="text-sm font-black text-slate-900">{ot.pantone || "N/A"}</p>
                        </div>
                     </div>
                   </div>
                 </div>
 
                 {/* Right Column: Internal Notes */}
-                <div className="bg-slate-900/50 rounded-3xl p-6 border border-slate-800 flex flex-col h-full">
-                  <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-[0.2em] mb-4 flex items-center gap-2">
-                     <FileText size={14} className="text-emerald-500" /> Notas Internas (Privado)
+                <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-sm flex flex-col h-full">
+                  <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center gap-2">
+                     <FileText size={14} className="text-teal-600" /> Notas Internas (Privado)
                   </h3>
                   <Textarea 
                     value={internalNotes}
                     onChange={(e) => setInternalNotes(e.target.value)}
                     placeholder="Espacio para bitácora interna, seguimientos manuales o recordatorios del equipo SPI..."
-                    className="flex-1 bg-slate-800/30 border-slate-700 text-white rounded-2xl resize-none p-4 font-medium text-sm focus:ring-emerald-500"
+                    className="flex-1 bg-white border-slate-200 text-slate-900 rounded-2xl resize-none p-6 font-medium text-sm focus:ring-teal-500/20 shadow-inner min-h-[120px]"
                   />
                   <Button 
                     onClick={handleSaveNotes}
                     disabled={isSavingNotes}
-                    className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-widest h-12 rounded-xl"
+                    className="mt-4 w-full bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs uppercase tracking-widest h-12 rounded-xl shadow-lg shadow-teal-500/20 transition-all"
                   >
                     {isSavingNotes ? "Guardando..." : "Actualizar Bitácora Interna"}
                   </Button>
@@ -247,32 +252,32 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
             <TabsContent value="documents" className="mt-0">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  {otDocuments.map((doc) => (
-                   <div key={doc.id} className="bg-slate-900 border border-slate-800 p-6 rounded-3xl group transition-all">
+                   <div key={doc.id} className="bg-white border border-slate-200 p-6 rounded-[2rem] group transition-all shadow-sm hover:shadow-md">
                       <div className="flex justify-between items-start mb-6">
-                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
                           <FileText size={24} />
                         </div>
                         <Badge className={cn(
-                          "px-3 py-1 text-[8px] font-black uppercase tracking-widest",
-                          doc.status === 'validated' ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" :
-                          doc.status === 'rejected' ? "bg-rose-500/10 text-rose-500 border-rose-500/20" :
-                          "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                          "px-3 py-1 text-[8px] font-bold uppercase tracking-widest shadow-none",
+                          doc.status === 'validated' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                          doc.status === 'rejected' ? "bg-rose-50 text-rose-700 border-rose-200" :
+                          "bg-amber-50 text-amber-700 border-amber-200"
                         )}>
                           {doc.status}
                         </Badge>
                       </div>
 
                       <div className="mb-6">
-                        <h4 className="text-lg font-black text-white mb-1 uppercase tracking-tight">{doc.name}</h4>
-                        <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.1em]">Tipo: {doc.type || "Desconocido"}</p>
+                        <h4 className="text-lg font-bold text-slate-800 mb-1 uppercase tracking-tight">{doc.name}</h4>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.1em]">Tipo: {doc.type || "Desconocido"}</p>
                       </div>
 
-                      <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-800">
+                      <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-50">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => window.open(doc.url, "_blank")}
-                          className="bg-slate-800 border-slate-700 text-white font-black text-[9px] uppercase tracking-widest h-9 px-4 rounded-xl hover:bg-slate-700"
+                          className="bg-white border-slate-200 text-slate-700 font-bold text-[9px] uppercase tracking-widest h-9 px-4 rounded-xl hover:bg-slate-50 shadow-sm"
                         >
                           Visualizar <ExternalLink size={12} className="ml-1" />
                         </Button>
@@ -280,10 +285,11 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                         {doc.status !== 'validated' && (
                           <Button
                             size="sm"
+                            disabled={isApproving[doc.id]}
                             onClick={() => handleApproveDoc(doc.id)}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[9px] uppercase tracking-widest h-9 px-4 rounded-xl"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] uppercase tracking-widest h-9 px-4 rounded-xl shadow-lg shadow-emerald-500/20 disabled:opacity-50"
                           >
-                            Aprobar <CheckCircle2 size={12} className="ml-1" />
+                            {isApproving[doc.id] ? "Aprobando..." : "Aprobar"} <CheckCircle2 size={12} className="ml-1" />
                           </Button>
                         )}
 
@@ -291,7 +297,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                           <Button
                             size="sm"
                             onClick={() => { setRejectTarget(doc.id); setRejectReason(""); }}
-                            className="bg-rose-600 hover:bg-rose-700 text-white font-black text-[9px] uppercase tracking-widest h-9 px-4 rounded-xl"
+                            className="bg-rose-600 hover:bg-rose-700 text-white font-bold text-[9px] uppercase tracking-widest h-9 px-4 rounded-xl shadow-lg shadow-rose-500/20"
                           >
                             Rechazar <XCircle size={12} className="ml-1" />
                           </Button>
@@ -301,7 +307,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleToggleVersions(doc.id)}
-                          className="ml-auto text-slate-500 hover:text-slate-300 font-black text-[9px] uppercase tracking-widest h-9 px-3 rounded-xl gap-1"
+                          className="ml-auto text-slate-400 hover:text-slate-600 font-bold text-[9px] uppercase tracking-widest h-9 px-3 rounded-xl gap-1 transition-colors"
                         >
                           <History size={12} /> Versiones
                           <ChevronDown size={12} className={cn("transition-transform", expandedVersions === doc.id && "rotate-180")} />
@@ -310,23 +316,23 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
 
                       {/* Version history */}
                       {expandedVersions === doc.id && (
-                        <div className="mt-4 pt-4 border-t border-slate-800 space-y-2">
+                        <div className="mt-4 pt-4 border-t border-slate-50 space-y-2">
                           {(versions[doc.id] ?? []).length === 0 ? (
-                            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest text-center py-2">
+                            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest text-center py-2">
                               Sin versiones anteriores
                             </p>
                           ) : (
                             (versions[doc.id] ?? []).map((v, i) => (
-                              <div key={v.id} className="flex items-center justify-between bg-slate-800/30 px-4 py-2.5 rounded-xl">
+                              <div key={v.id} className="flex items-center justify-between bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
-                                  <span className="text-[9px] font-black text-slate-600 uppercase">v{(versions[doc.id] ?? []).length - i}</span>
-                                  <span className="text-xs font-bold text-slate-400">
+                                  <span className="text-[9px] font-black text-slate-300 uppercase">v{(versions[doc.id] ?? []).length - i}</span>
+                                  <span className="text-xs font-bold text-slate-500">
                                     {format(new Date(v.replacedAt), "d MMM yyyy, HH:mm", { locale: es })}
                                   </span>
                                 </div>
                                 <button
                                   onClick={() => window.open(v.url, '_blank')}
-                                  className="text-[9px] font-black text-blue-500 uppercase flex items-center gap-1 hover:text-blue-400"
+                                  className="text-[9px] font-bold text-blue-600 uppercase flex items-center gap-1 hover:text-blue-700 transition-colors"
                                 >
                                   Ver <ExternalLink size={10} />
                                 </button>
@@ -338,24 +344,24 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                    </div>
                  ))}
                  {otDocuments.length === 0 && (
-                    <div className="col-span-full py-20 text-center bg-slate-900/30 border-2 border-dashed border-slate-800 rounded-[2.5rem]">
-                       <Clock className="h-10 w-10 text-slate-700 mx-auto mb-4" />
-                       <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Sin documentos cargados por ahora</p>
+                    <div className="col-span-full py-24 text-center bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2.5rem]">
+                       <Clock className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                       <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-xs">Sin documentos cargados por ahora</p>
                     </div>
                  )}
                </div>
 
                {user?.role === 'spi-admin' && (
-                 <div className="border-t border-slate-800 pt-4 mt-6 space-y-3">
-                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                     Nota interna — solo visible para el equipo SPI
+                 <div className="border-t border-slate-100 pt-6 mt-8 space-y-4">
+                   <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">
+                     Nota rápida del equipo
                    </p>
-                   <div className="flex gap-2 items-start">
+                   <div className="flex gap-3 items-start">
                      <Textarea
                        value={internalNote}
                        onChange={e => setInternalNote(e.target.value)}
                        placeholder="Agregar nota interna del equipo..."
-                       className="min-h-[72px] text-sm flex-1 bg-slate-800/30 border-slate-700 text-white rounded-xl"
+                       className="min-h-[80px] text-sm flex-1 bg-white border-slate-200 text-slate-900 rounded-2xl shadow-inner focus:ring-blue-500/20"
                      />
                      <Button
                        size="sm"
@@ -366,7 +372,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                          setInternalNote('');
                          toast.success('Nota guardada');
                        }}
-                       className="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs rounded-xl px-4 disabled:opacity-50"
+                       className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl px-6 h-12 shadow-lg shadow-blue-500/20 disabled:opacity-50 transition-all"
                      >
                        Guardar
                      </Button>
@@ -378,27 +384,27 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
             <TabsContent value="history" className="mt-0">
                <div className="space-y-4">
                  {otLogs.map((log) => (
-                   <div key={log.id} className="flex gap-4 items-start bg-slate-900/40 p-5 rounded-2xl border border-slate-800/50">
-                      <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-blue-400 shrink-0">
+                   <div key={log.id} className="flex gap-4 items-start bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-all hover:bg-slate-50">
+                      <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 shrink-0 border border-slate-100">
                         <Activity size={18} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-slate-200">{log.action}</p>
-                        <div className="flex items-center gap-3 mt-1">
-                          <span className="text-[10px] font-black text-slate-500 uppercase flex items-center gap-1">
-                             <User size={10} /> {log.userId === 'system' || log.userId === 'pipefy' ? "Sistema" : "SPI Admin"}
+                        <p className="text-sm font-bold text-slate-700">{log.action}</p>
+                        <div className="flex items-center gap-4 mt-1.5">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1.5">
+                             <User size={12} className="text-slate-300" /> {log.userId === 'system' || log.userId === 'pipefy' ? "Sistema" : "Admin"}
                           </span>
-                          <span className="text-[10px] font-black text-slate-600 flex items-center gap-1">
-                             <Clock size={10} /> {log.timestamp ? format(new Date(log.timestamp as string), "d MMM, HH:mm", { locale: es }) : '—'}
+                          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
+                             <Clock size={12} className="text-slate-300" /> {log.timestamp ? format(new Date(log.timestamp as string), "d MMM, HH:mm", { locale: es }) : '—'}
                           </span>
                         </div>
                       </div>
                    </div>
                  ))}
                  {otLogs.length === 0 && (
-                   <div className="py-20 text-center border-2 border-dashed border-slate-800 rounded-[2.5rem]">
-                     <Activity className="h-10 w-10 text-slate-700 mx-auto mb-4" />
-                     <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">Sin actividad registrada</p>
+                   <div className="py-24 text-center border-2 border-dashed border-slate-200 bg-slate-50 rounded-[2.5rem]">
+                     <Activity className="h-12 w-12 text-slate-200 mx-auto mb-4" />
+                     <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-xs">Sin actividad registrada</p>
                    </div>
                  )}
                </div>
@@ -407,16 +413,21 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
         </Tabs>
 
         {user?.role === 'spi-admin' && (
-          <DialogFooter className="px-8 py-4 border-t border-slate-800">
+          <DialogFooter className="px-8 py-6 border-t border-slate-100 bg-slate-50/50">
             <Button
               onClick={async () => {
-                await updateOTStage(ot.id, nextStage!);
-                toast.success(`OT avanzada a ${STAGE_LABELS[nextStage!]}`);
+                setIsAdvancing(true);
+                try {
+                  await updateOTStage(ot.id, nextStage!);
+                  toast.success(`OT avanzada a ${STAGE_LABELS[nextStage!]}`);
+                } finally {
+                  setIsAdvancing(false);
+                }
               }}
-              disabled={!nextStage}
-              className="ml-auto bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest h-11 px-6 rounded-xl disabled:opacity-50"
+              disabled={!nextStage || isAdvancing}
+              className="ml-auto bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-widest h-12 px-8 rounded-xl shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50"
             >
-              {nextStage ? `Avanzar a ${STAGE_LABELS[nextStage]} →` : 'Finalizado'}
+              {isAdvancing ? "Procesando..." : nextStage ? `Avanzar a ${STAGE_LABELS[nextStage]} →` : 'OT Finalizada'}
             </Button>
           </DialogFooter>
         )}
@@ -425,35 +436,35 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
 
     {/* Reject Document Dialog */}
     <Dialog open={!!rejectTarget} onOpenChange={(open) => { if (!open) { setRejectTarget(null); setRejectReason(""); } }}>
-      <DialogContent className="max-w-sm rounded-[2rem] bg-[#0B1121] border-slate-800 text-white">
+      <DialogContent className="max-w-md rounded-[2.5rem] bg-white border-slate-200 text-slate-900 shadow-2xl p-8">
         <DialogHeader>
-          <DialogTitle className="text-xl font-black tracking-tight">Rechazar Documento</DialogTitle>
-          <DialogDescription className="text-slate-400 font-medium">
-            Indica la razón del rechazo para que el cliente pueda corregirlo.
+          <DialogTitle className="text-2xl font-black tracking-tight text-slate-900">Rechazar Documento</DialogTitle>
+          <DialogDescription className="text-slate-500 font-medium text-sm mt-2">
+            Indica la razón del rechazo de forma clara. Esta notificación será enviada al cliente.
           </DialogDescription>
         </DialogHeader>
-        <div className="py-2 space-y-2">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Razón del rechazo</Label>
+        <div className="py-6 space-y-3">
+          <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Razón detallada</Label>
           <Textarea
             value={rejectReason}
             onChange={(e) => setRejectReason(e.target.value)}
-            placeholder="Ej: El documento está vencido, la firma no coincide..."
-            className="bg-slate-800/50 border-slate-700 text-white rounded-xl resize-none min-h-[100px] font-medium"
+            placeholder="Ej: El documento está vencido, la firma no coincide o es ilegible..."
+            className="bg-slate-50 border-slate-200 text-slate-900 rounded-[1.5rem] resize-none min-h-[140px] font-medium p-4 focus:ring-rose-500/10 shadow-inner"
           />
         </div>
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-3 sm:justify-end">
           <Button
             variant="ghost"
             disabled={isRejecting}
             onClick={() => { setRejectTarget(null); setRejectReason(""); }}
-            className="rounded-xl font-bold text-slate-400"
+            className="rounded-xl font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 px-6 transition-all"
           >
             Cancelar
           </Button>
           <Button
             onClick={handleRejectDoc}
             disabled={isRejecting}
-            className="bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl px-6 disabled:opacity-60"
+            className="bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl px-8 h-12 shadow-lg shadow-rose-500/20 transition-all disabled:opacity-60"
           >
             {isRejecting ? 'Rechazando...' : 'Confirmar Rechazo'}
           </Button>

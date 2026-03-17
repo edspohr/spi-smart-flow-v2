@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
 import { OTStatusBadge } from '@/components/OTStatusBadge';
 import OTDetailsModal from '@/components/OTDetailsModal';
 import { cn } from '@/lib/utils';
@@ -52,11 +52,11 @@ const STAGE_LABELS: Record<OTStage, string> = {
 };
 
 const STAGE_COLORS: Record<OTStage, string> = {
-  solicitud: 'bg-amber-500/10 border-amber-500/20 text-amber-400',
-  pago_adelanto: 'bg-sky-500/10 border-sky-500/20 text-sky-400',
-  gestion: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400',
-  pago_cierre: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
-  finalizado: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+  solicitud: 'bg-amber-50 border-amber-200 text-amber-700 shadow-sm shadow-amber-900/5',
+  pago_adelanto: 'bg-blue-50 border-blue-200 text-blue-700 shadow-sm shadow-blue-900/5',
+  gestion: 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm shadow-indigo-900/5',
+  pago_cierre: 'bg-purple-50 border-purple-200 text-purple-700 shadow-sm shadow-purple-900/5',
+  finalizado: 'bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm shadow-emerald-900/5',
 };
 
 // ─── Kanban card ──────────────────────────────────────────────────────────────
@@ -84,28 +84,30 @@ function KanbanCard({
       {...listeners}
       onClick={onClick}
       className={cn(
-        'bg-slate-800/60 border border-slate-700/50 rounded-2xl p-4 cursor-grab active:cursor-grabbing',
-        'hover:border-blue-500/40 hover:bg-slate-800/90 transition-all duration-150 select-none',
-        isDragging && 'opacity-40 ring-2 ring-blue-500/50',
+        'bg-white border border-slate-200 rounded-[2rem] p-5 cursor-grab active:cursor-grabbing',
+        'hover:border-blue-300 hover:shadow-2xl hover:shadow-blue-900/10 hover:-translate-y-1 transition-all duration-300 select-none shadow-sm',
+        isDragging && 'opacity-40 ring-4 ring-blue-500/20 scale-105 z-50',
       )}
     >
-      <p className="font-black text-white text-sm leading-tight truncate mb-2">
-        {ot.brandName || ot.title}
-      </p>
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <Badge className="bg-slate-700/80 text-slate-400 border-slate-600 text-[9px] font-bold px-2 py-0.5 max-w-[90px] truncate">
-          {ot.companyId}
-        </Badge>
-        <OTStatusBadge stage={ot.stage} size="sm" />
-      </div>
-      {pendingCount > 0 && (
-        <div className="mt-2 flex items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 bg-red-500/15 text-red-400 border border-red-500/20 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg">
-            <AlertCircle className="h-2.5 w-2.5" />
-            {pendingCount} docs
-          </span>
+      <div className="flex flex-col gap-3">
+        <p className="font-black text-slate-900 text-[13px] leading-snug uppercase tracking-tight group-hover:text-blue-600 transition-colors">
+            {ot.brandName || ot.title}
+        </p>
+        <div className="flex items-center justify-between gap-2">
+            <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 text-[9px] font-black uppercase tracking-widest px-2 py-1 shadow-none rounded-xl">
+                {ot.companyId}
+            </Badge>
+            <OTStatusBadge stage={ot.stage} size="sm" />
         </div>
-      )}
+        {pendingCount > 0 && (
+            <div className="flex items-center gap-1.5 pt-1">
+                <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-600 border border-rose-200 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm shadow-rose-900/5 animate-pulse">
+                    <AlertCircle className="h-3 w-3" />
+                    {pendingCount} Pendiente{pendingCount !== 1 ? 's' : ''}
+                </span>
+            </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -130,13 +132,13 @@ function KanbanColumn({
     <div className="flex flex-col min-w-[240px] w-[240px]">
       {/* Column header */}
       <div className={cn(
-        'flex items-center justify-between px-4 py-3 rounded-2xl border mb-3',
+        'flex items-center justify-between px-5 py-3 rounded-[1.5rem] border mb-6 shadow-sm',
         STAGE_COLORS[stage],
       )}>
-        <span className="text-[10px] font-black uppercase tracking-widest">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em]">
           {STAGE_LABELS[stage]}
         </span>
-        <span className="text-[10px] font-black bg-white/10 rounded-lg px-2 py-0.5">
+        <span className="text-[10px] font-black bg-white/60 backdrop-blur-sm rounded-xl px-3 py-1 min-w-[28px] text-center border border-white/40 shadow-sm">
           {stageOTs.length}
         </span>
       </div>
@@ -158,8 +160,8 @@ function KanbanColumn({
           />
         ))}
         {stageOTs.length === 0 && (
-          <div className="flex items-center justify-center h-16 rounded-xl border border-dashed border-slate-700/40">
-            <span className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
+          <div className="flex items-center justify-center h-20 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50">
+            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
               Vacío
             </span>
           </div>
@@ -299,114 +301,127 @@ const SPIAdminDashboard = () => {
 
       {/* Header */}
       <div>
-        <h1 className="text-4xl font-black text-white tracking-tight">Torre de Control SPI</h1>
-        <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.3em] mt-1">
+        <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">Torre de Control SPI</h1>
+        <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.4em] mt-1.5 flex items-center gap-2">
+          <span className="w-8 h-[2px] bg-blue-600 rounded-full" />
           Visión Global de Operaciones
         </p>
       </div>
 
       {/* ── Stat cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Active OTs */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/20 flex items-center justify-center">
-              <Activity className="h-4 w-4 text-blue-400" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        {loading ? (
+          <>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </>
+        ) : (
+          <>
+            {/* Active OTs */}
+            <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-blue-900/5 transition-all duration-500 group">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-[1.25rem] bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                  <Activity className="h-6 w-6 text-blue-600" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                  OTs Activas
+                </span>
+              </div>
+              <p className="text-5xl font-black text-slate-900 tracking-tight leading-none">{stats.active}</p>
+              <div className="h-1 w-12 bg-blue-100 rounded-full mt-6 group-hover:w-full transition-all duration-700" />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              OTs Activas
-            </span>
-          </div>
-          <p className="text-3xl font-black text-white">{stats.active}</p>
-        </div>
 
-        {/* Pending review — visually dominant when > 0 */}
-        <div className={cn(
-          'rounded-2xl p-5 border transition-colors',
-          stats.pending > 0
-            ? 'bg-red-50 border-red-100'
-            : 'bg-white/5 border-white/10',
-        )}>
-          <div className="flex items-center gap-3 mb-3">
+            {/* Pending review */}
             <div className={cn(
-              'w-9 h-9 rounded-xl flex items-center justify-center',
-              stats.pending > 0 ? 'bg-red-100' : 'bg-white/10',
+              'rounded-[2.5rem] p-8 border transition-all duration-500 shadow-xl group',
+              stats.pending > 0
+                ? 'bg-rose-50 border-rose-100 shadow-rose-200/40 hover:shadow-rose-300/40 ring-4 ring-rose-500/5'
+                : 'bg-white border-slate-200 shadow-slate-200/40 hover:shadow-slate-300/40',
             )}>
-              <AlertCircle className={cn(
-                'h-4 w-4',
-                stats.pending > 0 ? 'text-red-500' : 'text-slate-400',
+              <div className="flex items-center gap-4 mb-6">
+                <div className={cn(
+                  'w-12 h-12 rounded-[1.25rem] flex items-center justify-center group-hover:scale-110 transition-transform duration-500',
+                  stats.pending > 0 ? 'bg-rose-100 animate-pulse' : 'bg-slate-50',
+                )}>
+                  <AlertCircle className={cn(
+                    'h-6 w-6',
+                    stats.pending > 0 ? 'text-rose-600' : 'text-slate-400',
+                  )} />
+                </div>
+                <span className={cn(
+                  'text-[10px] font-black uppercase tracking-[0.3em]',
+                  stats.pending > 0 ? 'text-rose-600' : 'text-slate-500',
+                )}>
+                  Pendientes
+                </span>
+              </div>
+              <p className={cn(
+                'text-5xl font-black tracking-tight leading-none',
+                stats.pending > 0 ? 'text-rose-700' : 'text-slate-900',
+              )}>
+                {stats.pending}
+              </p>
+              <div className={cn(
+                "h-1 w-12 rounded-full mt-6 group-hover:w-full transition-all duration-700",
+                stats.pending > 0 ? "bg-rose-200" : "bg-slate-100"
               )} />
             </div>
-            <span className={cn(
-              'text-[10px] font-black uppercase tracking-widest',
-              stats.pending > 0 ? 'text-red-500' : 'text-slate-400',
-            )}>
-              Pendientes de Revisión
-            </span>
-          </div>
-          <p className={cn(
-            'font-black',
-            stats.pending > 0 ? 'text-4xl text-red-600' : 'text-3xl text-white',
-          )}>
-            {stats.pending}
-          </p>
-          {stats.pending > 0 && (
-            <p className="text-[10px] font-black uppercase text-red-400 tracking-widest mt-1">
-              Requieren acción
-            </p>
-          )}
-        </div>
 
-        {/* Finalized this month */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            {/* Finalized */}
+            <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-teal-900/5 transition-all duration-500 group">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-[1.25rem] bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                  <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                  Finalizadas
+                </span>
+              </div>
+              <p className="text-5xl font-black text-slate-900 tracking-tight leading-none">{stats.finalized}</p>
+              <div className="h-1 w-12 bg-emerald-100 rounded-full mt-6 group-hover:w-full transition-all duration-700" />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Finalizadas este mes
-            </span>
-          </div>
-          <p className="text-3xl font-black text-white">{stats.finalized}</p>
-        </div>
 
-        {/* Active companies */}
-        <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl bg-purple-500/20 flex items-center justify-center">
-              <Building2 className="h-4 w-4 text-purple-400" />
+            {/* Companies */}
+            <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-indigo-900/5 transition-all duration-500 group">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-[1.25rem] bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                  <Building2 className="h-6 w-6 text-indigo-600" />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                  Empresas
+                </span>
+              </div>
+              <p className="text-5xl font-black text-slate-900 tracking-tight leading-none">{stats.companies}</p>
+              <div className="h-1 w-12 bg-indigo-100 rounded-full mt-6 group-hover:w-full transition-all duration-700" />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-              Empresas activas
-            </span>
-          </div>
-          <p className="text-3xl font-black text-white">{stats.companies}</p>
-        </div>
+          </>
+        )}
       </div>
 
       {/* ── Tabs ── */}
       <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="bg-slate-900/50 p-1 rounded-2xl border border-slate-800 w-full sm:w-auto">
+        <TabsList className="bg-white p-2 rounded-[2rem] border border-slate-200 w-full sm:w-auto shadow-xl shadow-slate-200/40 h-auto gap-1">
           <TabsTrigger
             value="kanban"
-            className="rounded-xl px-6 py-2 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+            className="rounded-[1.25rem] px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-xl shadow-slate-900/10 transition-all duration-300"
           >
-            Kanban
+            Tablero Kanban
           </TabsTrigger>
           <TabsTrigger
             value="lista"
-            className="rounded-xl px-6 py-2 text-[10px] font-black uppercase tracking-widest data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+            className="rounded-[1.25rem] px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] data-[state=active]:bg-slate-900 data-[state=active]:text-white data-[state=active]:shadow-xl shadow-slate-900/10 transition-all duration-300"
           >
-            Lista
+            Vista Lista
           </TabsTrigger>
           <TabsTrigger
             value="pendientes"
             className={cn(
-              'rounded-xl px-6 py-2 text-[10px] font-black uppercase tracking-widest',
-              'data-[state=active]:text-white',
+              'rounded-[1.25rem] px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300',
               stats.pending > 0
-                ? 'data-[state=active]:bg-red-600'
-                : 'data-[state=active]:bg-blue-600',
+                ? 'data-[state=active]:bg-rose-600 data-[state=active]:text-white text-rose-600'
+                : 'data-[state=active]:bg-slate-900 data-[state=active]:text-white'
             )}
           >
             Pendientes ({pendingDocs.length})
@@ -416,13 +431,12 @@ const SPIAdminDashboard = () => {
         {/* ── KANBAN TAB ── */}
         <TabsContent value="kanban" className="mt-6 outline-none">
           {loading ? (
-            <div className="flex gap-4 overflow-x-hidden">
+            <div className="flex gap-4 overflow-x-hidden pt-2">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="min-w-[240px] w-[240px] flex flex-col gap-3">
-                  <Skeleton className="h-12 w-full bg-slate-800/60 rounded-2xl" />
-                  {Array.from({ length: 2 }).map((_, j) => (
-                    <Skeleton key={j} className="h-24 w-full bg-slate-800/40 rounded-2xl" />
-                  ))}
+                <div key={i} className="min-w-[240px] w-[240px] flex flex-col gap-4">
+                  <Skeleton className="h-12 w-full bg-slate-200 rounded-[1.5rem]" />
+                  <SkeletonCard />
+                  <SkeletonCard />
                 </div>
               ))}
             </div>
@@ -446,65 +460,72 @@ const SPIAdminDashboard = () => {
         {/* ── LISTA TAB ── */}
         <TabsContent value="lista" className="mt-6 outline-none">
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3 mb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <div className="flex flex-col sm:flex-row gap-4 mb-8">
+            <div className="relative flex-1 group">
+              <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-600 transition-colors" />
               <Input
                 placeholder="Buscar por marca, OT o empresa..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-11 h-11 bg-slate-900/50 border-slate-800 text-white rounded-xl focus:ring-blue-500 font-medium"
+                className="pl-14 h-14 bg-white border-slate-200 text-slate-900 rounded-[1.5rem] focus:ring-4 focus:ring-blue-50 font-bold shadow-sm transition-all placeholder:text-slate-400"
               />
             </div>
-            <select
-              value={filterCompany}
-              onChange={(e) => setFilterCompany(e.target.value)}
-              className="h-11 px-4 rounded-xl border border-slate-800 bg-slate-900/50 text-slate-300 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="all">Todas las empresas</option>
-              {uniqueCompanies.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
+            <div className="relative min-w-[240px]">
+                <select
+                    value={filterCompany}
+                    onChange={(e) => setFilterCompany(e.target.value)}
+                    className="w-full h-14 pl-6 pr-12 bg-white border border-slate-200 text-slate-900 rounded-[1.5rem] text-xs font-black uppercase tracking-widest appearance-none focus:outline-none focus:ring-4 focus:ring-blue-50 transition-all shadow-sm cursor-pointer"
+                >
+                    <option value="all">Todas las empresas</option>
+                    {uniqueCompanies.map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                    ))}
+                </select>
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <Building2 className="h-4 w-4 text-slate-400" />
+                </div>
+            </div>
           </div>
 
-          <div className="bg-slate-900/40 border border-slate-800 rounded-[2rem] overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-sm">
             <ScrollArea className="h-[60vh]">
               <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-slate-900/90 backdrop-blur-md z-10 border-b border-slate-800">
+                <thead className="sticky top-0 bg-white/95 backdrop-blur-md z-10 border-b border-slate-100">
                   <tr>
-                    <th className="p-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Operación</th>
-                    <th className="p-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Empresa</th>
-                    <th className="p-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 text-center">Etapa</th>
-                    <th className="p-5 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Último cambio</th>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Operación</th>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Empresa</th>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 text-center">Etapa</th>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Último cambio</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/50">
+                <tbody className="divide-y divide-slate-50">
                   {filtered.map((ot) => (
                     <tr
                       key={ot.id}
                       onClick={() => setSelectedOT(ot)}
-                      className="group hover:bg-blue-600/5 transition-colors cursor-pointer"
+                      className="group hover:bg-slate-50/80 transition-all cursor-pointer"
                     >
-                      <td className="p-5">
-                        <p className="font-black text-white group-hover:text-blue-400 transition-colors truncate max-w-[200px]">
-                          {ot.brandName || ot.title}
-                        </p>
-                        <p className="text-[10px] font-bold text-slate-600 font-mono mt-0.5">
-                          {ot.id.substring(0, 10)}
-                        </p>
+                      <td className="p-6">
+                        <div className="flex flex-col">
+                            <span className="font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase text-xs tracking-tight">
+                                {ot.brandName || ot.title}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400 tracking-widest mt-1">
+                                ID: {ot.id.substring(0, 8).toUpperCase()}
+                            </span>
+                        </div>
                       </td>
-                      <td className="p-5">
-                        <Badge className="bg-slate-800/50 text-slate-400 border-slate-700 font-bold text-[9px] px-2 py-0.5">
+                      <td className="p-6">
+                        <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 font-black text-[9px] px-3 py-1 rounded-xl shadow-none uppercase tracking-widest">
                           {ot.companyId}
                         </Badge>
                       </td>
-                      <td className="p-5 text-center">
-                        <OTStatusBadge stage={ot.stage} size="sm" />
+                      <td className="p-6 text-center">
+                        <OTStatusBadge stage={ot.stage} />
                       </td>
-                      <td className="p-5">
-                        <span className="text-xs font-bold text-slate-500">
-                          {ot.updatedAt
+                      <td className="p-6">
+                        <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                            {ot.updatedAt
                             ? format(new Date(ot.updatedAt), 'd MMM, HH:mm', { locale: es })
                             : '—'}
                         </span>
@@ -534,22 +555,23 @@ const SPIAdminDashboard = () => {
               </p>
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-12">
               {Object.entries(grouped).map(([companyId, docs]) => (
-                <div key={companyId}>
+                <div key={companyId} className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                   {/* Group header */}
-                  <div className="flex items-center gap-3 mb-3">
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-300">
+                  <div className="flex items-center gap-4 mb-6 ml-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-600 shadow-lg shadow-blue-500/40" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900">
                       {companyId}
                     </span>
-                    <div className="flex-1 h-px bg-slate-800" />
-                    <span className="text-[9px] font-black text-slate-500 bg-slate-800 px-2 py-0.5 rounded-lg">
-                      {docs.length} doc{docs.length > 1 ? 's' : ''}
+                    <div className="flex-1 h-[1px] bg-slate-100" />
+                    <span className="text-[10px] font-black text-slate-500 bg-white border border-slate-200 px-4 py-1.5 rounded-full shadow-sm uppercase tracking-widest">
+                      {docs.length} Documento{docs.length > 1 ? 's' : ''}
                     </span>
                   </div>
 
-                  {/* Document rows */}
-                  <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-800/50">
+                  {/* Document cards */}
+                  <div className="grid gap-4">
                     {docs.map((d) => {
                       const relatedOT = ots.find((o) => o.id === d.otId);
                       const isRejecting = rejectingId === d.id;
@@ -558,76 +580,82 @@ const SPIAdminDashboard = () => {
                       return (
                         <div
                           key={d.id}
-                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5"
+                          className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-xl shadow-slate-200/40 hover:shadow-2xl hover:shadow-blue-900/5 transition-all duration-300 group"
                         >
-                          {/* Doc info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-bold text-white text-sm">{d.name}</p>
-                              {d.status === 'ocr_processed' && (
-                                <Badge className="bg-violet-100 text-violet-700 border-violet-200 text-[9px] font-black uppercase rounded-lg px-2">
-                                  IA · {(((d as any).validationMetadata?.confidence ?? 0) * 100).toFixed(0)}%
-                                </Badge>
+                          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                            {/* Doc info */}
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-3 flex-wrap mb-2">
+                                    <h4 className="font-black text-slate-900 text-base uppercase tracking-tight group-hover:text-blue-600 transition-colors">
+                                        {d.name}
+                                    </h4>
+                                    {d.status === 'ocr_processed' && (
+                                        <Badge className="bg-blue-50 text-blue-700 border-blue-100 text-[10px] font-black uppercase tracking-widest rounded-xl px-3 py-1 shadow-none">
+                                            IA VALIDADO · {(((d as any).validationMetadata?.confidence ?? 0) * 100).toFixed(0)}%
+                                        </Badge>
+                                    )}
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg">
+                                        {relatedOT?.brandName || relatedOT?.title || 'Sin OT'}
+                                    </Badge>
+                                    <div className="w-1 h-1 rounded-full bg-slate-300" />
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        Cargado el {new Date(d.uploadedAt).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-3 shrink-0">
+                              {!isRejecting ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleApprove(d.id)}
+                                    disabled={isLoading}
+                                    className="h-11 px-8 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-xl shadow-slate-900/10 transition-all disabled:opacity-50"
+                                  >
+                                    {isLoading ? 'Procesando...' : 'Aprobar'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => { setRejectingId(d.id); setRejectReason(''); }}
+                                    disabled={isLoading}
+                                    className="h-11 px-6 rounded-2xl text-rose-600 hover:bg-rose-50 font-black text-[10px] uppercase tracking-[0.1em]"
+                                  >
+                                    Rechazar
+                                  </Button>
+                                </>
+                              ) : (
+                                <div className="flex items-center gap-2 animate-in slide-in-from-right-4 duration-300">
+                                  <Input
+                                    placeholder="Motivo del rechazo..."
+                                    value={rejectReason}
+                                    onChange={(e) => setRejectReason(e.target.value)}
+                                    className="h-11 text-xs w-64 bg-slate-50 border-slate-200 text-slate-900 rounded-2xl focus:ring-4 focus:ring-rose-50 font-bold"
+                                    autoFocus
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleRejectConfirm(d.id)}
+                                    disabled={!rejectReason.trim() || isLoading}
+                                    className="h-11 px-6 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-[10px] uppercase tracking-[0.1em] shadow-xl shadow-rose-900/10 transition-all"
+                                  >
+                                    {isLoading ? 'Procesando...' : 'Confirmar'}
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setRejectingId(null)}
+                                    className="h-11 px-4 rounded-2xl text-slate-500 hover:bg-slate-100 font-black text-[10px] uppercase"
+                                  >
+                                    X
+                                  </Button>
+                                </div>
                               )}
                             </div>
-                            <p className="text-sm text-slate-500 mt-0.5 truncate">
-                              {relatedOT?.brandName || relatedOT?.title || d.otId}
-                            </p>
-                            <p className="text-[10px] text-slate-600 font-medium mt-0.5">
-                              {new Date(d.uploadedAt).toLocaleDateString('es-CL')}
-                            </p>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                            {!isRejecting ? (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleApprove(d.id)}
-                                  disabled={isLoading}
-                                  className="h-8 px-4 rounded-lg border-emerald-600 text-emerald-500 hover:bg-emerald-600 hover:text-white font-black text-[10px] uppercase tracking-widest transition-colors disabled:opacity-50"
-                                >
-                                  {isLoading ? '...' : 'Aprobar'}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => { setRejectingId(d.id); setRejectReason(''); }}
-                                  disabled={isLoading}
-                                  className="h-8 px-4 rounded-lg text-red-400 hover:bg-red-500/10 hover:text-red-300 font-black text-[10px] uppercase tracking-widest"
-                                >
-                                  Rechazar
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Input
-                                  placeholder="Motivo del rechazo..."
-                                  value={rejectReason}
-                                  onChange={(e) => setRejectReason(e.target.value)}
-                                  className="h-8 text-xs w-48 bg-slate-800 border-slate-700 text-white rounded-lg"
-                                  autoFocus
-                                />
-                                <Button
-                                  size="sm"
-                                  onClick={() => handleRejectConfirm(d.id)}
-                                  disabled={!rejectReason.trim() || isLoading}
-                                  className="h-8 px-3 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-[10px] uppercase tracking-widest disabled:opacity-50"
-                                >
-                                  {isLoading ? '...' : 'Confirmar'}
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setRejectingId(null)}
-                                  className="h-8 px-3 rounded-lg text-slate-400 hover:text-slate-200 font-black text-[10px] uppercase"
-                                >
-                                  Cancelar
-                                </Button>
-                              </>
-                            )}
                           </div>
                         </div>
                       );

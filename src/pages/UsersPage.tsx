@@ -26,9 +26,9 @@ import { cn } from "@/lib/utils";
 import type { AppUser } from "../store/types";
 
 const ROLE_CONFIG: Record<AppUser['role'], { label: string; className: string }> = {
-  'spi-admin': { label: 'SPI Admin', className: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-  'client':    { label: 'Cliente',   className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
-  'guest':     { label: 'Invitado',  className: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+  'spi-admin': { label: 'SPI Admin', className: 'bg-blue-50 text-blue-700 border-blue-200' },
+  'client':    { label: 'Cliente',   className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'guest':     { label: 'Invitado',  className: 'bg-slate-50 text-slate-600 border-slate-200' },
 };
 
 const DEFAULT_FORM = { email: '', password: '', displayName: '', role: 'client' as AppUser['role'], companyId: '' };
@@ -100,28 +100,29 @@ const UsersPage = () => {
   };
 
   return (
-    <div className="space-y-8 animate-fade-in pb-10">
+    <div className="space-y-8 animate-fade-in pb-12 p-6 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-4xl font-black text-white tracking-tight">Gestión de Usuarios</h1>
-          <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.3em] mt-2">
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Gestión de Usuarios</h1>
+          <p className="text-slate-600 font-bold uppercase text-[10px] tracking-[0.3em] mt-2 flex items-center gap-2">
+            <Users className="w-4 h-4 text-blue-600" />
             {users.length} usuario{users.length !== 1 ? 's' : ''} registrado{users.length !== 1 ? 's' : ''}
           </p>
         </div>
         <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="relative flex-1 md:w-72">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+          <div className="relative flex-1 md:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               placeholder="Buscar por email, nombre..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-12 h-12 bg-slate-900/50 border-slate-800 text-white rounded-2xl focus:ring-blue-500 font-bold"
+              className="pl-12 h-12 bg-white border-slate-200 text-slate-900 rounded-2xl focus:ring-4 focus:ring-blue-50 transition-all font-bold placeholder:text-slate-400 shadow-sm"
             />
           </div>
           <Button
             onClick={() => setCreateOpen(true)}
-            className="h-12 px-6 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest gap-2 shadow-lg shadow-blue-500/20 shrink-0"
+            className="h-12 px-6 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-widest gap-2 shadow-xl shadow-slate-900/10 shrink-0"
           >
             <UserPlus className="w-4 h-4" /> Crear Usuario
           </Button>
@@ -129,10 +130,10 @@ const UsersPage = () => {
       </div>
 
       {/* Table */}
-      <div className="bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden backdrop-blur-sm">
+      <div className="bg-white border border-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl shadow-slate-200/40">
         <ScrollArea className="h-[65vh]">
           <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 bg-slate-900/80 backdrop-blur-md z-10 border-b border-slate-800">
+            <thead className="sticky top-0 bg-white/95 backdrop-blur-md z-10 border-b border-slate-100">
               <tr>
                 <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Usuario</th>
                 <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Rol</th>
@@ -141,59 +142,59 @@ const UsersPage = () => {
                 <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/50">
+            <tbody className="divide-y divide-slate-100">
               {filtered.map((u) => {
                 const roleConf = ROLE_CONFIG[u.role] ?? ROLE_CONFIG['guest'];
                 return (
-                  <tr key={u.id} className={cn("transition-colors", u.disabled ? "opacity-50" : "hover:bg-slate-800/20")}>
+                  <tr key={u.id} className={cn("transition-colors group", u.disabled ? "bg-slate-50/50" : "hover:bg-slate-50/80")}>
                     <td className="p-6">
                       <div className="flex flex-col">
-                        <span className="font-black text-white tracking-tight">{u.displayName || '—'}</span>
-                        <span className="text-xs font-bold text-slate-500 mt-0.5">{u.email}</span>
+                        <span className="font-black text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors uppercase text-xs">{u.displayName || '—'}</span>
+                        <span className="text-xs font-bold text-slate-500 mt-1">{u.email}</span>
                       </div>
                     </td>
                     <td className="p-6">
-                      <Badge className={cn("px-3 py-1 text-[9px] font-black uppercase tracking-widest border", roleConf.className)}>
+                      <Badge className={cn("px-4 py-1.5 text-[9px] font-black uppercase tracking-[0.1em] border shadow-sm", roleConf.className)}>
                         {roleConf.label}
                       </Badge>
                     </td>
                     <td className="p-6">
-                      <span className="text-xs font-bold text-slate-400">{u.companyId || '—'}</span>
+                      <span className="text-xs font-black text-slate-600 uppercase tracking-tight">{u.companyId || '—'}</span>
                     </td>
                     <td className="p-6 text-center">
                       {u.disabled ? (
-                        <Badge className="px-3 py-1 text-[9px] font-black uppercase tracking-widest bg-rose-500/10 text-rose-400 border-rose-500/20">
+                        <Badge className="px-3 py-1 text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-700 border-rose-200">
                           Inactivo
                         </Badge>
                       ) : (
-                        <Badge className="px-3 py-1 text-[9px] font-black uppercase tracking-widest bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                        <Badge className="px-3 py-1 text-[9px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border-emerald-200">
                           Activo
                         </Badge>
                       )}
                     </td>
                     <td className="p-6">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-3">
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="ghost"
                           disabled={resettingId === u.id}
                           onClick={() => handlePasswordReset(u)}
                           title="Enviar correo de restablecimiento"
-                          className="h-9 w-9 p-0 rounded-xl border-slate-700 bg-slate-800/50 text-slate-400 hover:text-amber-400 hover:border-amber-500/30"
+                          className="h-10 w-10 p-0 rounded-2xl border border-slate-100 bg-white text-slate-400 hover:text-amber-600 hover:bg-amber-50 hover:border-amber-200 shadow-sm transition-all"
                         >
                           <KeyRound className="w-4 h-4" />
                         </Button>
                         <Button
                           size="sm"
-                          variant="outline"
+                          variant="ghost"
                           disabled={togglingId === u.id}
                           onClick={() => handleToggleDisabled(u)}
                           title={u.disabled ? 'Activar usuario' : 'Desactivar usuario'}
                           className={cn(
-                            "h-9 w-9 p-0 rounded-xl border-slate-700 bg-slate-800/50",
+                            "h-10 w-10 p-0 rounded-2xl border border-slate-100 bg-white shadow-sm transition-all",
                             u.disabled
-                              ? "text-slate-400 hover:text-emerald-400 hover:border-emerald-500/30"
-                              : "text-slate-400 hover:text-rose-400 hover:border-rose-500/30"
+                              ? "text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 hover:border-emerald-200"
+                              : "text-slate-400 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200"
                           )}
                         >
                           {u.disabled ? <ShieldCheck className="w-4 h-4" /> : <ShieldOff className="w-4 h-4" />}
@@ -205,10 +206,15 @@ const UsersPage = () => {
               })}
               {filtered.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={5} className="py-20 text-center">
-                    <Users className="h-10 w-10 text-slate-700 mx-auto mb-4" />
-                    <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">
+                  <td colSpan={5} className="py-32 text-center bg-white">
+                    <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+                        <Users className="h-10 w-10 text-slate-300" />
+                    </div>
+                    <p className="text-slate-900 font-black uppercase tracking-[0.2em] text-xs">
                       {search ? 'Sin resultados para tu búsqueda' : 'Sin usuarios registrados'}
+                    </p>
+                    <p className="text-slate-400 font-bold text-[11px] mt-2">
+                      Intenta con otro término o crea un nuevo usuario.
                     </p>
                   </td>
                 </tr>
@@ -216,40 +222,41 @@ const UsersPage = () => {
             </tbody>
           </table>
         </ScrollArea>
-      </div>
-
-      {/* Create User Dialog */}
+      <      {/* Create User Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md rounded-[2rem] bg-[#0B1121] border-slate-800 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-black tracking-tight">Crear Nuevo Usuario</DialogTitle>
-            <DialogDescription className="text-slate-400 font-medium">
-              Se creará una cuenta en Firebase Auth y un perfil en Firestore.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreate} className="space-y-4 py-2">
+        <DialogContent className="max-w-md rounded-[2.5rem] bg-white border-slate-200 text-slate-900 p-0 overflow-hidden shadow-2xl">
+          <div className="bg-slate-50 p-8 border-b border-slate-100">
+            <DialogHeader>
+              <DialogTitle className="text-3xl font-black tracking-tight text-slate-900">Crear Usuario</DialogTitle>
+              <DialogDescription className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-2">
+                Nueva cuenta y perfil de acceso
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          
+          <form onSubmit={handleCreate} className="p-8 space-y-6">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Email *</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Email Principal *</Label>
               <Input
                 type="email"
                 required
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                 placeholder="usuario@empresa.cl"
-                className="bg-slate-800/50 border-slate-700 text-white rounded-xl font-medium"
+                className="h-12 bg-slate-50 border-slate-200 text-slate-900 rounded-2xl font-bold focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400 shadow-sm"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Nombre completo</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Nombre Completo</Label>
               <Input
                 value={form.displayName}
                 onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
-                placeholder="Juan Pérez"
-                className="bg-slate-800/50 border-slate-700 text-white rounded-xl font-medium"
+                placeholder="Ej: Juan Pérez"
+                className="h-12 bg-slate-50 border-slate-200 text-slate-900 rounded-2xl font-bold focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400 shadow-sm"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Contraseña temporal *</Label>
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Contraseña Temporal *</Label>
               <Input
                 type="password"
                 required
@@ -257,52 +264,63 @@ const UsersPage = () => {
                 value={form.password}
                 onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                 placeholder="Mínimo 6 caracteres"
-                className="bg-slate-800/50 border-slate-700 text-white rounded-xl font-medium"
+                className="h-12 bg-slate-50 border-slate-200 text-slate-900 rounded-2xl font-bold focus:ring-4 focus:ring-blue-50 transition-all placeholder:text-slate-400 shadow-sm"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Rol *</Label>
-                <select
-                  value={form.role}
-                  onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as AppUser['role'] }))}
-                  className="w-full h-10 px-3 bg-slate-800/50 border border-slate-700 text-white rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                >
-                  <option value="client">Cliente</option>
-                  <option value="spi-admin">SPI Admin</option>
-                  <option value="guest">Invitado</option>
-                </select>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Rol Operativo *</Label>
+                <div className="relative">
+                    <select
+                        value={form.role}
+                        onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as AppUser['role'] }))}
+                        className="w-full h-12 pl-4 pr-10 bg-slate-50 border border-slate-200 text-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest appearance-none focus:outline-none focus:ring-4 focus:ring-blue-50 transition-all shadow-sm cursor-pointer"
+                    >
+                        <option value="client">Cliente</option>
+                        <option value="spi-admin">SPI Admin</option>
+                        <option value="guest">Invitado</option>
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <Users className="h-3 w-3 text-slate-400" />
+                    </div>
+                </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Empresa</Label>
-                <select
-                  value={form.companyId}
-                  onChange={(e) => setForm((f) => ({ ...f, companyId: e.target.value }))}
-                  className="w-full h-10 px-3 bg-slate-800/50 border border-slate-700 text-white rounded-xl text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                >
-                  <option value="">Ninguna</option>
-                  {companies.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Empresa</Label>
+                <div className="relative">
+                    <select
+                        value={form.companyId}
+                        onChange={(e) => setForm((f) => ({ ...f, companyId: e.target.value }))}
+                        className="w-full h-12 pl-4 pr-10 bg-slate-50 border border-slate-200 text-slate-900 rounded-2xl text-xs font-black uppercase tracking-widest appearance-none focus:outline-none focus:ring-4 focus:ring-blue-50 transition-all shadow-sm cursor-pointer"
+                    >
+                        <option value="">Ninguna</option>
+                        {companies.map((c) => (
+                            <option key={c.id} value={c.id}>{c.name}</option>
+                        ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <Users className="h-3 w-3 text-slate-400" />
+                    </div>
+                </div>
               </div>
             </div>
-            <DialogFooter className="pt-2 gap-2">
+            
+            <DialogFooter className="pt-4 gap-3 bg-slate-50 -mx-8 -mb-8 p-8 border-t border-slate-100">
               <Button
                 type="button"
                 variant="ghost"
                 disabled={isSubmitting}
                 onClick={() => setCreateOpen(false)}
-                className="rounded-xl font-bold text-slate-400"
+                className="h-12 rounded-2xl font-black uppercase text-[10px] tracking-widest text-slate-500 hover:bg-slate-100 transition-all"
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting || !form.email || !form.password}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-black rounded-xl px-6 disabled:opacity-60"
+                className="h-12 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-2xl px-8 disabled:opacity-50 shadow-xl shadow-slate-900/10 transition-all uppercase text-[10px] tracking-widest"
               >
-                {isSubmitting ? 'Creando...' : 'Crear Usuario'}
+                {isSubmitting ? 'Procesando...' : 'Crear Usuario'}
               </Button>
             </DialogFooter>
           </form>
@@ -313,3 +331,4 @@ const UsersPage = () => {
 };
 
 export default UsersPage;
+```

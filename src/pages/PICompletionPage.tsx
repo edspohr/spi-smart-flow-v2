@@ -195,6 +195,9 @@ const PICompletionPage = () => {
 
   // Vault link loading
   const [savingVault, setSavingVault] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingCedula, setIsUploadingCedula] = useState(false);
 
   // ── Subscriptions ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -270,6 +273,7 @@ const PICompletionPage = () => {
 
   const handleLogoUploaded = async (url: string) => {
     if (!otId || !user) return;
+    setIsUploadingLogo(true);
     try {
       await addDoc(collection(db, 'documents'), {
         otId,
@@ -289,6 +293,8 @@ const PICompletionPage = () => {
       toast.success('Logotipo guardado');
     } catch {
       toast.error('Error al guardar logotipo');
+    } finally {
+      setIsUploadingLogo(false);
     }
   };
 
@@ -362,6 +368,7 @@ const PICompletionPage = () => {
 
   const handleCedulaUploaded = async (url: string) => {
     if (!otId || !user) return;
+    setIsUploadingCedula(true);
     try {
       await addDoc(collection(db, 'documents'), {
         otId,
@@ -380,14 +387,21 @@ const PICompletionPage = () => {
       toast.success('Cédula guardada');
     } catch {
       toast.error('Error al guardar cédula');
+    } finally {
+      setIsUploadingCedula(false);
     }
   };
 
   const handleSubmit = async () => {
-    if (!canSubmit || !otId || !user) return;
-    await logAction(user.uid, otId, 'Documentación PI completada y enviada por el cliente');
-    toast.success('¡Documentación enviada correctamente!');
-    navigate('/client');
+    if (!canSubmit || !otId || !user || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await logAction(user.uid, otId, 'Documentación PI completada y enviada por el cliente');
+      toast.success('¡Documentación enviada correctamente!');
+      navigate('/client');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // ── Loading ────────────────────────────────────────────────────────────────
@@ -519,6 +533,7 @@ const PICompletionPage = () => {
                   storagePath={`ots/${otId}/logo`}
                   onUploadComplete={handleLogoUploaded}
                   accept=".png,.jpg,.jpeg,.svg"
+                  loading={isUploadingLogo}
                 />
               </>
             )}
@@ -687,6 +702,7 @@ const PICompletionPage = () => {
                   storagePath={`ots/${otId}/cedula`}
                   onUploadComplete={handleCedulaUploaded}
                   accept=".pdf,.png,.jpg,.jpeg"
+                  loading={isUploadingCedula}
                 />
               </>
             )}
@@ -720,10 +736,12 @@ const PICompletionPage = () => {
             </div>
             <Button
               onClick={handleSubmit}
-              disabled={!canSubmit}
+              disabled={!canSubmit || isSubmitting}
               className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-blue-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              {canSubmit ? (
+              {isSubmitting ? (
+                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Enviando...</>
+              ) : canSubmit ? (
                 <><Check className="h-4 w-4 mr-2" /> Enviar Documentación</>
               ) : (
                 'Completar secciones requeridas'

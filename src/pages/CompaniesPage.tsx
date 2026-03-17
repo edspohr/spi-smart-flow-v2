@@ -45,13 +45,13 @@ interface EditableUser {
 const getRoleBadge = (role: string) => {
     switch (role) {
         case 'spi-admin':
-            return <Badge className="bg-slate-900 text-white border-none text-[8px] font-black uppercase tracking-widest px-2">SPI Admin</Badge>;
+            return <Badge className="bg-slate-900 text-white border-none text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg shadow-sm shadow-slate-900/10">SPI Admin</Badge>;
         case 'client':
-            return <Badge className="bg-blue-100 text-blue-700 border-none text-[8px] font-black uppercase tracking-widest px-2">Cliente Activo</Badge>;
+            return <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg shadow-sm shadow-blue-900/5">Cliente Activo</Badge>;
         case 'guest':
-            return <Badge className="bg-amber-100 text-amber-700 border-none text-[8px] font-black uppercase tracking-widest px-2 animate-pulse">Pendiente Aprob.</Badge>;
+            return <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg shadow-sm shadow-amber-900/5">Pendiente</Badge>;
         default:
-            return <Badge className="bg-slate-50 text-slate-300 border-none text-[8px] font-black uppercase tracking-widest px-2">Desconocido</Badge>;
+            return <Badge className="bg-slate-50 text-slate-500 border-slate-200 text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg">Desconocido</Badge>;
     }
 };
 
@@ -72,6 +72,7 @@ const CompaniesPage = () => {
     const [editingCompany, setEditingCompany] = useState<Company | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [isSubmittingCompany, setIsSubmittingCompany] = useState(false);
     const [formData, setFormData] = useState({
         name: '',
         industry: '',
@@ -121,6 +122,7 @@ const CompaniesPage = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmittingCompany(true);
         try {
             if (editingCompany) {
                 await updateCompany(editingCompany.id, formData);
@@ -132,6 +134,8 @@ const CompaniesPage = () => {
             setIsDialogOpen(false);
         } catch {
             toast.error('Error al guardar la empresa. Intenta nuevamente.');
+        } finally {
+            setIsSubmittingCompany(false);
         }
     };
 
@@ -183,7 +187,7 @@ const CompaniesPage = () => {
     const getCompanyHealth = (companyId: string) => {
         const companyOts = ots.filter(ot => ot.companyId === companyId);
         if (companyOts.length === 0) {
-            return { color: 'bg-slate-800 text-slate-400 border-slate-700', label: 'Sin Actividad' };
+            return { color: 'bg-slate-50 text-slate-400 border-slate-100', label: 'Sin Actividad' };
         }
         const now = new Date();
         let hasPendingDocs = false;
@@ -194,9 +198,9 @@ const CompaniesPage = () => {
             const days = Math.floor((now.getTime() - new Date(ot.createdAt).getTime()) / 86400000);
             if (days > 15 && ot.stage !== 'finalizado') isStuck = true;
         }
-        if (isStuck) return { color: 'bg-rose-500/20 text-rose-400 border-rose-500/50', label: 'Atascado (>15 días)' };
-        if (hasPendingDocs) return { color: 'bg-amber-500/20 text-amber-400 border-amber-500/50', label: 'Docs. Pendientes' };
-        return { color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50', label: 'Al día' };
+        if (isStuck) return { color: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Atascado (>15 días)' };
+        if (hasPendingDocs) return { color: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Docs. Pendientes' };
+        return { color: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Al día' };
     };
 
     // ── Render ───────────────────────────────────────────────────────────────
@@ -206,26 +210,26 @@ const CompaniesPage = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-50 tracking-tight flex items-center gap-3">
-                        Empresas <Building2 className="text-blue-500 h-7 w-7" />
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                        Empresas <Building2 className="text-blue-600 h-7 w-7" />
                     </h1>
-                    <p className="text-slate-400 text-sm font-medium">Empresas clientes registradas en la plataforma.</p>
+                    <p className="text-slate-500 text-sm font-medium">Empresas clientes registradas en la plataforma.</p>
                 </div>
                 <Button
                     onClick={() => handleOpenDialog()}
-                    className="btn-primary rounded-xl h-11 px-6 shadow-lg shadow-blue-900/40 font-bold transition-all border border-blue-500/50"
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-12 px-8 shadow-lg shadow-blue-500/20 font-bold transition-all"
                 >
                     <Plus className="h-5 w-5 mr-2" /> Nueva Empresa
                 </Button>
             </div>
 
             {/* Search */}
-            <div className="flex gap-4 items-center bg-slate-900/30 p-4 rounded-2xl border border-slate-800/50">
+            <div className="flex gap-4 items-center bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                     <Input
                         placeholder="Buscar empresa por nombre, RUT o industria..."
-                        className="pl-10 bg-slate-800/50 border-slate-700/50 rounded-xl h-10 text-white"
+                        className="pl-12 bg-slate-50 border-slate-200 rounded-2xl h-12 text-slate-900 focus:ring-blue-500/20 placeholder:text-slate-400 font-medium transition-all"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -240,15 +244,15 @@ const CompaniesPage = () => {
                     const isExpanded = expandedId === company.id;
 
                     return (
-                        <Card key={company.id} className="bg-slate-900/40 border-slate-800 hover:border-blue-500/50 transition-all group rounded-[2rem] overflow-hidden flex flex-col">
-                            <CardHeader className="pb-2">
-                                <div className="flex justify-between items-start">
-                                    <div className="flex gap-3 items-center mb-4">
-                                        <div className="w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                            <Building2 className="text-blue-400 h-6 w-6" />
+                        <Card key={company.id} className="bg-white border-slate-200 hover:border-blue-300 hover:shadow-xl hover:shadow-blue-500/5 transition-all group rounded-[2.5rem] overflow-hidden flex flex-col shadow-sm">
+                            <CardHeader className="pb-4 p-8">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className="flex gap-4 items-center">
+                                        <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center group-hover:scale-105 transition-transform border border-blue-100/50">
+                                            <Building2 className="h-7 w-7" />
                                         </div>
-                                        <div className={cn('px-2.5 py-1 rounded-xl border text-[9px] font-black uppercase tracking-widest flex items-center gap-1', health.color)}>
-                                            <Activity className="w-3 h-3" /> {health.label}
+                                        <div className={cn('px-4 py-1.5 rounded-2xl border text-[9px] font-black uppercase tracking-[0.1em] flex items-center gap-2 shadow-sm', health.color)}>
+                                            <Activity className="w-3.5 h-3.5" /> {health.label}
                                         </div>
                                     </div>
                                     <div className="flex gap-1">
@@ -260,71 +264,71 @@ const CompaniesPage = () => {
                                         </Button>
                                     </div>
                                 </div>
-                                <CardTitle className="text-xl font-black text-white tracking-tight">{company.name}</CardTitle>
-                                <CardDescription className="text-slate-500 font-bold text-xs uppercase tracking-widest">{company.industry || 'Industria no especificada'}</CardDescription>
+                                <CardTitle className="text-2xl font-black text-slate-900 tracking-tight leading-tight">{company.name}</CardTitle>
+                                <CardDescription className="text-slate-500 font-black text-[10px] uppercase tracking-[0.15em] mt-1">{company.industry || 'Industria no especificada'}</CardDescription>
                             </CardHeader>
 
                             <CardContent className="space-y-4 flex-1">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">ID Fiscal (RUT)</p>
-                                        <p className="text-xs font-bold text-slate-300">{company.taxId || '—'}</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID Fiscal (RUT)</p>
+                                        <p className="text-sm font-bold text-slate-950 tracking-tight">{company.taxId || '—'}</p>
                                     </div>
                                     <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Contacto</p>
-                                        <p className="text-xs font-bold text-slate-300 truncate">{company.contactName || '—'}</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Contacto</p>
+                                        <p className="text-sm font-bold text-slate-950 truncate tracking-tight">{company.contactName || '—'}</p>
                                     </div>
                                 </div>
-                                <div className="pt-4 border-t border-slate-800/50">
-                                    <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Dirección</p>
-                                    <p className="text-xs font-medium text-slate-400 line-clamp-1">{company.address || 'Sin dirección registrada'}</p>
+                                <div className="pt-5 border-t border-slate-100">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Dirección</p>
+                                    <p className="text-xs font-bold text-slate-600 line-clamp-1">{company.address || 'Sin dirección registrada'}</p>
                                 </div>
                             </CardContent>
 
                             {/* Expandable users footer */}
-                            <div className="border-t border-slate-800/50">
+                            <div className="border-t border-slate-50 bg-slate-50/30">
                                 <button
                                     onClick={() => setExpandedId(isExpanded ? null : company.id)}
-                                    className="w-full flex items-center justify-between px-6 py-3 text-slate-400 hover:text-slate-200 hover:bg-slate-800/30 transition-colors"
+                                    className="w-full flex items-center justify-between px-8 py-4 text-slate-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all"
                                 >
-                                    <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
-                                        <Users className="h-3.5 w-3.5" />
-                                        Ver usuarios ({companyUsers.length})
+                                    <span className="flex items-center gap-2.5 text-[10px] font-bold uppercase tracking-[0.1em]">
+                                        <Users className="h-4 w-4" />
+                                        Usuarios Vinculados ({companyUsers.length})
                                     </span>
-                                    <ChevronDown className={cn('h-4 w-4 transition-transform', isExpanded && 'rotate-180')} />
+                                    <ChevronDown className={cn('h-4 w-4 transition-transform duration-300', isExpanded && 'rotate-180')} />
                                 </button>
 
                                 {isExpanded && (
-                                    <div className="px-4 pb-4 space-y-2">
+                                    <div className="px-6 pb-6 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                                         {companyUsers.length === 0 ? (
-                                            <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest text-center py-3">
+                                            <p className="text-[10px] font-bold text-slate-300 uppercase tracking-[0.2em] text-center py-6 bg-white/50 rounded-3xl border border-dashed border-slate-100 mx-2">
                                                 Sin usuarios asignados
                                             </p>
                                         ) : (
                                             companyUsers.map(u => (
-                                                <div key={u.id} className="flex items-center gap-3 bg-slate-800/30 rounded-xl px-3 py-2.5">
-                                                    <Avatar className="h-8 w-8 rounded-xl shrink-0">
+                                                <div key={u.id} className="flex items-center gap-4 bg-white rounded-2xl p-4 border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                                                    <Avatar className="h-10 w-10 rounded-2xl shrink-0 shadow-md shadow-blue-500/10">
                                                         <AvatarFallback className={cn(
-                                                            'font-black text-xs text-white',
-                                                            u.role === 'guest' ? 'bg-amber-500' : 'bg-blue-600'
+                                                            'font-black text-sm text-white',
+                                                            u.role === 'guest' ? 'bg-amber-500' : 'bg-royal-gradient'
                                                         )}>
                                                             {u.displayName?.charAt(0).toUpperCase() || 'U'}
                                                         </AvatarFallback>
                                                     </Avatar>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className="text-xs font-black text-white truncate">{u.displayName || 'Sin nombre'}</p>
-                                                        <p className="text-[10px] font-bold text-slate-500 truncate">{u.email}</p>
+                                                        <p className="text-sm font-bold text-slate-800 truncate">{u.displayName || 'Sin nombre'}</p>
+                                                        <p className="text-[10px] font-bold text-slate-400 truncate tracking-wide">{u.email}</p>
                                                     </div>
-                                                    <div className="flex items-center gap-2 shrink-0">
+                                                    <div className="flex items-center gap-3 shrink-0">
                                                         {getRoleBadge(u.role)}
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
-                                                            className="h-7 w-7 rounded-lg text-slate-500 hover:text-white hover:bg-slate-700"
+                                                            className="h-9 w-9 rounded-xl text-slate-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                                                             onClick={() => { setEditingUser({ ...u }); setEditUserOpen(true); }}
                                                             title="Configurar usuario"
                                                         >
-                                                            <Settings className="h-3.5 w-3.5" />
+                                                            <Settings className="h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -338,9 +342,9 @@ const CompaniesPage = () => {
                 })}
 
                 {filteredCompanies.length === 0 && (
-                    <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-800 rounded-[2.5rem]">
-                        <Building2 className="h-10 w-10 text-slate-700 mx-auto mb-4" />
-                        <p className="text-slate-500 font-bold uppercase tracking-widest text-xs">
+                    <div className="col-span-full py-24 text-center border-2 border-dashed border-slate-100 bg-slate-50 rounded-[3rem]">
+                        <Building2 className="h-14 w-14 text-slate-200 mx-auto mb-6" />
+                        <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-xs">
                             {searchTerm ? 'Sin resultados para tu búsqueda' : 'Sin empresas registradas'}
                         </p>
                     </div>
@@ -361,80 +365,80 @@ const CompaniesPage = () => {
 
             {/* Create / Edit Company Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="bg-slate-900 border-slate-800 text-slate-50 max-w-md rounded-[2.5rem]">
+                <DialogContent className="bg-white border-slate-200 text-slate-900 max-w-xl rounded-[2.5rem] p-8 shadow-2xl">
                     <DialogHeader>
-                        <DialogTitle className="text-2xl font-black tracking-tight">
+                        <DialogTitle className="text-3xl font-black tracking-tight text-slate-900 leading-tight">
                             {editingCompany ? 'Editar Empresa' : 'Nueva Empresa'}
                         </DialogTitle>
-                        <DialogDescription className="text-slate-400 font-medium">
-                            Completa los datos de la entidad corporativa.
+                        <DialogDescription className="text-slate-500 font-medium text-base mt-2">
+                            Completa los datos de la entidad corporativa para gestionar sus operaciones.
                         </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleSubmit} className="space-y-5 pt-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Nombre de la Empresa</Label>
+                    <form onSubmit={handleSubmit} className="space-y-6 pt-6">
+                        <div className="space-y-2.5">
+                            <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Nombre Legal de la Empresa</Label>
                             <Input
                                 required
-                                className="bg-slate-800/50 border-slate-700 rounded-xl h-12 font-bold"
+                                className="bg-slate-50 border-slate-200 rounded-2xl h-14 font-bold text-slate-900 px-6 focus:ring-blue-500/10 shadow-inner"
                                 value={formData.name}
                                 onChange={e => setFormData({ ...formData, name: e.target.value })}
-                                placeholder="Pj. ABC Corp SpA"
+                                placeholder="Ej: ABC Tecnología SpA"
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Industria</Label>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Industria / Sector</Label>
                                 <Input
-                                    className="bg-slate-800/50 border-slate-700 rounded-xl h-11 font-medium"
+                                    className="bg-slate-50 border-slate-200 rounded-2xl h-12 font-semibold text-slate-700 px-5 focus:ring-blue-500/10"
                                     value={formData.industry}
                                     onChange={e => setFormData({ ...formData, industry: e.target.value })}
-                                    placeholder="Software, Legal..."
+                                    placeholder="Software, Logística..."
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">RUT / ID Fiscal</Label>
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">RUT / Identificador Fiscal</Label>
                                 <Input
-                                    className="bg-slate-800/50 border-slate-700 rounded-xl h-11 font-mono font-bold"
+                                    className="bg-slate-50 border-slate-200 rounded-2xl h-12 font-mono font-bold text-slate-800 px-5 focus:ring-blue-500/10"
                                     value={formData.taxId}
                                     onChange={e => setFormData({ ...formData, taxId: e.target.value })}
                                     placeholder="76.000.000-0"
                                 />
                             </div>
                         </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Dirección Física</Label>
+                        <div className="space-y-2.5">
+                            <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Casa Matriz / Dirección Habitual</Label>
                             <Input
-                                className="bg-slate-800/50 border-slate-700 rounded-xl h-11 font-medium"
+                                className="bg-slate-50 border-slate-200 rounded-2xl h-12 font-semibold text-slate-600 px-5 focus:ring-blue-500/10"
                                 value={formData.address}
                                 onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                placeholder="Av. Principal #123"
+                                placeholder="Avenida Principal #1234, Of. 501"
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Contacto Principal</Label>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Representante / Contacto</Label>
                                 <Input
-                                    className="bg-slate-800/50 border-slate-700 rounded-xl h-11 font-medium"
+                                    className="bg-slate-50 border-slate-200 rounded-2xl h-12 font-semibold text-slate-700 px-5 focus:ring-blue-500/10"
                                     value={formData.contactName}
                                     onChange={e => setFormData({ ...formData, contactName: e.target.value })}
-                                    placeholder="Juan Pérez"
+                                    placeholder="Juan Pérez Silva"
                                 />
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Email de Contacto</Label>
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Correo de Notificaciones</Label>
                                 <Input
                                     type="email"
-                                    className="bg-slate-800/50 border-slate-700 rounded-xl h-11 font-medium"
+                                    className="bg-slate-50 border-slate-200 rounded-2xl h-12 font-semibold text-slate-700 px-5 focus:ring-blue-500/10"
                                     value={formData.contactEmail}
                                     onChange={e => setFormData({ ...formData, contactEmail: e.target.value })}
-                                    placeholder="juan@empresa.com"
+                                    placeholder="contacto@empresa.cl"
                                 />
                             </div>
                         </div>
-                        <DialogFooter className="pt-4">
-                            <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-xl font-bold text-slate-400">Cancelar</Button>
-                            <Button type="submit" className="btn-primary rounded-xl px-8 font-black shadow-lg shadow-blue-500/20">
-                                {editingCompany ? 'Guardar Cambios' : 'Crear Empresa'}
+                        <DialogFooter className="pt-8 gap-4">
+                            <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-2xl h-12 px-6 font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all">Cancelar</Button>
+                            <Button type="submit" disabled={isSubmittingCompany} className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-12 px-10 font-black shadow-xl shadow-blue-500/20 transition-all">
+                                {isSubmittingCompany ? 'Procesando...' : (editingCompany ? 'Actualizar Registro' : 'Registrar Empresa')}
                             </Button>
                         </DialogFooter>
                     </form>
@@ -443,65 +447,65 @@ const CompaniesPage = () => {
 
             {/* Edit User Dialog */}
             <Dialog open={editUserOpen} onOpenChange={(open) => { if (!open) { setEditUserOpen(false); setEditingUser(null); } }}>
-                <DialogContent className="max-w-md bg-slate-900 border-slate-800 text-slate-50 rounded-[2rem]">
+                <DialogContent className="max-w-md bg-white border-slate-200 text-slate-900 rounded-[2.5rem] p-8 shadow-2xl">
                     <DialogHeader>
-                        <DialogTitle className="text-xl font-black tracking-tight">Configurar Usuario</DialogTitle>
-                        <DialogDescription className="text-slate-400 font-medium">
-                            Actualiza el rol y datos de contacto del usuario.
+                        <DialogTitle className="text-2xl font-black tracking-tight text-slate-900">Configurar Usuario</DialogTitle>
+                        <DialogDescription className="text-slate-500 font-medium text-sm mt-2">
+                            Actualiza los permisos y la vinculación corporativa del usuario.
                         </DialogDescription>
                     </DialogHeader>
                     {editingUser && (
-                        <form onSubmit={handleSaveUser} className="space-y-4 pt-2">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Rol de Usuario</Label>
+                        <form onSubmit={handleSaveUser} className="space-y-6 pt-6">
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Rol de Acceso</Label>
                                 <select
-                                    className="w-full h-11 px-4 rounded-xl border border-slate-700 bg-slate-800/50 text-white font-bold text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    className="w-full h-12 px-5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-900 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/10 shadow-inner"
                                     value={editingUser.role}
                                     onChange={e => setEditingUser({ ...editingUser, role: e.target.value as EditableUser['role'] })}
                                 >
-                                    <option value="guest">Invitado (Pendiente Aprobación)</option>
-                                    <option value="client">Cliente Activo</option>
-                                    <option value="spi-admin">SPI Admin</option>
+                                    <option value="guest">Invitado (Acceso Limitado)</option>
+                                    <option value="client">Cliente Activo (Gestión Documental)</option>
+                                    <option value="spi-admin">SPI Admin (Super Administrador)</option>
                                 </select>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Empresa Vinculada</Label>
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Empresa Vinculada</Label>
                                 <select
-                                    className="w-full h-11 px-4 rounded-xl border border-slate-700 bg-slate-800/50 text-white font-bold text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                                    className="w-full h-12 px-5 rounded-2xl border border-slate-200 bg-slate-50 text-slate-900 font-bold text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/10 shadow-inner"
                                     value={editingUser.companyId || ''}
                                     onChange={e => setEditingUser({ ...editingUser, companyId: e.target.value })}
                                 >
-                                    <option value="">Seleccionar empresa...</option>
+                                    <option value="">Sin empresa vinculada...</option>
                                     {companies.map(c => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Teléfono (WhatsApp)</Label>
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Teléfono Móvil (WhatsApp)</Label>
                                 <Input
-                                    className="bg-slate-800/50 border-slate-700 rounded-xl h-11 font-medium text-white"
+                                    className="bg-slate-50 border-slate-200 rounded-2xl h-12 font-semibold text-slate-800 px-5 focus:ring-blue-500/10 shadow-inner"
                                     value={editingUser.phone || ''}
                                     onChange={e => setEditingUser({ ...editingUser, phone: e.target.value })}
-                                    placeholder="+56 9..."
+                                    placeholder="+56 9 1234 5678"
                                 />
                             </div>
-                            <Separator className="bg-slate-800" />
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Contacto Alternativo</Label>
+                            <Separator className="bg-slate-100" />
+                            <div className="space-y-2.5">
+                                <Label className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 ml-1">Contacto Alternativo / Escalamiento</Label>
                                 <Input
-                                    className="bg-slate-800/50 border-slate-700 rounded-xl h-11 font-medium text-white"
+                                    className="bg-slate-50 border-slate-200 rounded-2xl h-12 font-semibold text-slate-800 px-5 focus:ring-blue-500/10 shadow-inner"
                                     value={editingUser.altContactName || ''}
                                     onChange={e => setEditingUser({ ...editingUser, altContactName: e.target.value })}
-                                    placeholder="Nombre del contacto de escalamiento"
+                                    placeholder="Nombre del contacto secundario"
                                 />
                             </div>
-                            <DialogFooter className="pt-2">
-                                <Button type="button" variant="ghost" disabled={isSavingUser} onClick={() => { setEditUserOpen(false); setEditingUser(null); }} className="rounded-xl font-bold text-slate-400">
+                            <DialogFooter className="pt-6 gap-3">
+                                <Button type="button" variant="ghost" disabled={isSavingUser} onClick={() => { setEditUserOpen(false); setEditingUser(null); }} className="rounded-2xl h-12 px-6 font-bold text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-all">
                                     Cancelar
                                 </Button>
-                                <Button type="submit" disabled={isSavingUser} className="btn-primary rounded-xl px-8 font-black">
-                                    {isSavingUser ? 'Guardando...' : 'Guardar'}
+                                <Button type="submit" disabled={isSavingUser} className="bg-blue-600 hover:bg-blue-700 text-white rounded-2xl h-12 px-10 font-black shadow-xl shadow-blue-500/20 transition-all">
+                                    {isSavingUser ? 'Guardando...' : 'Aplicar Cambios'}
                                 </Button>
                             </DialogFooter>
                         </form>
