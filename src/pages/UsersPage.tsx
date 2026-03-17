@@ -104,9 +104,9 @@ const UsersPage = () => {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
         <div>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight">Gestión de Usuarios</h1>
-          <p className="text-slate-600 font-bold uppercase text-[10px] tracking-[0.3em] mt-2 flex items-center gap-2">
-            <Users className="w-4 h-4 text-blue-600" />
+          <h1 className="text-4xl font-black text-white tracking-tight">Gestión de Usuarios</h1>
+          <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.3em] mt-2 flex items-center gap-2">
+            <Users className="w-4 h-4 text-blue-400" />
             {users.length} usuario{users.length !== 1 ? 's' : ''} registrado{users.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -222,7 +222,8 @@ const UsersPage = () => {
             </tbody>
           </table>
         </ScrollArea>
-      <      {/* Create User Dialog */}
+      </div>
+      {/* Create User Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="max-w-md rounded-[2.5rem] bg-white border-slate-200 text-slate-900 p-0 overflow-hidden shadow-2xl">
           <div className="bg-slate-50 p-8 border-b border-slate-100">
@@ -331,4 +332,3 @@ const UsersPage = () => {
 };
 
 export default UsersPage;
-```

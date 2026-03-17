@@ -56,10 +56,10 @@ const SPIVault = () => {
              {/* Header Section */}
              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                        Bóveda Global <ShieldCheck className="text-blue-600 h-8 w-8" />
+                    <h1 className="text-4xl font-black text-white tracking-tight flex items-center gap-3">
+                        Bóveda Global <ShieldCheck className="text-blue-400 h-8 w-8" />
                     </h1>
-                    <p className="text-slate-600 font-bold mt-1">Supervisión y gestión de documentos validados en toda la plataforma.</p>
+                    <p className="text-slate-400 font-bold mt-1">Supervisión y gestión de documentos validados en toda la plataforma.</p>
                 </div>
 
                 <div className="bg-white rounded-3xl p-6 border border-slate-200 flex items-center gap-8 shadow-sm">

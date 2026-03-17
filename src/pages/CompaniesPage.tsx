@@ -210,10 +210,10 @@ const CompaniesPage = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-                        Empresas <Building2 className="text-blue-600 h-7 w-7" />
+                    <h1 className="text-3xl font-black text-white tracking-tight flex items-center gap-3">
+                        Empresas <Building2 className="text-blue-400 h-7 w-7" />
                     </h1>
-                    <p className="text-slate-500 text-sm font-medium">Empresas clientes registradas en la plataforma.</p>
+                    <p className="text-slate-400 text-sm font-medium">Empresas clientes registradas en la plataforma.</p>
                 </div>
                 <Button
                     onClick={() => handleOpenDialog()}
