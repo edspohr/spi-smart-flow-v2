@@ -29,7 +29,7 @@ const ClientDashboard = () => {
   const subscribeToCompanyOTs = useOTStore((s) => s.subscribeToCompanyOTs);
   const subscribeToClientDocuments = useDocumentStore((s) => s.subscribeToClientDocuments);
   const subscribeToCompanyVault = useDocumentStore((s) => s.subscribeToCompanyVault);
-  const { subscribeToAll: subscribeToProcedureTypes } = useProcedureTypeStore();
+  const { procedureTypes, subscribeToAll: subscribeToProcedureTypes } = useProcedureTypeStore();
 
   const [expandedOTs, setExpandedOTs] = useState<Record<string, boolean>>({});
 
@@ -42,11 +42,30 @@ const ClientDashboard = () => {
     return () => { u1(); u2(); u3(); u4(); };
   }, [user, subscribeToCompanyOTs, subscribeToClientDocuments, subscribeToCompanyVault, subscribeToProcedureTypes]);
 
+  // Count incomplete required items for an OT, using requirementsProgress (new system)
+  // or legacy pending/rejected docs as fallback.
+  const countIncomplete = (ot: typeof ots[0]): number => {
+    if (ot.stage === 'finalizado') return 0;
+    if (ot.procedureTypeId) {
+      const pt = procedureTypes.find(p => p.id === ot.procedureTypeId);
+      if (pt) {
+        const prog = ot.requirementsProgress || {};
+        return pt.requirements.filter(r => {
+          if (!r.isRequired) return false;
+          const p = prog[r.id];
+          return !p?.completed && !p?.signedAt && !p?.documentUrl &&
+                 !(r.type === 'form_field' && p?.value);
+        }).length;
+      }
+    }
+    return documents.filter(d =>
+      d.otId === ot.id && (d.status === 'pending' || d.status === 'rejected')
+    ).length;
+  };
+
   const sorted = [...ots].sort((a, b) => {
-    const ap = documents.filter(d =>
-      d.otId === a.id && (d.status === 'pending' || d.status === 'rejected')).length;
-    const bp = documents.filter(d =>
-      d.otId === b.id && (d.status === 'pending' || d.status === 'rejected')).length;
+    const ap = countIncomplete(a);
+    const bp = countIncomplete(b);
     if (ap > 0 && bp === 0) return -1;
     if (bp > 0 && ap === 0) return 1;
     return (safeDate(b.createdAt)?.getTime() || 0) - (safeDate(a.createdAt)?.getTime() || 0);
@@ -54,7 +73,7 @@ const ClientDashboard = () => {
 
   const stats = {
     active:    ots.filter(o => o.stage !== 'finalizado').length,
-    pending:   documents.filter(d => d.status === 'pending' || d.status === 'rejected').length,
+    pending:   ots.reduce((sum, o) => sum + countIncomplete(o), 0),
     finalized: ots.filter(o => o.stage === 'finalizado').length,
   };
 
@@ -135,8 +154,7 @@ const ClientDashboard = () => {
       <div className="grid gap-6">
         {sorted.map((ot) => {
           const otDocs = documents.filter(d => d.otId === ot.id);
-          const hasPendingDocs = documents.some(d =>
-            d.otId === ot.id && (d.status === 'pending' || d.status === 'rejected'));
+          const hasPendingDocs = countIncomplete(ot) > 0;
           const isNew = !!ot.updatedAt &&
             (Date.now() - (safeDate(ot.updatedAt)?.getTime() || 0)) < 172800000;
           const isExpanded = !!expandedOTs[ot.id];

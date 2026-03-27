@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import DocumentUpload from '@/components/DocumentUpload';
 import useProcedureTypeStore from '@/store/useProcedureTypeStore';
 import type { OT, Requirement } from '@/store/types';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,6 @@ import {
   Fingerprint,
   Type,
   CheckSquare,
-  Upload,
   PenLine,
   ShieldCheck,
   ExternalLink,
@@ -57,19 +57,21 @@ function ProgressBar({ value, total }: { value: number; total: number }) {
 // ── Single requirement row ─────────────────────────────────────────────────────
 
 interface RowProps {
-  req:           Requirement;
-  progress:      any;
-  otId:          string;
-  companyId:     string;
-  onToggle:      (reqId: string, completed: boolean) => void;
-  onFieldSave:   (reqId: string, value: string) => void;
-  onOpenSigning: (reqId: string) => void;
-  onUseVault:    (reqId: string, vaultPower: VaultPower) => void;
+  req:              Requirement;
+  progress:         any;
+  otId:             string;
+  companyId:        string;
+  isFinalized:      boolean;
+  onToggle:         (reqId: string, completed: boolean) => void;
+  onFieldSave:      (reqId: string, value: string) => void;
+  onOpenSigning:    (reqId: string) => void;
+  onUseVault:       (reqId: string, vaultPower: VaultPower) => void;
+  onDocumentUpload: (reqId: string, url: string) => Promise<void>;
 }
 
 function RequirementRow({
-  req, progress, companyId,
-  onToggle, onFieldSave, onOpenSigning, onUseVault,
+  req, progress, otId, companyId, isFinalized,
+  onToggle, onFieldSave, onOpenSigning, onUseVault, onDocumentUpload,
 }: RowProps) {
   const [fieldValue,   setFieldValue]   = useState(progress?.value || '');
   const [vaultPower,   setVaultPower]   = useState<VaultPower | null>(null);
@@ -77,7 +79,7 @@ function RequirementRow({
   const [showVaultBar, setShowVaultBar] = useState(false);
   const [usingVault,   setUsingVault]   = useState(false);
 
-  const isCompleted = !!progress?.completed || !!progress?.signedAt || !!progress?.documentUrl;
+  const isCompleted = isFinalized || !!progress?.completed || !!progress?.signedAt || !!progress?.documentUrl;
 
   // Check vault only once for digital_signature requirements
   useEffect(() => {
@@ -180,14 +182,32 @@ function RequirementRow({
             </p>
           )}
 
-          {/* ── document_upload — pending ── */}
+          {/* ── document_upload — pending: inline upload ── */}
           {req.type === 'document_upload' && !isCompleted && (
-            <div className="flex items-center gap-2 mt-2">
-              <Upload className="h-3 w-3 text-slate-400" />
-              <span className="text-[10px] font-bold text-slate-400">
-                {req.acceptedFormats?.join(', ') || 'PDF'} · Sube el documento en la sección Completar Solicitud
-              </span>
+            <div className="mt-3">
+              <DocumentUpload
+                documentLabel={req.label}
+                storagePath={`ots/${otId}/req_${req.id}`}
+                onUploadComplete={(url) => onDocumentUpload(req.id, url)}
+                accept={
+                  req.acceptedFormats?.length
+                    ? req.acceptedFormats.map(f => `.${f.toLowerCase()}`).join(',')
+                    : '.pdf,.png,.jpg,.jpeg'
+                }
+              />
             </div>
+          )}
+
+          {/* ── document_upload — completed: link ── */}
+          {req.type === 'document_upload' && isCompleted && progress?.documentUrl && (
+            <a
+              href={progress.documentUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest mt-1"
+            >
+              Ver documento <ExternalLink className="h-3 w-3" />
+            </a>
           )}
 
           {/* ── digital_signature — Smart Vault alert ── */}
@@ -275,14 +295,17 @@ const RequirementsChecklist = ({ ot }: RequirementsChecklistProps) => {
 
   if (!procedureType) return null;
 
+  const isFinalized  = ot.stage === 'finalizado';
   const requirements = [...(procedureType.requirements || [])].sort((a, b) => a.order - b.order);
   const progress     = ot.requirementsProgress || {};
 
-  const completedRequired = requirements.filter((r) => {
-    if (!r.isRequired) return false;
-    const p = progress[r.id];
-    return !!p?.completed || !!p?.signedAt || !!p?.documentUrl || (r.type === 'form_field' && !!p?.value);
-  }).length;
+  const completedRequired = isFinalized
+    ? requirements.filter((r) => r.isRequired).length
+    : requirements.filter((r) => {
+        if (!r.isRequired) return false;
+        const p = progress[r.id];
+        return !!p?.completed || !!p?.signedAt || !!p?.documentUrl || (r.type === 'form_field' && !!p?.value);
+      }).length;
 
   const totalRequired = requirements.filter((r) => r.isRequired).length;
 
@@ -321,6 +344,28 @@ const RequirementsChecklist = ({ ot }: RequirementsChecklistProps) => {
     toast.success('Poder existente vinculado correctamente');
   };
 
+  const handleDocumentUpload = async (reqId: string, url: string) => {
+    const req = requirements.find((r) => r.id === reqId);
+    if (!req) return;
+    try {
+      await addDoc(collection(db, 'documents'), {
+        otId:          ot.id,
+        clientId:      ot.clientId,
+        companyId:     ot.companyId,
+        name:          req.label,
+        type:          reqId,
+        status:        'uploaded',
+        url,
+        uploadedAt:    new Date().toISOString(),
+        isVaultEligible: false,
+      });
+      await updateProgress(reqId, { completed: true, documentUrl: url });
+      toast.success(`${req.label} subido correctamente`);
+    } catch {
+      toast.error('Error al guardar el documento');
+    }
+  };
+
   return (
     <div className="space-y-4">
       <ProgressBar value={completedRequired} total={totalRequired} />
@@ -333,10 +378,12 @@ const RequirementsChecklist = ({ ot }: RequirementsChecklistProps) => {
             progress={progress[req.id]}
             otId={ot.id}
             companyId={ot.companyId}
+            isFinalized={isFinalized}
             onToggle={handleToggle}
             onFieldSave={handleFieldSave}
             onOpenSigning={(reqId) => setSigningReqId(reqId)}
             onUseVault={handleUseVault}
+            onDocumentUpload={handleDocumentUpload}
           />
         ))}
       </div>
