@@ -12,12 +12,14 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import useOTStore from '../store/useOTStore';
 import useDocumentStore from '../store/useDocumentStore';
+import useProcedureTypeStore from '../store/useProcedureTypeStore';
 import {
   Activity,
   AlertCircle,
   Building2,
   CheckCircle2,
   Search,
+  Plus,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -27,11 +29,22 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
 import { OTStatusBadge } from '@/components/OTStatusBadge';
 import OTDetailsModal from '@/components/OTDetailsModal';
+import NewOTModal from '@/components/NewOTModal';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { OT, OTStage, Document } from '@/store/types';
+
+// ─── Date helper ──────────────────────────────────────────────────────────────
+// Firestore puede devolver Timestamps (con .toDate()) o strings ISO.
+// Esta función los normaliza de forma segura a un Date válido.
+function toDate(raw: any): Date | null {
+  if (!raw) return null;
+  if (typeof raw.toDate === 'function') return raw.toDate();
+  const d = new Date(raw);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -73,6 +86,21 @@ function KanbanCard({
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: ot.id,
   });
+  const { procedureTypes } = useProcedureTypeStore();
+
+  // Progress computation
+  const procedureType = procedureTypes.find((p) => p.id === ot.procedureTypeId);
+  const totalReqs     = procedureType?.requirements?.length ?? 0;
+  const completedReqs = totalReqs > 0
+    ? Object.values(ot.requirementsProgress ?? {}).filter(
+        (p: any) => p?.completed || p?.signedAt || p?.documentUrl,
+      ).length
+    : 0;
+
+  // Assignee initials from email
+  const assigneeInitials = ot.assignedToEmail
+    ? ot.assignedToEmail.split('@')[0].slice(0, 2).toUpperCase()
+    : null;
 
   return (
     <div
@@ -84,29 +112,84 @@ function KanbanCard({
       {...listeners}
       onClick={onClick}
       className={cn(
-        'bg-white border border-slate-200 rounded-[2rem] p-5 cursor-grab active:cursor-grabbing',
+        'bg-white border border-slate-200 rounded-[2rem] p-4 cursor-grab active:cursor-grabbing',
         'hover:border-blue-300 hover:shadow-2xl hover:shadow-blue-900/10 hover:-translate-y-1 transition-all duration-300 select-none shadow-sm',
         isDragging && 'opacity-40 ring-4 ring-blue-500/20 scale-105 z-50',
       )}
     >
-      <div className="flex flex-col gap-3">
-        <p className="font-black text-slate-900 text-[13px] leading-snug uppercase tracking-tight group-hover:text-blue-600 transition-colors">
-            {ot.brandName || ot.title}
-        </p>
+      <div className="flex flex-col gap-2.5">
+
+        {/* Row 1 — procedure type chip + source badge */}
         <div className="flex items-center justify-between gap-2">
-            <Badge variant="outline" className="bg-slate-50 text-slate-500 border-slate-200 text-[9px] font-black uppercase tracking-widest px-2 py-1 shadow-none rounded-xl">
-                {ot.companyId}
-            </Badge>
-            <OTStatusBadge stage={ot.stage} size="sm" />
+          {ot.procedureTypeCode ? (
+            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-blue-100 text-blue-700 border border-blue-200 shrink-0">
+              {ot.procedureTypeCode}
+            </span>
+          ) : <span />}
+          {ot.source === 'pipefy' ? (
+            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-blue-600 text-white border border-blue-700">
+              Pipefy
+            </span>
+          ) : ot.source === 'manual' ? (
+            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200">
+              Manual
+            </span>
+          ) : null}
         </div>
-        {pendingCount > 0 && (
-            <div className="flex items-center gap-1.5 pt-1">
-                <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-600 border border-rose-200 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm shadow-rose-900/5 animate-pulse">
-                    <AlertCircle className="h-3 w-3" />
-                    {pendingCount} Pendiente{pendingCount !== 1 ? 's' : ''}
-                </span>
-            </div>
+
+        {/* Row 2 — company name (primary) */}
+        <p className="font-black text-slate-900 text-[13px] leading-snug tracking-tight">
+          {ot.companyName || ot.brandName || ot.title}
+        </p>
+
+        {/* Row 3 — procedure type name (secondary) */}
+        {ot.procedureTypeName && (
+          <p className="text-[10px] font-bold text-slate-400 leading-snug -mt-1 truncate">
+            {ot.procedureTypeName}
+          </p>
         )}
+
+        {/* Row 4 — reference number */}
+        {ot.reference && (
+          <p className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-100 rounded-lg px-2 py-0.5 inline-block self-start">
+            {ot.reference}
+          </p>
+        )}
+
+        {/* Row 5 — assignee + progress */}
+        <div className="flex items-center justify-between gap-2 pt-0.5">
+          <div className="flex items-center gap-2">
+            {assigneeInitials ? (
+              <div className="w-6 h-6 rounded-full bg-indigo-100 border border-indigo-200 flex items-center justify-center shrink-0">
+                <span className="text-[9px] font-black text-indigo-700">{assigneeInitials}</span>
+              </div>
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                <span className="text-[8px] font-black text-slate-400">—</span>
+              </div>
+            )}
+            {totalReqs > 0 && (
+              <span className={cn(
+                'text-[9px] font-black uppercase tracking-widest',
+                completedReqs === totalReqs ? 'text-emerald-600' : 'text-slate-400',
+              )}>
+                {completedReqs}/{totalReqs} req.
+              </span>
+            )}
+          </div>
+          <OTStatusBadge stage={ot.stage} size="sm" />
+        </div>
+
+        {/* Row 6 — pending alert */}
+        {pendingCount > 0 && (
+          <div className="flex items-center gap-1.5 pt-0.5">
+            <span className="inline-flex items-center gap-1.5 bg-rose-50 text-rose-600 border border-rose-200 text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-sm shadow-rose-900/5 animate-pulse">
+              <AlertCircle className="h-3 w-3" />
+              {pendingCount} Pendiente{pendingCount !== 1 ? 's' : ''}
+            </span>
+          </div>
+        )}
+
       </div>
     </div>
   );
@@ -176,8 +259,10 @@ function KanbanColumn({
 const SPIAdminDashboard = () => {
   const { ots, loading, subscribeToAllOTs, updateOTStage } = useOTStore();
   const { updateDocumentStatus } = useDocumentStore();
+  const { subscribeToAll: subscribeToProcedureTypes } = useProcedureTypeStore();
 
   const [selectedOT, setSelectedOT] = useState<OT | null>(null);
+  const [showNewOTModal, setShowNewOTModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompany, setFilterCompany] = useState('all');
 
@@ -200,8 +285,9 @@ const SPIAdminDashboard = () => {
 
   useEffect(() => {
     const u1 = subscribeToAllOTs();
-    return () => { u1(); };
-  }, [subscribeToAllOTs]);
+    const u2 = subscribeToProcedureTypes();
+    return () => { u1(); u2(); };
+  }, [subscribeToAllOTs, subscribeToProcedureTypes]);
 
   // ── DnD ────────────────────────────────────────────────────────────────────
 
@@ -227,7 +313,8 @@ const SPIAdminDashboard = () => {
     pending: pendingDocs.length,
     finalized: ots.filter((o) => {
       if (o.stage !== 'finalizado' || !o.updatedAt) return false;
-      const u = new Date(o.updatedAt);
+      const u = toDate(o.updatedAt);
+      if (!u) return false;
       const n = new Date();
       return u.getMonth() === n.getMonth() && u.getFullYear() === n.getFullYear();
     }).length,
@@ -300,12 +387,21 @@ const SPIAdminDashboard = () => {
     <div className="space-y-6 animate-fade-in pb-10">
 
       {/* Header */}
-      <div>
-        <h1 className="text-4xl font-extrabold text-white tracking-tight">Torre de Control SPI</h1>
-        <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em] mt-1.5 flex items-center gap-2">
-          <span className="w-8 h-[2px] bg-blue-600 rounded-full" />
-          Visión Global de Operaciones
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-4xl font-extrabold text-white tracking-tight">Torre de Control SPI</h1>
+          <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em] mt-1.5 flex items-center gap-2">
+            <span className="w-8 h-[2px] bg-blue-600 rounded-full" />
+            Visión Global de Operaciones
+          </p>
+        </div>
+        <Button
+          onClick={() => setShowNewOTModal(true)}
+          className="h-11 px-6 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-[10px] uppercase tracking-widest gap-2 shadow-lg shadow-blue-900/20 transition-all"
+        >
+          <Plus className="h-4 w-4" />
+          Nueva Solicitud
+        </Button>
       </div>
 
       {/* ── Stat cards ── */}
@@ -525,9 +621,7 @@ const SPIAdminDashboard = () => {
                       </td>
                       <td className="p-6">
                         <span className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">
-                            {ot.updatedAt
-                            ? format(new Date(ot.updatedAt), 'd MMM, HH:mm', { locale: es })
-                            : '—'}
+                            {(() => { const d = toDate(ot.updatedAt); return d ? format(d, 'd MMM, HH:mm', { locale: es }) : '—'; })()}
                         </span>
                       </td>
                     </tr>
@@ -601,7 +695,7 @@ const SPIAdminDashboard = () => {
                                     </Badge>
                                     <div className="w-1 h-1 rounded-full bg-slate-300" />
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                        Cargado el {new Date(d.uploadedAt).toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}
+                                        {(() => { const d2 = toDate(d.uploadedAt); return d2 ? `Cargado el ${d2.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' })}` : ''; })()}
                                     </span>
                                 </div>
                             </div>
@@ -676,6 +770,9 @@ const SPIAdminDashboard = () => {
           onOpenChange={(o) => !o && setSelectedOT(null)}
         />
       )}
+
+      {/* New OT Modal */}
+      <NewOTModal open={showNewOTModal} onOpenChange={setShowNewOTModal} />
     </div>
   );
 };

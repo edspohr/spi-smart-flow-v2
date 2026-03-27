@@ -196,8 +196,8 @@ const PICompletionPage = () => {
   // Vault link loading
   const [savingVault, setSavingVault] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [isUploadingCedula, setIsUploadingCedula] = useState(false);
+  const [, setIsUploadingLogo] = useState(false);
+  const [, setIsUploadingCedula] = useState(false);
 
   // ── Subscriptions ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -533,7 +533,6 @@ const PICompletionPage = () => {
                   storagePath={`ots/${otId}/logo`}
                   onUploadComplete={handleLogoUploaded}
                   accept=".png,.jpg,.jpeg,.svg"
-                  loading={isUploadingLogo}
                 />
               </>
             )}
@@ -702,7 +701,6 @@ const PICompletionPage = () => {
                   storagePath={`ots/${otId}/cedula`}
                   onUploadComplete={handleCedulaUploaded}
                   accept=".pdf,.png,.jpg,.jpeg"
-                  loading={isUploadingCedula}
                 />
               </>
             )}

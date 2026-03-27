@@ -3,8 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import useOTStore from '../store/useOTStore';
 import useDocumentStore from '../store/useDocumentStore';
 import useAuthStore from '../store/useAuthStore';
+import useProcedureTypeStore from '../store/useProcedureTypeStore';
 import { OTStatusBadge } from '@/components/OTStatusBadge';
 import TimelineStepper from '@/components/dashboard/TimelineStepper';
+import RequirementsChecklist from '@/components/RequirementsChecklist';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
@@ -17,7 +19,7 @@ import {
   ChevronUp,
   ArrowRight,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, safeDate } from '@/lib/utils';
 
 const ClientDashboard = () => {
   const navigate = useNavigate();
@@ -27,6 +29,7 @@ const ClientDashboard = () => {
   const subscribeToCompanyOTs = useOTStore((s) => s.subscribeToCompanyOTs);
   const subscribeToClientDocuments = useDocumentStore((s) => s.subscribeToClientDocuments);
   const subscribeToCompanyVault = useDocumentStore((s) => s.subscribeToCompanyVault);
+  const { subscribeToAll: subscribeToProcedureTypes } = useProcedureTypeStore();
 
   const [expandedOTs, setExpandedOTs] = useState<Record<string, boolean>>({});
 
@@ -35,8 +38,9 @@ const ClientDashboard = () => {
     const u1 = subscribeToCompanyOTs(user.companyId);
     const u2 = subscribeToClientDocuments(user.uid);
     const u3 = subscribeToCompanyVault(user.companyId);
-    return () => { u1(); u2(); u3(); };
-  }, [user, subscribeToCompanyOTs, subscribeToClientDocuments, subscribeToCompanyVault]);
+    const u4 = subscribeToProcedureTypes();
+    return () => { u1(); u2(); u3(); u4(); };
+  }, [user, subscribeToCompanyOTs, subscribeToClientDocuments, subscribeToCompanyVault, subscribeToProcedureTypes]);
 
   const sorted = [...ots].sort((a, b) => {
     const ap = documents.filter(d =>
@@ -45,7 +49,7 @@ const ClientDashboard = () => {
       d.otId === b.id && (d.status === 'pending' || d.status === 'rejected')).length;
     if (ap > 0 && bp === 0) return -1;
     if (bp > 0 && ap === 0) return 1;
-    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return (safeDate(b.createdAt)?.getTime() || 0) - (safeDate(a.createdAt)?.getTime() || 0);
   });
 
   const stats = {
@@ -134,7 +138,7 @@ const ClientDashboard = () => {
           const hasPendingDocs = documents.some(d =>
             d.otId === ot.id && (d.status === 'pending' || d.status === 'rejected'));
           const isNew = !!ot.updatedAt &&
-            (Date.now() - new Date(ot.updatedAt).getTime()) < 172800000;
+            (Date.now() - (safeDate(ot.updatedAt)?.getTime() || 0)) < 172800000;
           const isExpanded = !!expandedOTs[ot.id];
 
           return (
@@ -144,9 +148,16 @@ const ClientDashboard = () => {
             >
               {/* ROW 1 — Title + badges */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <h3 className="font-bold text-slate-900 text-lg leading-snug">
-                  {ot.brandName || ot.title}
-                </h3>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg leading-snug">
+                    {ot.brandName || ot.title}
+                  </h3>
+                  {ot.procedureTypeCode && (
+                    <span className="inline-block mt-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-lg">
+                      {ot.procedureTypeCode} · {ot.procedureTypeName}
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 shrink-0 flex-wrap">
                   <OTStatusBadge stage={ot.stage} />
                   {hasPendingDocs && (
@@ -167,7 +178,7 @@ const ClientDashboard = () => {
                 <TimelineStepper currentStage={ot.stage} />
               </div>
 
-              {/* ROW 3 — Collapsible doc list */}
+              {/* ROW 3 — Requirements checklist or doc list */}
               <div className="space-y-3">
                 <button
                   onClick={() => toggleExpand(ot.id)}
@@ -181,28 +192,32 @@ const ClientDashboard = () => {
                 </button>
 
                 {isExpanded && (
-                  <div className="space-y-2 pt-1">
-                    {otDocs.length === 0 ? (
+                  <div className="pt-1">
+                    {ot.procedureTypeId ? (
+                      <RequirementsChecklist ot={ot} />
+                    ) : otDocs.length === 0 ? (
                       <p className="text-sm text-slate-400 font-medium py-2">
                         Documentos aún no asignados
                       </p>
                     ) : (
-                      otDocs.map(d => (
-                        <div
-                          key={d.id}
-                          className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl"
-                        >
-                          <div className="mt-0.5 shrink-0">{getDocIcon(d.status)}</div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium text-slate-700">{d.name}</p>
-                            {d.status === 'rejected' && (d as any).rejectionReason && (
-                              <p className="text-xs text-red-500 font-medium mt-0.5">
-                                {(d as any).rejectionReason}
-                              </p>
-                            )}
+                      <div className="space-y-2">
+                        {otDocs.map(d => (
+                          <div
+                            key={d.id}
+                            className="flex items-start gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl"
+                          >
+                            <div className="mt-0.5 shrink-0">{getDocIcon(d.status)}</div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-slate-700">{d.name}</p>
+                              {d.status === 'rejected' && (d as any).rejectionReason && (
+                                <p className="text-xs text-red-500 font-medium mt-0.5">
+                                  {(d as any).rejectionReason}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}

@@ -6,13 +6,15 @@ import { ShieldCheck, Download, Search, HardDrive, ListFilter, Clock, AlertCircl
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { safeDate } from '@/lib/utils';
 
 type ExpiryStatus = 'vencido' | 'proximo' | 'vigente' | 'indefinido';
 
-function getExpiryStatus(validUntil?: string): ExpiryStatus {
-  if (!validUntil) return 'indefinido';
+function getExpiryStatus(validUntil?: any): ExpiryStatus {
+  const d = safeDate(validUntil);
+  if (!d) return 'indefinido';
   const days = Math.ceil(
-    (new Date(validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
   );
   if (days < 0)   return 'vencido';
   if (days <= 30) return 'proximo';
@@ -123,8 +125,9 @@ const SPIVault = () => {
                 {filteredDocs.map((doc) => {
                     const companyName = doc.validationMetadata?.companyName || (doc as any).companyId || "Empresa Desconocida";
                     const expiryStatus = getExpiryStatus(doc.validUntil);
-                    const expiryDays = doc.validUntil
-                      ? Math.ceil((new Date(doc.validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                    const expiryDate = safeDate(doc.validUntil);
+                    const expiryDays = expiryDate
+                      ? Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
                       : null;
 
                     return (
@@ -174,7 +177,10 @@ const SPIVault = () => {
                                     <div>
                                         <p className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Válido hasta</p>
                                         <p className="text-xs font-bold text-slate-900">
-                                            {doc.validUntil ? new Date(doc.validUntil).toLocaleDateString() : 'INDETERMINADA'}
+                                            {(() => {
+                                                const d = safeDate(doc.validUntil);
+                                                return d ? d.toLocaleDateString() : 'INDETERMINADA';
+                                            })()}
                                         </p>
                                     </div>
                                 </div>

@@ -30,7 +30,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { cn } from '@/lib/utils';
+import { cn, safeDate } from '@/lib/utils';
 
 interface EditableUser {
     id: string;
@@ -195,7 +195,8 @@ const CompaniesPage = () => {
         for (const ot of companyOts) {
             const otDocs = documents.filter(d => d.otId === ot.id);
             if (otDocs.some(d => d.status === 'pending' || d.status === 'rejected')) hasPendingDocs = true;
-            const days = Math.floor((now.getTime() - new Date(ot.createdAt).getTime()) / 86400000);
+            const otDate = safeDate(ot.createdAt);
+            const days = otDate ? Math.floor((now.getTime() - otDate.getTime()) / 86400000) : 0;
             if (days > 15 && ot.stage !== 'finalizado') isStuck = true;
         }
         if (isStuck) return { color: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Atascado (>15 días)' };

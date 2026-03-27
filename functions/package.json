@@ -21,9 +21,11 @@
     "@google/generative-ai": "^0.24.1",
     "@sentry/node": "^10.43.0",
     "firebase-admin": "^13.6.1",
-    "firebase-functions": "^7.1.1"
+    "firebase-functions": "^7.1.1",
+    "nodemailer": "^6.10.1"
   },
   "devDependencies": {
+    "@types/nodemailer": "^6.4.23",
     "google-auth-library": "^10.5.0",
     "typescript": "^5.9.3"
   }

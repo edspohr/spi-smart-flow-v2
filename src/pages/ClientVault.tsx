@@ -8,17 +8,19 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { safeDate } from '@/lib/utils';
 
 type ExpiryStatus = 'vencido' | 'proximo' | 'vigente' | 'indefinido';
 
-function getExpiryStatus(validUntil?: string): ExpiryStatus {
-  if (!validUntil) return 'indefinido';
-  const days = Math.ceil(
-    (new Date(validUntil).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  );
-  if (days < 0)   return 'vencido';
-  if (days <= 30) return 'proximo';
-  return 'vigente';
+function getExpiryStatus(validUntil?: any): ExpiryStatus {
+   const d = safeDate(validUntil);
+   if (!d) return 'indefinido';
+   const days = Math.ceil(
+    (d.getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+   );
+   if (days < 0)   return 'vencido';
+   if (days <= 30) return 'proximo';
+   return 'vigente';
 }
 
 const ClientVault = () => {
@@ -104,7 +106,7 @@ const ClientVault = () => {
              <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                 {vaultDocs.map((doc, idx) => {
                     const status = getExpiryStatus(doc.validUntil);
-                    const expiryDate = doc.validUntil ? new Date(doc.validUntil) : null;
+                    const expiryDate = safeDate(doc.validUntil);
                     const days = expiryDate ? Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
 
                     return (

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.triggerDeadlinesCheck = exports.checkDocumentDeadlines = exports.createOTFromPipefy = exports.createUser = exports.analyzeDocument = void 0;
+exports.triggerDeadlinesCheck = exports.checkDocumentDeadlines = exports.createOTFromPipefy = exports.activateUser = exports.createUser = exports.analyzeDocument = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const generative_ai_1 = require("@google/generative-ai");
@@ -131,6 +131,51 @@ exports.createUser = (0, https_1.onCall)(async (request) => {
         console.error('Error creating user:', error);
         Sentry.captureException(error, { extra: { email, role } });
         throw new https_1.HttpsError('internal', error.message || 'Error creating user.');
+    }
+});
+exports.activateUser = (0, https_1.onCall)(async (request) => {
+    var _a, _b;
+    if (!request.auth) {
+        throw new https_1.HttpsError('unauthenticated', 'Must be authenticated.');
+    }
+    // Verify caller is spi-admin via custom claims, fallback to Firestore
+    const callerClaims = request.auth.token;
+    if (callerClaims.role !== 'spi-admin') {
+        const callerDoc = await db.collection('users').doc(request.auth.uid).get();
+        if (!callerDoc.exists || ((_a = callerDoc.data()) === null || _a === void 0 ? void 0 : _a.role) !== 'spi-admin') {
+            throw new https_1.HttpsError('permission-denied', 'Only SPI admins can activate users.');
+        }
+    }
+    const { uid, companyId, role } = request.data;
+    if (!uid || !companyId || !role) {
+        throw new https_1.HttpsError('invalid-argument', 'uid, companyId, and role are required.');
+    }
+    try {
+        // Fetch company name
+        const companyDoc = await db.collection('companies').doc(companyId).get();
+        const companyName = companyDoc.exists
+            ? (_b = companyDoc.data().name) !== null && _b !== void 0 ? _b : companyId
+            : companyId;
+        // Fetch user info
+        const userDoc = await db.collection('users').doc(uid).get();
+        const userData = userDoc.data();
+        const email = userData === null || userData === void 0 ? void 0 : userData.email;
+        // Set Firebase Auth custom claims
+        await admin.auth().setCustomUserClaims(uid, { role });
+        // Audit log
+        await db.collection('logs').add({
+            otId: 'system',
+            userId: request.auth.uid,
+            action: `Usuario activado: ${email} (${role}) → ${companyName}`,
+            type: 'system',
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        return { success: true };
+    }
+    catch (error) {
+        console.error('Error activating user:', error);
+        Sentry.captureException(error, { extra: { uid, companyId, role } });
+        throw new https_1.HttpsError('internal', error.message || 'Error activating user.');
     }
 });
 // Pipefy Webhook

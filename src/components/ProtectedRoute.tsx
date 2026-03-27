@@ -9,17 +9,20 @@ const ProtectedRoute = ({ allowedRoles }: ProtectedRouteProps) => {
   const { user, loading } = useAuthStore();
 
   if (loading) {
-     return null; // or a spinner, but AppLayout usually handles the main loading state
+    return null;
   }
 
   if (!user) {
-    // In a real app, redirect to /login
-    // For this prototype, we might want to redirect to a dev login page
     return <Navigate to="/login" replace />;
   }
 
+  // Guest users are always redirected to the pending activation screen,
+  // regardless of which protected route they try to access.
+  if (user.role === 'guest') {
+    return <Navigate to="/pendiente" replace />;
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Role not authorized
     return <Navigate to="/unauthorized" replace />;
   }
 

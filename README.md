@@ -582,6 +582,62 @@ npm install -g firebase-tools@latest
 
 ---
 
+## Desarrollo Local
+
+### 1. Credenciales de servicio (seed script)
+
+Descarga la clave de servicio desde **Firebase Console → Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada** y guárdala en:
+
+```
+scripts/serviceAccountKey.json
+```
+
+> ⚠️ **Nunca subas `serviceAccountKey.json` ni archivos `.env` al repositorio.** Están listados en `.gitignore`.
+
+### 2. Variables de entorno del frontend
+
+Crea `.env.local` en la raíz con tus valores de Firebase y activa el modo de pruebas:
+
+```env
+VITE_FIREBASE_API_KEY=...
+VITE_FIREBASE_AUTH_DOMAIN=...
+VITE_FIREBASE_PROJECT_ID=spi-smart-flow
+VITE_FIREBASE_STORAGE_BUCKET=...
+VITE_FIREBASE_MESSAGING_SENDER_ID=...
+VITE_FIREBASE_APP_ID=...
+VITE_MOCK_MODE=true
+```
+
+Cuando `VITE_MOCK_MODE=true`, se mostrará un banner amarillo en todas las rutas autenticadas indicando que la integración con Pipefy está desactivada. La validación con Gemini **no se ve afectada** por esta variable.
+
+### 3. Variables de entorno de Cloud Functions
+
+Crea `functions/.env` y `functions/.env.local` con:
+
+```env
+PIPEFY_DISABLED=true
+```
+
+Esto hace que el webhook de Pipefy devuelva `{ status: 'ignored' }` sin ejecutar ninguna lógica. Útil para desarrollo local y staging.
+
+### 4. Ejecutar el seed
+
+Instala las dependencias y ejecuta el script:
+
+```bash
+npm install
+npm run seed
+```
+
+El script es **idempotente** — puedes ejecutarlo múltiples veces sin crear duplicados. Crea:
+- 6 usuarios cliente con contraseña `SpiTest2025!` (excepto `cliente@test.spi.com` que usa `Test1234!`)
+- 3 empresas de prueba (Nova, Tech, Andina)
+- 7 OTs en distintas etapas del kanban
+
+El usuario `spi-admin` existente en Firebase **no es modificado**.
+
+---
+
 ## Licencia
 
 Uso interno — SPI Americas. Todos los derechos reservados.

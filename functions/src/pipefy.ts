@@ -1,4 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions";
 import { Firestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import * as Sentry from "@sentry/node";
@@ -263,6 +264,11 @@ async function findOrCreateSPIUser(
 export const registerPipefyHandlers = (db: Firestore) => {
 
   const createOTFromPipefy = onRequest({ timeoutSeconds: 30 }, async (req, res) => {
+    if (process.env.PIPEFY_DISABLED === 'true') {
+      logger.info('Pipefy integration disabled (PIPEFY_DISABLED=true)');
+      res.status(200).json({ status: 'ignored', reason: 'integration_disabled' });
+      return;
+    }
     try {
       const payload = req.body;
       console.log("Received Pipefy Webhook:", JSON.stringify(payload, null, 2));

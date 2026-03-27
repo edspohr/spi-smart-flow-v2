@@ -31,14 +31,16 @@ import {
   Clock,
   History,
   ChevronDown,
+  Fingerprint,
 } from "lucide-react";
 import useOTStore from "../store/useOTStore";
 import useDocumentStore from "../store/useDocumentStore";
 import useAuthStore from "../store/useAuthStore";
+import useProcedureTypeStore from "../store/useProcedureTypeStore";
 import { logAction } from "../lib/logAction";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, safeDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { OTStage, Log, DocumentVersion } from "../store/types";
 
@@ -61,6 +63,8 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
   const { updateOTStage, updateOTDetails } = useOTStore();
   const { documents, updateDocumentStatus, getDocumentVersions } = useDocumentStore();
   const { user } = useAuthStore();
+  const { procedureTypes } = useProcedureTypeStore();
+  const procedureType = procedureTypes.find((p) => p.id === ot.procedureTypeId);
   const [internalNotes, setInternalNotes] = useState(ot.internalNotes || "");
   const [internalNote, setInternalNote] = useState('');
   const [isSavingNotes, setIsSavingNotes] = useState(false);
@@ -204,7 +208,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                       <div className="flex justify-between items-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
                         <span className="text-xs font-bold text-slate-500">Apertura</span>
                         <span className="text-sm font-black text-slate-900 flex items-center gap-2">
-                           <Calendar size={14} className="text-slate-400" /> {ot.createdAt ? format(new Date(ot.createdAt), "d MMMM, yyyy", { locale: es }) : "N/A"}
+                           <Calendar size={14} className="text-slate-400" /> {(() => { const d = safeDate(ot.createdAt); return d ? format(d, "d MMMM, yyyy", { locale: es }) : 'N/A'; })()}
                         </span>
                       </div>
                     </div>
@@ -247,6 +251,64 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                   </Button>
                 </div>
               </div>
+              {/* ── Requirements progress (if procedure type configured) ── */}
+              {procedureType && ot.requirementsProgress && (
+                <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-sm">
+                  <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center gap-2">
+                    <Fingerprint size={14} className="text-purple-600" /> Requisitos del Trámite — {procedureType.name}
+                  </h3>
+                  <div className="space-y-2">
+                    {[...(procedureType.requirements || [])].sort((a, b) => a.order - b.order).map((req) => {
+                      const prog = (ot.requirementsProgress || {})[req.id];
+                      const isCompleted = !!prog?.completed || !!prog?.signedAt || !!prog?.documentUrl || (req.type === 'form_field' && !!prog?.value);
+                      return (
+                        <div
+                          key={req.id}
+                          className={cn(
+                            'flex items-center justify-between px-4 py-3 rounded-2xl border text-xs',
+                            isCompleted ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-slate-100',
+                          )}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {isCompleted
+                              ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+                              : <Clock className="h-4 w-4 text-slate-300 shrink-0" />}
+                            <span className={cn('font-bold truncate', isCompleted ? 'text-emerald-700' : 'text-slate-600')}>
+                              {req.label}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0 ml-4">
+                            {req.type === 'digital_signature' && isCompleted && (
+                              <span className="text-[10px] font-bold text-emerald-700">
+                                ✅ Poder firmado — {prog?.signedAt ? (() => { const d = safeDate(prog.signedAt); return d ? format(d, 'd/MM/yyyy', { locale: es }) : '—'; })() : '—'}
+                                {' '}— vigencia hasta {prog?.expiresAt ? (() => { const d = safeDate(prog.expiresAt); return d ? format(d, 'd/MM/yyyy', { locale: es }) : '—'; })() : '—'}
+                              </span>
+                            )}
+                            {prog?.documentUrl && (
+                              <a
+                                href={prog.documentUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[9px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest"
+                              >
+                                Ver documento <ExternalLink size={10} />
+                              </a>
+                            )}
+                            {req.type === 'form_field' && prog?.value && (
+                              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg">
+                                {prog.value}
+                              </span>
+                            )}
+                            {!isCompleted && (
+                              <span className="text-[9px] font-black text-amber-500 uppercase tracking-wider">Pendiente</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="documents" className="mt-0">
@@ -327,7 +389,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                                 <div className="flex items-center gap-3">
                                   <span className="text-[9px] font-black text-slate-300 uppercase">v{(versions[doc.id] ?? []).length - i}</span>
                                   <span className="text-xs font-bold text-slate-500">
-                                    {format(new Date(v.replacedAt), "d MMM yyyy, HH:mm", { locale: es })}
+                                    {(() => { const d = safeDate(v.replacedAt); return d ? format(d, "d MMM yyyy, HH:mm", { locale: es }) : '—'; })()}
                                   </span>
                                 </div>
                                 <button
@@ -395,7 +457,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                              <User size={12} className="text-slate-300" /> {log.userId === 'system' || log.userId === 'pipefy' ? "Sistema" : "Admin"}
                           </span>
                           <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1.5">
-                             <Clock size={12} className="text-slate-300" /> {log.timestamp ? format(new Date(log.timestamp as string), "d MMM, HH:mm", { locale: es }) : '—'}
+                             <Clock size={12} className="text-slate-300" /> {log.timestamp ? (() => { const d = safeDate(log.timestamp); return d ? format(d, "d MMM, HH:mm", { locale: es }) : '—'; })() : '—'}
                           </span>
                         </div>
                       </div>

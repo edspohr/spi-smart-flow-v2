@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Calendar } from "lucide-react";
 import { Document } from "@/store/useDataStore";
+import { safeDate } from "@/lib/utils";
 
 interface SmartVaultModalProps {
   isOpen: boolean;
@@ -39,7 +40,10 @@ const SmartVaultModal = ({ isOpen, onClose, onReuse, document }: SmartVaultModal
             <p className="text-sm font-medium leading-none text-slate-700">{document.name}</p>
             <div className="flex items-center text-xs text-slate-500">
                 <Calendar className="mr-1 h-3 w-3" />
-                Vence: {document.validUntil ? new Date(document.validUntil).toLocaleDateString() : 'N/A'}
+                Vence: {(() => {
+                    const d = safeDate(document.validUntil);
+                    return d ? d.toLocaleDateString() : 'N/A';
+                })()}
             </div>
           </div>
         </div>

@@ -11,6 +11,7 @@ export type DocumentStatus = 'pending' | 'uploaded' | 'validated' | 'rejected' |
 export interface OT {
   id: string;
   companyId: string;
+  companyName?: string;
   clientId: string;
   title: string;
   serviceType: string;
@@ -31,6 +32,13 @@ export interface OT {
   pipefyCardId?: string;
   source?: 'pipefy' | 'manual';
   internalNotes?: string;
+  procedureTypeId?: string;
+  procedureTypeCode?: string;
+  procedureTypeName?: string;
+  reference?: string;
+  createdManually?: boolean;
+  assignedToEmail?: string;
+  requirementsProgress?: Record<string, RequirementProgress>;
 }
 
 export interface Document {
@@ -87,16 +95,56 @@ export type UserRole = 'spi-admin' | 'client' | 'guest';
 export interface AppUser {
   id: string;
   email: string;
-  displayName?: string;
+  name?: string;          // set by seed / registration flow
+  displayName?: string;   // set by Firebase Auth / createUser CF
   role: UserRole;
   companyId?: string;
   disabled?: boolean;
   createdAt?: string;
+  activatedAt?: string;
+  activatedBy?: string;
 }
 
 export type PIDocumentType =
-  | 'poder_legal' 
-  | 'cedula' 
-  | 'logo' 
-  | 'certificado_constitucion' 
+  | 'poder_legal'
+  | 'cedula'
+  | 'logo'
+  | 'certificado_constitucion'
   | 'unknown';
+
+export type RequirementType = 'document_upload' | 'digital_signature' | 'form_field' | 'checkbox_confirmation';
+
+export interface RequirementProgress {
+  completed?: boolean;
+  value?: string;
+  signedAt?: string;
+  signerName?: string;
+  expiresAt?: string;
+  documentUrl?: string | null;
+}
+
+export interface Requirement {
+  id: string;
+  label: string;
+  type: RequirementType;
+  description?: string;
+  isRequired: boolean;
+  order: number;
+  acceptedFormats?: Array<'PDF' | 'JPG' | 'PNG'>;
+  validatedByAI?: boolean;
+  templateType?: 'poder_simple';
+  fieldKey?: string;
+  placeholder?: string;
+}
+
+export interface ProcedureType {
+  id: string;
+  code: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  powerValidityYears: number;
+  requirements: Requirement[];
+  createdAt: any;
+  updatedAt: any;
+}

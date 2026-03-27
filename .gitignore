@@ -27,3 +27,6 @@ dist-ssr
 node_modules_trash
 .firebase
 fresh-repo
+
+# Seed script credentials — NEVER commit
+scripts/serviceAccountKey.json

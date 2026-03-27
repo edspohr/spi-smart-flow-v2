@@ -9,14 +9,20 @@ import SPIAdminDashboard from './pages/SPIAdminDashboard';
 import SPIVault from './pages/SPIVault';
 import CompaniesPage from './pages/CompaniesPage';
 import PICompletionPage from './pages/PICompletionPage';
+import UsuariosPage from './pages/UsuariosPage';
+import ConfiguracionSolicitudesPage from './pages/ConfiguracionSolicitudesPage';
 import NotFoundPage from './pages/NotFoundPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
+import PendientePage from './pages/PendientePage';
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+
+        {/* Pending activation — any authenticated user */}
+        <Route path="/pendiente" element={<PendientePage />} />
 
         {/* Protected Routes */}
         <Route element={<AppLayout />}>
@@ -28,7 +34,7 @@ export default function AppRouter() {
             <Route path="/client/ot/:otId/completar" element={<PICompletionPage />} />
           </Route>
 
-          {/* Guest Route */}
+          {/* Guest Route — kept for backward compat but redirects to /pendiente */}
           <Route element={<ProtectedRoute allowedRoles={['guest']} />}>
             <Route path="/guest" element={<GuestDashboard />} />
           </Route>
@@ -36,8 +42,10 @@ export default function AppRouter() {
           {/* SPI Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['spi-admin']} />}>
             <Route path="/spi-admin" element={<SPIAdminDashboard />} />
+            <Route path="/spi-admin/usuarios" element={<UsuariosPage />} />
             <Route path="/spi-admin/vault" element={<SPIVault />} />
             <Route path="/spi-admin/companies" element={<CompaniesPage />} />
+            <Route path="/spi-admin/configuracion-solicitudes" element={<ConfiguracionSolicitudesPage />} />
           </Route>
 
         </Route>

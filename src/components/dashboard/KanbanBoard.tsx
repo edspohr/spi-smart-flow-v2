@@ -1,7 +1,7 @@
 /* eslint-disable react/prop-types */
 import { useMemo } from 'react';
 import { Clock } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, safeDate } from '../../lib/utils';
 import { differenceInDays } from 'date-fns';
 import { OTStage } from '../../store/types';
 
@@ -36,7 +36,7 @@ interface KanbanBoardProps {
 
 function getTimeStatus(ot: any) {
   const now = new Date();
-  const start = new Date(ot.createdAt);
+  const start = safeDate(ot.createdAt) || now;
   const daysElapsed = differenceInDays(now, start);
   let discount = 0;
   let surcharge = 0;
@@ -95,7 +95,10 @@ export function KanbanBoard({ ots, onOTClick }: KanbanBoardProps) {
                   <div className="flex items-center justify-between mt-auto">
                     <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
                       <Clock size={10} />
-                      <span>{ot.createdAt ? new Date(ot.createdAt).toLocaleDateString() : '—'}</span>
+                      <span>{(() => {
+                        const d = safeDate(ot.createdAt);
+                        return d ? d.toLocaleDateString() : '—';
+                      })()}</span>
                     </div>
 
                     <div className={cn(

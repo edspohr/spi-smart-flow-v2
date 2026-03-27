@@ -169,6 +169,65 @@ export const createUser = onCall(async (request) => {
   }
 });
 
+// Activate User (spi-admin only) — sets custom claims + sends welcome email
+interface ActivateUserData {
+  uid: string;
+  companyId: string;
+  role: string;
+}
+
+export const activateUser = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'Must be authenticated.');
+  }
+
+  // Verify caller is spi-admin via custom claims, fallback to Firestore
+  const callerClaims = request.auth.token;
+  if (callerClaims.role !== 'spi-admin') {
+    const callerDoc = await db.collection('users').doc(request.auth.uid).get();
+    if (!callerDoc.exists || (callerDoc.data() as any)?.role !== 'spi-admin') {
+      throw new HttpsError('permission-denied', 'Only SPI admins can activate users.');
+    }
+  }
+
+  const { uid, companyId, role } = request.data as ActivateUserData;
+  if (!uid || !companyId || !role) {
+    throw new HttpsError('invalid-argument', 'uid, companyId, and role are required.');
+  }
+
+  try {
+    // Fetch company name
+    const companyDoc = await db.collection('companies').doc(companyId).get();
+    const companyName = companyDoc.exists
+      ? (companyDoc.data() as any).name ?? companyId
+      : companyId;
+
+    // Fetch user info
+    const userDoc = await db.collection('users').doc(uid).get();
+    const userData = userDoc.data() as any;
+    const email: string | undefined = userData?.email;
+
+    // Set Firebase Auth custom claims
+    await admin.auth().setCustomUserClaims(uid, { role });
+
+    // Audit log
+    await db.collection('logs').add({
+      otId: 'system',
+      userId: request.auth.uid,
+      action: `Usuario activado: ${email} (${role}) → ${companyName}`,
+      type: 'system',
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    return { success: true };
+
+  } catch (error) {
+    console.error('Error activating user:', error);
+    Sentry.captureException(error, { extra: { uid, companyId, role } });
+    throw new HttpsError('internal', (error as any).message || 'Error activating user.');
+  }
+});
+
 // Pipefy Webhook
 const { createOTFromPipefy } = registerPipefyHandlers(db);
 export { createOTFromPipefy };

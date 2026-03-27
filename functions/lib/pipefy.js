@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerPipefyHandlers = void 0;
 const https_1 = require("firebase-functions/v2/https");
+const firebase_functions_1 = require("firebase-functions");
 const auth_1 = require("firebase-admin/auth");
 const Sentry = require("@sentry/node");
 // ── Phase → Stage mapping (real Pipefy pipe phase names) ──────────────────────
@@ -206,6 +207,11 @@ async function findOrCreateSPIUser(db, email, displayName) {
 const registerPipefyHandlers = (db) => {
     const createOTFromPipefy = (0, https_1.onRequest)({ timeoutSeconds: 30 }, async (req, res) => {
         var _a;
+        if (process.env.PIPEFY_DISABLED === 'true') {
+            firebase_functions_1.logger.info('Pipefy integration disabled (PIPEFY_DISABLED=true)');
+            res.status(200).json({ status: 'ignored', reason: 'integration_disabled' });
+            return;
+        }
         try {
             const payload = req.body;
             console.log("Received Pipefy Webhook:", JSON.stringify(payload, null, 2));

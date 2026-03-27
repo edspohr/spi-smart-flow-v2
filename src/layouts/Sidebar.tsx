@@ -6,6 +6,8 @@ import {
   Building2,
   ShieldCheck,
   LogOut,
+  Users,
+  Cog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -28,8 +30,10 @@ const Sidebar = () => {
       case 'spi-admin':
         return [
           { href: '/spi-admin',           label: 'Torre de Control', icon: LayoutDashboard },
+          { href: '/spi-admin/usuarios',  label: 'Usuarios',          icon: Users },
           { href: '/spi-admin/companies', label: 'Empresas',          icon: Building2 },
           { href: '/spi-admin/vault',     label: 'Bóveda Global',     icon: ShieldCheck },
+          { href: '/spi-admin/configuracion-solicitudes', label: 'Tipos de Actuación', icon: Cog },
         ];
       case 'guest':
         return [];

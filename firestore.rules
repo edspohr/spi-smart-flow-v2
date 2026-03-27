@@ -83,6 +83,14 @@ service cloud.firestore {
       allow read, create: if isAuthenticated();
     }
 
+    // ── ProcedureTypes ────────────────────────────────────────────────────────
+    // Admin: full access (create, edit, delete procedure type definitions).
+    // Authenticated users: read-only (clients need to see requirements for their OTs).
+    match /procedureTypes/{typeId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // ── Default: deny everything else ────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
