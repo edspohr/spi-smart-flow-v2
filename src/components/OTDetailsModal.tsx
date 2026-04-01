@@ -181,14 +181,14 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
 
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="flex-1 flex flex-col mt-6">
-          <TabsList className="px-8 bg-transparent border-b border-slate-100 h-14 gap-8">
+        <Tabs defaultValue="overview" className="flex-1 flex flex-col mt-6 min-h-0">
+          <TabsList className="px-8 bg-transparent border-b border-slate-100 h-14 gap-8 shrink-0">
             <TabsTrigger value="overview" className="bg-transparent text-slate-400 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 px-0 h-14 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all">Resumen</TabsTrigger>
             <TabsTrigger value="documents" className="bg-transparent text-slate-400 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 px-0 h-14 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all">Documentación ({otDocuments.length})</TabsTrigger>
             <TabsTrigger value="history" className="bg-transparent text-slate-400 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 px-0 h-14 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all">Historial</TabsTrigger>
           </TabsList>
 
-          <ScrollArea className="flex-1 p-8">
+          <ScrollArea className="flex-1 min-h-0 p-8">
             <TabsContent value="overview" className="mt-0 space-y-8">
               <div className="grid md:grid-cols-2 gap-8">
                 {/* Left Column: Client Info */}
