@@ -143,7 +143,7 @@ const EMPTY = {
 };
 
 const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
-  const { companies, users, subscribeToCompanies, subscribeToAllUsers } = useAdminStore();
+  const { companies, users, subscribeToCompanies, subscribeToUsers } = useAdminStore();
   const { procedureTypes, subscribeToAll: subscribeToProcedureTypes }   = useProcedureTypeStore();
   const { user: currentUser } = useAuthStore();
 
@@ -155,10 +155,10 @@ const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
   useEffect(() => {
     if (!open) return;
     const u1 = subscribeToCompanies();
-    const u2 = subscribeToAllUsers();
+    const u2 = subscribeToUsers();
     const u3 = subscribeToProcedureTypes();
     return () => { u1(); u2(); u3(); };
-  }, [open, subscribeToCompanies, subscribeToAllUsers, subscribeToProcedureTypes]);
+  }, [open, subscribeToCompanies, subscribeToUsers, subscribeToProcedureTypes]);
 
   // Reset on close
   useEffect(() => {

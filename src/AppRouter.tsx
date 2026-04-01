@@ -9,6 +9,7 @@ import SPIAdminDashboard from './pages/SPIAdminDashboard';
 import SPIVault from './pages/SPIVault';
 import CompaniesPage from './pages/CompaniesPage';
 import PICompletionPage from './pages/PICompletionPage';
+import OTCompletionPage from './pages/OTCompletionPage';
 import UsuariosPage from './pages/UsuariosPage';
 import ConfiguracionSolicitudesPage from './pages/ConfiguracionSolicitudesPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -32,6 +33,7 @@ export default function AppRouter() {
             <Route path="/client" element={<ClientDashboard />} />
             <Route path="/client/vault" element={<ClientVault />} />
             <Route path="/client/ot/:otId/completar" element={<PICompletionPage />} />
+            <Route path="/client/ot/:otId/completar-v2" element={<OTCompletionPage />} />
           </Route>
 
           {/* Guest Route — kept for backward compat but redirects to /pendiente */}

@@ -109,7 +109,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
   const handleSaveNotes = async () => {
     setIsSavingNotes(true);
     try {
-      await updateOTDetails(ot.id, { internalNotes } as any);
+      await updateOTDetails(ot.id, { internalNotes });
       toast.success("Notas guardadas correctamente");
     } catch (error) {
       toast.error("Error al guardar notas");
@@ -174,8 +174,11 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
             <DialogTitle className="text-3xl font-black text-slate-900 tracking-tight uppercase">
               {ot.brandName || ot.title}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Detalle completo de la orden de trabajo seleccionada
+            </DialogDescription>
           </div>
-          
+
         </DialogHeader>
 
         <Tabs defaultValue="overview" className="flex-1 flex flex-col mt-6">

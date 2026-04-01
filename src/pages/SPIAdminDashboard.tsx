@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -13,6 +13,7 @@ import { db } from '@/lib/firebase';
 import useOTStore from '../store/useOTStore';
 import useDocumentStore from '../store/useDocumentStore';
 import useProcedureTypeStore from '../store/useProcedureTypeStore';
+import useAdminStore from '../store/useAdminStore';
 import {
   Activity,
   AlertCircle,
@@ -78,10 +79,12 @@ function KanbanCard({
   ot,
   pendingCount,
   onClick,
+  companyMap,
 }: {
   ot: OT;
   pendingCount: number;
   onClick: () => void;
+  companyMap: Record<string, string>;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: ot.id,
@@ -139,7 +142,7 @@ function KanbanCard({
 
         {/* Row 2 — company name (primary) */}
         <p className="font-black text-slate-900 text-[13px] leading-snug tracking-tight">
-          {ot.companyName || ot.brandName || ot.title}
+          {companyMap[ot.companyId] || ot.companyName || ot.brandName || ot.title}
         </p>
 
         {/* Row 3 — procedure type name (secondary) */}
@@ -201,11 +204,13 @@ function KanbanColumn({
   stage,
   ots,
   pendingDocs,
+  companyMap,
   onOTClick,
 }: {
   stage: OTStage;
   ots: OT[];
   pendingDocs: Document[];
+  companyMap: Record<string, string>;
   onOTClick: (ot: OT) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
@@ -230,7 +235,7 @@ function KanbanColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          'flex-1 min-h-[120px] space-y-2.5 rounded-2xl p-2 transition-colors duration-150',
+          'flex-1 min-h-[400px] space-y-2.5 rounded-2xl p-2 transition-colors duration-150',
           isOver ? 'bg-blue-500/10 ring-2 ring-blue-500/30' : 'bg-transparent',
         )}
       >
@@ -240,12 +245,21 @@ function KanbanColumn({
             ot={ot}
             pendingCount={pendingDocs.filter((d) => d.otId === ot.id).length}
             onClick={() => onOTClick(ot)}
+            companyMap={companyMap}
           />
         ))}
         {stageOTs.length === 0 && (
-          <div className="flex items-center justify-center h-20 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50">
-            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-              Vacío
+          <div className={cn(
+            "flex items-center justify-center h-20 rounded-2xl border-2 border-dashed transition-all duration-200",
+            isOver
+              ? "border-blue-400 bg-blue-50/80 scale-[0.98]"
+              : "border-slate-700 bg-slate-900/20"
+          )}>
+            <span className={cn(
+              "text-[10px] font-bold uppercase tracking-widest",
+              isOver ? "text-blue-400" : "text-slate-600"
+            )}>
+              {isOver ? "Soltar aquí" : "Vacío"}
             </span>
           </div>
         )}
@@ -260,6 +274,7 @@ const SPIAdminDashboard = () => {
   const { ots, loading, subscribeToAllOTs, updateOTStage } = useOTStore();
   const { updateDocumentStatus } = useDocumentStore();
   const { subscribeToAll: subscribeToProcedureTypes } = useProcedureTypeStore();
+  const { companies, subscribeToCompanies } = useAdminStore();
 
   const [selectedOT, setSelectedOT] = useState<OT | null>(null);
   const [showNewOTModal, setShowNewOTModal] = useState(false);
@@ -286,8 +301,9 @@ const SPIAdminDashboard = () => {
   useEffect(() => {
     const u1 = subscribeToAllOTs();
     const u2 = subscribeToProcedureTypes();
-    return () => { u1(); u2(); };
-  }, [subscribeToAllOTs, subscribeToProcedureTypes]);
+    const u3 = subscribeToCompanies();
+    return () => { u1(); u2(); u3(); };
+  }, [subscribeToAllOTs, subscribeToProcedureTypes, subscribeToCompanies]);
 
   // ── DnD ────────────────────────────────────────────────────────────────────
 
@@ -322,6 +338,13 @@ const SPIAdminDashboard = () => {
       ots.filter((o) => o.stage !== 'finalizado').map((o) => o.companyId),
     ).size,
   };
+
+  // ── Company name map ───────────────────────────────────────────────────────
+
+  const companyMap = useMemo(
+    () => Object.fromEntries(companies.map(c => [c.id, c.name])),
+    [companies],
+  );
 
   // ── Lista filters ──────────────────────────────────────────────────────────
 
@@ -545,6 +568,7 @@ const SPIAdminDashboard = () => {
                     stage={stage}
                     ots={ots}
                     pendingDocs={pendingDocs}
+                    companyMap={companyMap}
                     onOTClick={(ot) => setSelectedOT(ot)}
                   />
                 ))}
@@ -656,7 +680,7 @@ const SPIAdminDashboard = () => {
                   <div className="flex items-center gap-4 mb-6 ml-2">
                     <div className="w-2 h-2 rounded-full bg-blue-600 shadow-lg shadow-blue-500/40" />
                     <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-900">
-                      {companyId}
+                      {companyMap[companyId] || companyId}
                     </span>
                     <div className="flex-1 h-[1px] bg-slate-100" />
                     <span className="text-[10px] font-black text-slate-500 bg-white border border-slate-200 px-4 py-1.5 rounded-full shadow-sm uppercase tracking-widest">

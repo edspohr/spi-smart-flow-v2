@@ -72,8 +72,22 @@ const ClientDashboard = () => {
   });
 
   const stats = {
-    active:    ots.filter(o => o.stage !== 'finalizado').length,
-    pending:   ots.reduce((sum, o) => sum + countIncomplete(o), 0),
+    active: ots.filter(o => o.stage !== 'finalizado').length,
+    pending: ots
+      .filter(o => o.stage !== 'finalizado')
+      .reduce((acc, ot) => {
+        if (!ot.procedureTypeId) {
+          return acc + documents.filter(d =>
+            d.otId === ot.id &&
+            (d.status === 'pending' || d.status === 'rejected')
+          ).length;
+        }
+        const progress = ot.requirementsProgress || {};
+        const pendingCount = Object.values(progress).filter(
+          (p: any) => !p?.completed && !p?.signedAt && !p?.documentUrl
+        ).length;
+        return acc + pendingCount;
+      }, 0),
     finalized: ots.filter(o => o.stage === 'finalizado').length,
   };
 
@@ -245,7 +259,11 @@ const ClientDashboard = () => {
               {hasPendingDocs && (
                 <div className="pt-2">
                   <Button
-                    onClick={() => navigate(`/client/ot/${ot.id}/completar`)}
+                    onClick={() => navigate(
+                      ot.procedureTypeId
+                        ? `/client/ot/${ot.id}/completar-v2`
+                        : `/client/ot/${ot.id}/completar`
+                    )}
                     className="h-11 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-xs shadow-sm shadow-blue-500/20 gap-2"
                   >
                     Completar documentación <ArrowRight className="h-4 w-4" />

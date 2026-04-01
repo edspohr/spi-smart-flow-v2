@@ -224,7 +224,10 @@ const PowerOfAttorneySigningModal = ({
       onClose();
     } catch (err) {
       console.error('POA signing error:', err);
-      setError('Error al generar el documento. Intenta nuevamente.');
+      const message = err instanceof Error && err.message
+        ? `Error al generar el documento: ${err.message}`
+        : 'Error al generar el documento. Intenta nuevamente.';
+      setError(message);
       setProcessing(false);
     }
   };

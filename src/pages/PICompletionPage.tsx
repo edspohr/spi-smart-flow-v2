@@ -5,15 +5,13 @@ import { addDoc, collection } from 'firebase/firestore';
 import useOTStore from '../store/useOTStore';
 import useDocumentStore from '../store/useDocumentStore';
 import useAuthStore from '../store/useAuthStore';
-import { uploadFile } from '@/lib/uploadFile';
-import { analyzeDocument } from '@/lib/gemini';
 import { logAction } from '@/lib/logAction';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import DocumentUpload from '@/components/DocumentUpload';
-import SignaturePad from '@/components/SignaturePad';
+import PowerOfAttorneySigningModal from '@/components/PowerOfAttorneySigningModal';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
@@ -27,40 +25,8 @@ import {
   FileSignature,
   CreditCard,
   ShieldCheck,
-  ScrollText,
 } from 'lucide-react';
 import type { OT } from '@/store/types';
-
-const POA_TEXT = `PODER SIMPLE PARA REGISTRO DE MARCA / SIMPLE POWER OF ATTORNEY FOR TRADEMARK REGISTRATION
-
-Yo, el/la suscrito/a (el "Poderdante" / the "Principal"), por medio del presente instrumento otorgo Poder Especial, amplio y suficiente a la firma SPI Americas Ltda. (en adelante, el "Apoderado" / hereinafter the "Attorney"), para que en mi nombre y representación actúe en todos los trámites relacionados con el registro de marca ante el Instituto Nacional de Propiedad Industrial (INAPI) de la República de Chile.
-
-I, the undersigned (the "Principal"), by means of this instrument, grant Special, ample and sufficient Power of Attorney to the firm SPI Americas Ltda. (hereinafter the "Attorney"), to act in my name and on my behalf in all proceedings related to trademark registration before the National Institute of Industrial Property (INAPI) of the Republic of Chile.
-
-FACULTADES OTORGADAS / POWERS GRANTED:
-
-1. Presentar solicitudes de registro de marcas comerciales, de servicio, colectivas o de certificación / File applications for registration of trademarks, service marks, collective marks or certification marks.
-
-2. Responder requerimientos, observaciones y notificaciones formuladas por INAPI / Respond to requirements, observations and notifications issued by INAPI.
-
-3. Interponer recursos administrativos y oposiciones en nombre del Poderdante / File administrative appeals and oppositions on behalf of the Principal.
-
-4. Solicitar renovaciones, modificaciones, traspasos y cualquier otro acto relativo a los registros obtenidos / Request renewals, modifications, transfers and any other act related to registrations obtained.
-
-5. Firmar documentos, escrituras y formularios necesarios para la obtención y mantenimiento del registro / Sign documents, deeds and forms necessary for obtaining and maintaining the registration.
-
-6. Designar abogados y agentes de marcas en caso de que el trámite lo requiera / Appoint attorneys and trademark agents if the proceeding so requires.
-
-VIGENCIA / VALIDITY:
-Este Poder tiene vigencia por un período de DOS (2) años contados desde la fecha de su otorgamiento, o hasta la conclusión de todos los trámites para los que fue conferido, lo que ocurra primero.
-
-This Power of Attorney is valid for a period of TWO (2) years from the date of its granting, or until the conclusion of all proceedings for which it was conferred, whichever occurs first.
-
-El Poderdante declara que todos los datos proporcionados son fidedignos y que actúa en conformidad con la legislación vigente de la República de Chile.
-
-The Principal declares that all information provided is accurate and that they act in accordance with the current legislation of the Republic of Chile.
-
-Al firmar digitalmente este documento, el Poderdante acepta todos los términos y condiciones aquí establecidos / By digitally signing this document, the Principal accepts all terms and conditions set forth herein.`;
 
 // ─── Section wrapper ────────────────────────────────────────────────────────
 
@@ -184,11 +150,8 @@ const PICompletionPage = () => {
   const [brandClass, setBrandClass] = useState('');
   const [savingBrand, setSavingBrand] = useState(false);
 
-  // Section 3 POA
-  const [poaScrolled, setPoaScrolled] = useState(false);
-  const [poaAccepted, setPoaAccepted] = useState(false);
-  const [showSignPad, setShowSignPad] = useState(false);
-  const [savingSignature, setSavingSignature] = useState(false);
+  // Section 3 POA modal
+  const [showPOAModal, setShowPOAModal] = useState(false);
 
   // Section 4 cédula
   const [includeCedula, setIncludeCedula] = useState(false);
@@ -212,6 +175,13 @@ const PICompletionPage = () => {
     const found = ots.find((o) => o.id === otId);
     if (found && !ot) setOt(found);
   }, [ots, otId, ot]);
+
+  // ── Redirect OTs with procedureTypeId to new flow ─────────────────────────
+  useEffect(() => {
+    if (ot && ot.procedureTypeId) {
+      navigate(`/client/ot/${ot.id}/completar-v2`, { replace: true });
+    }
+  }, [ot, navigate]);
 
   // ── One-time init (open/done from prior completion) ────────────────────────
   useEffect(() => {
@@ -295,53 +265,6 @@ const PICompletionPage = () => {
       toast.error('Error al guardar logotipo');
     } finally {
       setIsUploadingLogo(false);
-    }
-  };
-
-  const handlePoaScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget;
-    if (el.scrollHeight - el.scrollTop - el.clientHeight < 50) {
-      setPoaScrolled(true);
-    }
-  };
-
-  const handleSignatureSave = async (dataUrl: string) => {
-    if (!otId || !user || savingSignature) return;
-    setSavingSignature(true);
-    try {
-      const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], 'poder_simple.png', { type: 'image/png' });
-
-      const url = await uploadFile(file, `ots/${otId}/poder_simple_${Date.now()}.png`);
-
-      const docRef = await addDoc(collection(db, 'documents'), {
-        otId,
-        clientId: user.uid,
-        companyId: user.companyId || '',
-        name: 'Poder Simple',
-        type: 'poder_legal',
-        status: 'validating_ai',
-        url,
-        uploadedAt: new Date().toISOString(),
-        isVaultEligible: true,
-      });
-
-      // Fire-and-forget OCR; Cloud Function auto-approves if confidence > 0.85
-      analyzeDocument(file, docRef.id, otId).catch((err) =>
-        console.error('OCR error on poder:', err)
-      );
-
-      await updateOTDetails(otId, { signatureUrl: url } as any);
-      await logAction(user.uid, otId, 'Poder simple firmado digitalmente por el cliente');
-
-      setSec3Done(true);
-      setShowSignPad(false);
-      setOpen3(false);
-      toast.success('Firma registrada correctamente');
-    } catch {
-      toast.error('Error al guardar la firma');
-    } finally {
-      setSavingSignature(false);
     }
   };
 
@@ -551,100 +474,37 @@ const PICompletionPage = () => {
         >
           {sec3Done ? (
             <div className="flex items-center gap-2 text-emerald-700 font-bold text-sm">
-              <Check className="h-4 w-4" /> Poder Simple gestionado
+              <Check className="h-4 w-4" /> Poder Simple gestionado correctamente
             </div>
           ) : (
-            <div className="space-y-5">
-              {/* Vault reuse */}
+            <div className="space-y-4">
               {vaultPoder && (
-                <>
-                  <VaultCard
-                    label="Poder Legal"
-                    onUse={() => handleVaultLink('poder_legal', vaultPoder)}
-                    loading={savingVault === 'poder_legal'}
-                  />
-                  <div className="relative py-2">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-slate-100" />
-                    </div>
-                    <div className="relative flex justify-center text-[10px] font-black uppercase text-slate-300 tracking-[0.4em]">
-                      <span className="bg-white px-4">ó firmar uno nuevo</span>
-                    </div>
-                  </div>
-                </>
+                <VaultCard
+                  label="Poder Legal"
+                  onUse={() => handleVaultLink('poder_legal', vaultPoder)}
+                  loading={savingVault === 'poder_legal'}
+                />
               )}
-
-              {/* POA text + signing flow */}
-              {!showSignPad ? (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <ScrollText className="h-4 w-4 shrink-0" />
-                    <p className="text-xs font-bold uppercase tracking-widest">
-                      Lee el poder simple completo antes de firmar
-                    </p>
+              {vaultPoder && (
+                <div className="relative py-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-100" />
                   </div>
-
-                  {/* Scrollable POA */}
-                  <div
-                    onScroll={handlePoaScroll}
-                    className="h-56 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-5 text-xs text-slate-600 leading-relaxed font-medium whitespace-pre-wrap scroll-smooth"
-                  >
-                    {POA_TEXT}
+                  <div className="relative flex justify-center text-[10px] font-black uppercase text-slate-300 tracking-[0.4em]">
+                    <span className="bg-white px-4">ó firmar uno nuevo</span>
                   </div>
-
-                  {!poaScrolled && (
-                    <p className="text-[10px] font-black uppercase tracking-widest text-amber-600">
-                      ↓ Desplázate hasta el final para aceptar
-                    </p>
-                  )}
-
-                  {/* Acceptance checkbox */}
-                  <label className={cn(
-                    'flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-colors',
-                    poaScrolled
-                      ? 'border-slate-200 hover:border-blue-300 hover:bg-blue-50/30'
-                      : 'border-slate-100 opacity-50 pointer-events-none',
-                  )}>
-                    <input
-                      type="checkbox"
-                      checked={poaAccepted}
-                      onChange={(e) => setPoaAccepted(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 accent-blue-600"
-                    />
-                    <span className="text-sm font-medium text-slate-700">
-                      He leído y acepto los términos del Poder Simple. Entiendo que mi firma digital
-                      tiene validez legal ante INAPI. / I have read and accept the terms of the
-                      Power of Attorney. I understand that my digital signature has legal validity
-                      before INAPI.
-                    </span>
-                  </label>
-
-                  <Button
-                    onClick={() => setShowSignPad(true)}
-                    disabled={!poaAccepted}
-                    className="h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-xs disabled:opacity-50"
-                  >
-                    Continuar a Firma Digital
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-sm font-bold text-slate-700">
-                    Firma dentro del recuadro usando el ratón o tu dedo.
-                  </p>
-                  {savingSignature ? (
-                    <div className="flex items-center justify-center py-10 gap-3 text-indigo-600 font-bold text-sm">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      Registrando firma y procesando documento...
-                    </div>
-                  ) : (
-                    <SignaturePad
-                      onSave={handleSignatureSave}
-                      onCancel={() => setShowSignPad(false)}
-                    />
-                  )}
                 </div>
               )}
+              <p className="text-sm text-slate-500 font-medium">
+                Genera y firma digitalmente el Poder Simple requerido para gestionar tu marca.
+                El documento se genera en español e inglés con validez de 5 años.
+              </p>
+              <Button
+                onClick={() => setShowPOAModal(true)}
+                className="h-11 px-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-widest text-xs gap-2"
+              >
+                <FileSignature className="h-4 w-4" /> Firmar Poder Simple
+              </Button>
             </div>
           )}
         </Section>
@@ -713,6 +573,22 @@ const PICompletionPage = () => {
           </div>
         </Section>
       </div>
+
+      {showPOAModal && ot && (
+        <PowerOfAttorneySigningModal
+          isOpen={showPOAModal}
+          onClose={() => setShowPOAModal(false)}
+          otId={ot.id}
+          requirementId="poa-legacy"
+          companyId={user?.companyId || ''}
+          onSuccess={() => {
+            setShowPOAModal(false);
+            setSec3Done(true);
+            setOpen3(false);
+            toast.success('Poder Simple firmado y guardado correctamente');
+          }}
+        />
+      )}
 
       {/* Footer CTA */}
       <div className="fixed bottom-0 left-0 right-0 z-30 pointer-events-none">

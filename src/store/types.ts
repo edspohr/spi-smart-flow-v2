@@ -23,6 +23,7 @@ export interface OT {
   updatedAt?: string;
   deadline: string;
   status?: string;
+  submittedAt?: string;
   brandName?: string;
   description?: string;
   colors?: string[];

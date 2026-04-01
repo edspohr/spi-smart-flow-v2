@@ -74,6 +74,7 @@ export interface GeneratePOAParams {
   documentRef: string;
   signedAt: Date;
   expiresAt: Date;
+  attorneyName?: string;
 }
 
 // ── Main generator ────────────────────────────────────────────────────────────
@@ -83,6 +84,8 @@ export async function generatePOAPdf(params: GeneratePOAParams): Promise<Uint8Ar
     signerName, companyName, domicile, city, country,
     signatureDataUrl, documentRef, signedAt, expiresAt,
   } = params;
+
+  const attorney = params.attorneyName || 'SERVICIOS DE PROPIEDAD INDUSTRIAL S.A.S SPI S.A.S.';
 
   const pdfDoc   = await PDFDocument.create();
   const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -212,8 +215,8 @@ export async function generatePOAPdf(params: GeneratePOAParams): Promise<Uint8Ar
   const introES =
     `${signerName}, domiciliado en ${domicile} actuando en mi calidad de ` +
     `Representante Legal de ${companyName}, sociedad con domicilio en ${domicile}, ` +
-    `por el presente otorgo poder a SERVICIOS DE PROPIEDAD INDUSTRIAL S.A.S ` +
-    `SPI S.A.S., y/o Eduardo Dorado Sánchez, y/o Luisa Fernanda Parra de ` +
+    `por el presente otorgo poder a ${attorney}, ` +
+    `y/o Eduardo Dorado Sánchez, y/o Luisa Fernanda Parra de ` +
     `Bogotá, Colombia, con el fin de solicitar y obtener de las Autoridades ` +
     `Administrativas de Colombia y países de América Latina:`;
 
@@ -233,8 +236,8 @@ export async function generatePOAPdf(params: GeneratePOAParams): Promise<Uint8Ar
   const introEN =
     `${signerName}, domiciled in ${domicile} acting in my capacity of Legal ` +
     `Representative of ${companyName}, a corporation with domicile in ${domicile} ` +
-    `hereby grant Power of Attorney to SERVICIOS DE PROPIEDAD INDUSTRIAL S.A.S ` +
-    `SPI S.A.S and/or Eduardo Dorado Sánchez, and/or Luisa Fernanda Parra from ` +
+    `hereby grant Power of Attorney to ${attorney} ` +
+    `and/or Eduardo Dorado Sánchez, and/or Luisa Fernanda Parra from ` +
     `Bogotá, Colombia, in order to apply and obtain from the Administrative ` +
     `Authorities of Colombia and countries around Latin-American:`;
 

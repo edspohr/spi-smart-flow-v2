@@ -35,6 +35,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 const TYPE_LABELS: Record<RequirementType, string> = {
   document_upload: 'Documento',
@@ -276,6 +278,7 @@ const ConfiguracionSolicitudesPage = () => {
   const [localReqs, setLocalReqs] = useState<Requirement[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
   useEffect(() => {
     const unsub = subscribeToAll();
@@ -332,9 +335,16 @@ const ConfiguracionSolicitudesPage = () => {
   const handleSave = async () => {
     if (!selected) return;
     setSaving(true);
+    const requiredCount = localReqs.filter(r => r.isRequired).length;
+    if (requiredCount === 0) {
+      toast.error('Debe existir al menos un requisito obligatorio antes de guardar.');
+      setSaving(false);
+      return;
+    }
     try {
       await updateType(selected.id, { requirements: localReqs });
       toast.success('Requisitos guardados');
+      setLastSaved(new Date());
     } catch {
       toast.error('Error al guardar');
     } finally {
@@ -427,6 +437,11 @@ const ConfiguracionSolicitudesPage = () => {
                     {selected.isActive ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
+                {lastSaved && (
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Guardado a las {format(lastSaved, 'HH:mm:ss', { locale: es })}
+                  </span>
+                )}
                 <Button
                   size="sm"
                   onClick={handleSave}

@@ -66,6 +66,10 @@ const useDocumentStore = create<DocumentState>((set, get) => ({
   },
 
   subscribeToCompanyVault: (companyId) => {
+    if (!companyId) {
+      console.warn('subscribeToCompanyVault called without companyId — skipping subscription');
+      return () => {};
+    }
     const q = query(
       collection(db, 'documents'),
       where('companyId', '==', companyId),
@@ -81,8 +85,13 @@ const useDocumentStore = create<DocumentState>((set, get) => ({
         set({ vaultDocuments });
       },
       (error) => {
-        console.error('Error fetching company vault:', error);
-        set({ error: 'Error al cargar la bóveda.' });
+        if ((error as any).code === 'permission-denied') {
+          console.warn('Vault access denied — user may not have a companyId assigned yet');
+          set({ vaultDocuments: [] });
+        } else {
+          console.error('Error fetching company vault:', error);
+          set({ error: 'Error al cargar la bóveda.' });
+        }
       }
     );
   },

@@ -80,7 +80,15 @@ service cloud.firestore {
     // No client updates or deletes.
     match /logs/{logId} {
       allow read, write: if isAdmin();
-      allow read, create: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        resource.data.otId == 'system' ||
+        isAdmin() ||
+        (
+          exists(/databases/$(database)/documents/ots/$(resource.data.otId)) &&
+          get(/databases/$(database)/documents/ots/$(resource.data.otId)).data.companyId == myCompanyId()
+        )
+      );
     }
 
     // ── ProcedureTypes ────────────────────────────────────────────────────────

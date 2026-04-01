@@ -18,7 +18,6 @@ interface AdminState {
 
   // Subscriptions — all return an unsubscribe function
   subscribeToUsers: () => () => void;
-  subscribeToAllUsers: () => () => void;   // alias for subscribeToUsers
   subscribeToCompanies: () => () => void;
 
   // User management
@@ -97,22 +96,6 @@ const useAdminStore = create<AdminState>((set) => ({
       set({ error: message });
       throw err;
     }
-  },
-
-  subscribeToAllUsers: () => {
-    // Alias for subscribeToUsers — real-time listener on the full users collection
-    const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
-    return onSnapshot(
-      q,
-      (snapshot) => {
-        const users: AppUser[] = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as AppUser));
-        set({ users });
-      },
-      (error) => {
-        console.error('Error fetching users:', error);
-        set({ error: 'Error al cargar los usuarios.' });
-      }
-    );
   },
 
   toggleUserDisabled: async (userId, disabled) => {

@@ -3,6 +3,8 @@ import { toast } from 'sonner';
 import { updateDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import useDataStore, { Company } from '../store/useDataStore';
+import useAdminStore from '../store/useAdminStore';
+import useAuthStore from '../store/useAuthStore';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,6 +32,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { Skeleton } from '@/components/ui/skeleton';
 import { cn, safeDate } from '@/lib/utils';
 
 interface EditableUser {
@@ -64,8 +67,12 @@ const CompaniesPage = () => {
         subscribeToOTs, subscribeToAllDocuments,
     } = useDataStore();
 
+    const { updateUserActivation } = useAdminStore();
+    const { user: adminUser } = useAuthStore();
+
     const [searchTerm, setSearchTerm] = useState('');
     const [expandedId, setExpandedId] = useState<string | null>(null);
+    const [isLoadingData, setIsLoadingData] = useState(true);
 
     // Company CRUD state
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -88,15 +95,19 @@ const CompaniesPage = () => {
     const [isSavingUser, setIsSavingUser] = useState(false);
 
     useEffect(() => {
+        setIsLoadingData(true);
         const unsubCompanies = subscribeToCompanies();
         const unsubOTs = subscribeToOTs();
         const unsubDocs = subscribeToAllDocuments();
         const unsubUsers = subscribeToUsers();
+        // Mark loaded after first tick — subscriptions fire synchronously if cache is warm
+        const t = setTimeout(() => setIsLoadingData(false), 600);
         return () => {
             unsubCompanies();
             unsubOTs();
             unsubDocs();
             unsubUsers();
+            clearTimeout(t);
         };
     }, [subscribeToCompanies, subscribeToOTs, subscribeToAllDocuments, subscribeToUsers]);
 
@@ -160,17 +171,29 @@ const CompaniesPage = () => {
         if (!editingUser) return;
         setIsSavingUser(true);
         try {
-            await updateDoc(doc(db, 'users', editingUser.id), {
-                role: editingUser.role,
-                companyId: editingUser.companyId,
-                phone: editingUser.phone || '',
-                altContactName: editingUser.altContactName || '',
-            });
-            toast.success('Usuario actualizado');
+            if (
+                (editingUser.role === 'client' || editingUser.role === 'spi-admin') &&
+                editingUser.companyId
+            ) {
+                await updateUserActivation(
+                    editingUser.id,
+                    editingUser.companyId,
+                    editingUser.role as 'client' | 'spi-admin',
+                    adminUser?.uid || '',
+                );
+            } else {
+                await updateDoc(doc(db, 'users', editingUser.id), {
+                    role: editingUser.role,
+                    companyId: editingUser.companyId,
+                    phone: editingUser.phone || '',
+                    altContactName: editingUser.altContactName || '',
+                });
+            }
+            toast.success('Usuario actualizado correctamente');
             setEditUserOpen(false);
             setEditingUser(null);
         } catch {
-            toast.error('Error al guardar el usuario');
+            toast.error('Error al guardar el usuario. Intenta nuevamente.');
         } finally {
             setIsSavingUser(false);
         }
@@ -195,11 +218,11 @@ const CompaniesPage = () => {
         for (const ot of companyOts) {
             const otDocs = documents.filter(d => d.otId === ot.id);
             if (otDocs.some(d => d.status === 'pending' || d.status === 'rejected')) hasPendingDocs = true;
-            const otDate = safeDate(ot.createdAt);
+            const otDate = safeDate(ot.updatedAt || ot.createdAt);
             const days = otDate ? Math.floor((now.getTime() - otDate.getTime()) / 86400000) : 0;
-            if (days > 15 && ot.stage !== 'finalizado') isStuck = true;
+            if (days > 7 && ot.stage !== 'finalizado') isStuck = true;
         }
-        if (isStuck) return { color: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Atascado (>15 días)' };
+        if (isStuck) return { color: 'bg-rose-50 text-rose-700 border-rose-200', label: 'Sin actividad (+7 días)' };
         if (hasPendingDocs) return { color: 'bg-amber-50 text-amber-700 border-amber-200', label: 'Docs. Pendientes' };
         return { color: 'bg-emerald-50 text-emerald-700 border-emerald-200', label: 'Al día' };
     };
@@ -239,7 +262,27 @@ const CompaniesPage = () => {
 
             {/* Companies grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredCompanies.map(company => {
+                {isLoadingData ? (
+                  <div className="col-span-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="bg-white rounded-[2.5rem] border border-slate-200 p-8 space-y-5 shadow-sm">
+                        <div className="flex justify-between items-start">
+                          <Skeleton className="w-14 h-14 rounded-2xl" />
+                          <Skeleton className="w-24 h-6 rounded-xl" />
+                        </div>
+                        <div className="space-y-2">
+                          <Skeleton className="h-6 w-3/4 rounded-xl" />
+                          <Skeleton className="h-4 w-1/2 rounded-lg" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Skeleton className="h-12 rounded-xl" />
+                          <Skeleton className="h-12 rounded-xl" />
+                        </div>
+                        <Skeleton className="h-10 w-full rounded-2xl" />
+                      </div>
+                    ))}
+                  </div>
+                ) : filteredCompanies.map(company => {
                     const health = getCompanyHealth(company.id);
                     const companyUsers = (users as EditableUser[]).filter(u => u.companyId === company.id);
                     const isExpanded = expandedId === company.id;
@@ -342,7 +385,7 @@ const CompaniesPage = () => {
                     );
                 })}
 
-                {filteredCompanies.length === 0 && (
+                {!isLoadingData && filteredCompanies.length === 0 && (
                     <div className="col-span-full py-24 text-center border-2 border-dashed border-slate-100 bg-slate-50 rounded-[3rem]">
                         <Building2 className="h-14 w-14 text-slate-200 mx-auto mb-6" />
                         <p className="text-slate-400 font-bold uppercase tracking-[0.2em] text-xs">

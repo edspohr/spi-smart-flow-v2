@@ -279,13 +279,13 @@ function ActivateModal({ user, companies, onClose }: ModalProps) {
 // ── Main Panel ────────────────────────────────────────────────────────────────
 
 const UsersManagementPanel = () => {
-    const { users, companies, subscribeToAllUsers, subscribeToCompanies } = useAdminStore();
+    const { users, companies, subscribeToUsers, subscribeToCompanies } = useAdminStore();
     const [showPendingOnly, setShowPendingOnly] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
 
     useEffect(() => {
-        const unsubUsers = subscribeToAllUsers();
+        const unsubUsers = subscribeToUsers();
         const unsubCompanies = subscribeToCompanies();
         return () => {
             unsubUsers();

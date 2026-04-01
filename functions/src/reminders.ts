@@ -61,6 +61,30 @@ export const registerReminderHandlers = (db: Firestore) => {
       }
 
       logger.info(`Processed ${activeOTsSnapshot.size} OTs. Reminders: ${remindersSent.length}, Escalations: ${escalationsSent.length}`);
+
+      // Auto-recover documents stuck in validating_ai for more than 15 minutes
+      const stuckThresholdDate = new Date(Date.now() - 15 * 60 * 1000);
+      const stuckThreshold = stuckThresholdDate.toISOString();
+
+      const stuckDocsSnap = await db.collection('documents')
+        .where('status', '==', 'validating_ai')
+        .get();
+
+      let recoveredCount = 0;
+      for (const stuckDoc of stuckDocsSnap.docs) {
+        const uploadedAt = stuckDoc.data().uploadedAt as string | undefined;
+        if (uploadedAt && uploadedAt < stuckThreshold) {
+          await stuckDoc.ref.update({
+            status: 'ocr_processed',
+            recoveredAt: new Date().toISOString(),
+            recoveryReason: 'Auto-recovered from validating_ai after 15 minutes — requires manual review',
+          });
+          recoveredCount++;
+          logger.info(`Auto-recovered stuck document: ${stuckDoc.id}`);
+        }
+      }
+
+      logger.info(`Auto-recovery complete. Recovered ${recoveredCount} stuck documents.`);
   });
 
   const triggerDeadlinesCheck = onRequest(async (req, res) => {
@@ -95,6 +119,28 @@ export const registerReminderHandlers = (db: Firestore) => {
           }
       }
       
+      // Same recovery logic for manual trigger
+      const stuckThresholdDate2 = new Date(Date.now() - 15 * 60 * 1000);
+      const stuckThreshold2 = stuckThresholdDate2.toISOString();
+      const stuckDocsSnap2 = await db.collection('documents')
+        .where('status', '==', 'validating_ai')
+        .get();
+
+      let recoveredCount2 = 0;
+      for (const stuckDoc of stuckDocsSnap2.docs) {
+        const uploadedAt = stuckDoc.data().uploadedAt as string | undefined;
+        if (uploadedAt && uploadedAt < stuckThreshold2) {
+          await stuckDoc.ref.update({
+            status: 'ocr_processed',
+            recoveredAt: new Date().toISOString(),
+            recoveryReason: 'Auto-recovered from validating_ai after 15 minutes — requires manual review',
+          });
+          recoveredCount2++;
+          logBuffer += `-> Auto-recovered stuck document: ${stuckDoc.id}\n`;
+        }
+      }
+      logBuffer += `\nAuto-recovery: ${recoveredCount2} documento(s) recuperado(s).\n`;
+
       res.send(`Check complete.\n\n${logBuffer}`);
   });
 

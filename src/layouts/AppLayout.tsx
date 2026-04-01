@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
+import ErrorBoundary from '../components/ErrorBoundary';
 import useAuthStore from '../store/useAuthStore';
 import Sidebar from './Sidebar';
 import {
@@ -66,7 +67,17 @@ const AppLayout = () => {
       limit(MAX_NOTIFS)
     );
     const unsub = onSnapshot(q, (snap) => {
-      setNotifications(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Log)));
+      setNotifications(
+        snap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Log))
+          .filter(log =>
+            !log.action.includes('Recordatorio Automático') &&
+            !log.action.includes('ALERTA DE ESCALAMIENTO') &&
+            !log.action.includes('Auto-recovered') &&
+            log.userId !== 'pipefy' &&
+            log.userId !== 'system'
+          )
+      );
     });
     return unsub;
   }, [user?.uid, user?.role]);
@@ -326,7 +337,9 @@ const AppLayout = () => {
         </header>
 
         <main className="pt-20 px-10 pb-10">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
     </div>
