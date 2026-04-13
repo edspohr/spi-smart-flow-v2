@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { db, storage } from '@/lib/firebase';
 import {
-  doc, getDoc, collection, query, where, getDocs, updateDoc, setDoc,
+  doc, getDoc, collection, query, where, getDocs, updateDoc, setDoc, addDoc,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import SignatureCanvas from 'react-signature-canvas';
@@ -233,6 +233,26 @@ const PowerOfAttorneySigningModal = ({
         otId,
         requirementId,
         documentRef,
+      });
+
+      // 5 — Create record in main documents collection (admin visibility)
+      await addDoc(collection(db, 'documents'), {
+        otId,
+        clientId: user?.uid || '',
+        companyId,
+        name: 'Poder Simple Firmado',
+        type: 'poder_legal',
+        status: 'validated',
+        url: downloadUrl,
+        isVaultEligible: true,
+        validUntil: expiresAtD.toISOString(),
+        uploadedAt: signedAt.toISOString(),
+        validationMetadata: {
+          documentType: 'poder_legal',
+          name: signerName.trim(),
+          confidence: 1.0,
+          requiresManualReview: false,
+        },
       });
 
       toast.success(

@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Signed powers of attorney
+    match /signed-powers/{companyId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // OT documents (logos, cedulas, general uploads)
+    match /ots/{otId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Generic documents path
+    match /documents/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Catch-all deny for unauthenticated
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
