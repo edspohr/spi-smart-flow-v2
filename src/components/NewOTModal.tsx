@@ -22,6 +22,7 @@ import {
   Plus,
   Building2,
   ChevronDown,
+  ChevronUp,
   Search,
   Check,
 } from 'lucide-react';
@@ -140,6 +141,20 @@ const EMPTY = {
   assigneeUid:     '',
   dueDate:         '',
   notes:           '',
+  // Project info
+  projectName:       '',
+  brandName:         '',
+  contactLanguage:   '',
+  procedureCountry:  '',
+  // Billing
+  billingCurrency:    '',
+  billingCountry:     '',
+  amount:             '',
+  basicCharges:       '',
+  officialFees:       '',
+  paymentTerms:       '',
+  discountPercentage: '',
+  discountDeadline:   '',
 };
 
 const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
@@ -150,6 +165,8 @@ const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
   const [form,   setForm]   = useState({ ...EMPTY });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
+  const [showProjectInfo, setShowProjectInfo] = useState(false);
+  const [showBilling, setShowBilling] = useState(false);
 
   // Subscribe when open
   useEffect(() => {
@@ -193,6 +210,11 @@ const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
     if (!validate() || saving) return;
     setSaving(true);
     try {
+      const parsedAmount      = form.amount             ? parseFloat(form.amount)             : 0;
+      const parsedBasic       = form.basicCharges       ? parseFloat(form.basicCharges)       : undefined;
+      const parsedOfficial    = form.officialFees       ? parseFloat(form.officialFees)       : undefined;
+      const parsedDiscount    = form.discountPercentage ? parseFloat(form.discountPercentage) : undefined;
+
       const docRef = await addDoc(collection(db, 'ots'), {
         // Required
         companyId:         form.companyId,
@@ -207,11 +229,26 @@ const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
         dueDate:         form.dueDate              || null,
         deadline:        form.dueDate              || null, // compat field
         internalNotes:   form.notes.trim()         || null,
+        // Project info
+        ...(form.projectName.trim()      && { projectName:      form.projectName.trim() }),
+        ...(form.brandName.trim()        && { brandName:        form.brandName.trim() }),
+        ...(form.contactLanguage         && { contactLanguage:  form.contactLanguage }),
+        ...(form.procedureCountry.trim() && { procedureCountry: form.procedureCountry.trim() }),
+        // Billing
+        ...(form.billingCurrency         && { billingCurrency:    form.billingCurrency }),
+        ...(form.billingCountry.trim()   && { billingCountry:     form.billingCountry.trim() }),
+        ...(parsedBasic != null          && { basicCharges:       parsedBasic }),
+        ...(parsedOfficial != null       && { officialFees:       parsedOfficial }),
+        ...(form.paymentTerms            && { paymentTerms:       form.paymentTerms }),
+        ...(parsedDiscount != null       && { discountPercentage: parsedDiscount }),
+        ...(form.discountDeadline        && { discountDeadline:   form.discountDeadline }),
         // Derived
-        title:       `${selectedProcedureType!.name} — ${selectedCompany!.name}`,
+        title:       form.brandName.trim()
+          ? `${selectedProcedureType!.name} — ${form.brandName.trim()}`
+          : `${selectedProcedureType!.name} — ${selectedCompany!.name}`,
         serviceType: selectedProcedureType!.name,
         area:        'PI' as const,
-        amount:      0,
+        amount:      parsedAmount,
         clientId:    form.companyId,
         // Status
         stage:             'solicitud' as const,
@@ -371,6 +408,204 @@ const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
                 rows={3}
                 className="w-full px-4 py-3 bg-slate-900 border border-slate-700 text-white text-sm rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/30 placeholder:text-slate-600"
               />
+            </div>
+
+            {/* ── Información del Proyecto (collapsible) ── */}
+            <div className="border-t border-slate-800 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowProjectInfo(!showProjectInfo)}
+                className="w-full flex items-center justify-between py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-200 transition-colors"
+              >
+                <span>Información del Proyecto</span>
+                {showProjectInfo ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              {showProjectInfo && (
+                <div className="space-y-4 pb-2">
+                  <div>
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                      Nombre del Proyecto
+                    </Label>
+                    <Input
+                      value={form.projectName}
+                      onChange={(e) => setField('projectName', e.target.value)}
+                      placeholder="Ej: Registro Marca NOVA"
+                      className="bg-slate-900 border-slate-700 text-white h-11 rounded-xl text-sm placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                      Nombre de Marca
+                    </Label>
+                    <Input
+                      value={form.brandName}
+                      onChange={(e) => setField('brandName', e.target.value)}
+                      placeholder="Ej: NOVA TECH"
+                      className="bg-slate-900 border-slate-700 text-white h-11 rounded-xl text-sm placeholder:text-slate-600"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                      Idioma de Contacto
+                    </Label>
+                    <div className="relative">
+                      <select
+                        value={form.contactLanguage}
+                        onChange={(e) => setField('contactLanguage', e.target.value)}
+                        className="w-full h-11 pl-4 pr-10 bg-slate-900 border border-slate-700 text-white text-sm rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                      >
+                        <option value="">Seleccionar...</option>
+                        <option value="es">Español</option>
+                        <option value="en">English</option>
+                        <option value="pt">Português</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                      País del Trámite
+                    </Label>
+                    <Input
+                      value={form.procedureCountry}
+                      onChange={(e) => setField('procedureCountry', e.target.value)}
+                      placeholder="Ej: Colombia, Chile, México"
+                      className="bg-slate-900 border-slate-700 text-white h-11 rounded-xl text-sm placeholder:text-slate-600"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Facturación y Pagos (collapsible) ── */}
+            <div className="border-t border-slate-800 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowBilling(!showBilling)}
+                className="w-full flex items-center justify-between py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-200 transition-colors"
+              >
+                <span>Facturación y Pagos</span>
+                {showBilling ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
+              {showBilling && (
+                <div className="space-y-4 pb-2">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                        Moneda
+                      </Label>
+                      <div className="relative">
+                        <select
+                          value={form.billingCurrency}
+                          onChange={(e) => setField('billingCurrency', e.target.value)}
+                          className="w-full h-11 pl-4 pr-10 bg-slate-900 border border-slate-700 text-white text-sm rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                        >
+                          <option value="">Seleccionar...</option>
+                          <option value="COP">COP</option>
+                          <option value="USD">USD</option>
+                          <option value="CLP">CLP</option>
+                          <option value="MXN">MXN</option>
+                          <option value="PEN">PEN</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                        País de Facturación
+                      </Label>
+                      <Input
+                        value={form.billingCountry}
+                        onChange={(e) => setField('billingCountry', e.target.value)}
+                        placeholder="Ej: Colombia"
+                        className="bg-slate-900 border-slate-700 text-white h-11 rounded-xl text-sm placeholder:text-slate-600"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                        Honorarios
+                      </Label>
+                      <Input
+                        type="number"
+                        value={form.amount}
+                        onChange={(e) => setField('amount', e.target.value)}
+                        placeholder="Tarifa honorarios"
+                        className="bg-slate-900 border-slate-700 text-white h-11 rounded-xl text-sm placeholder:text-slate-600"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                        Cargos Básicos
+                      </Label>
+                      <Input
+                        type="number"
+                        value={form.basicCharges}
+                        onChange={(e) => setField('basicCharges', e.target.value)}
+                        placeholder="Cargos básicos"
+                        className="bg-slate-900 border-slate-700 text-white h-11 rounded-xl text-sm placeholder:text-slate-600"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                        Tasas Oficiales
+                      </Label>
+                      <Input
+                        type="number"
+                        value={form.officialFees}
+                        onChange={(e) => setField('officialFees', e.target.value)}
+                        placeholder="Tasas oficiales"
+                        className="bg-slate-900 border-slate-700 text-white h-11 rounded-xl text-sm placeholder:text-slate-600"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                        Términos de Pago
+                      </Label>
+                      <div className="relative">
+                        <select
+                          value={form.paymentTerms}
+                          onChange={(e) => setField('paymentTerms', e.target.value)}
+                          className="w-full h-11 pl-4 pr-10 bg-slate-900 border border-slate-700 text-white text-sm rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                        >
+                          <option value="">Seleccionar...</option>
+                          <option value="Contado">Contado</option>
+                          <option value="30 días">30 días</option>
+                          <option value="60 días">60 días</option>
+                          <option value="90 días">90 días</option>
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                        % Descuento
+                      </Label>
+                      <Input
+                        type="number"
+                        value={form.discountPercentage}
+                        onChange={(e) => setField('discountPercentage', e.target.value)}
+                        placeholder="% descuento"
+                        className="bg-slate-900 border-slate-700 text-white h-11 rounded-xl text-sm placeholder:text-slate-600"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                      Fecha Límite Descuento
+                    </Label>
+                    <Input
+                      type="date"
+                      value={form.discountDeadline}
+                      onChange={(e) => setField('discountDeadline', e.target.value)}
+                      className="bg-slate-900 border-slate-700 text-white h-11 rounded-xl text-sm [color-scheme:dark]"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
           </div>

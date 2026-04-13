@@ -39,6 +39,20 @@ export interface OT {
   reference?: string;
   createdManually?: boolean;
   assignedToEmail?: string;
+  // Pipefy-aligned fields (for future integration)
+  contactLanguage?: 'es' | 'en' | 'pt';
+  billingCurrency?: 'COP' | 'USD' | 'CLP' | 'MXN' | 'PEN';
+  billingCountry?: string;
+  projectName?: string;
+  procedureCountry?: string;
+  basicCharges?: number;
+  officialFees?: number;
+  paymentTerms?: string;
+  discountDeadline?: string;
+  fees?: number;
+  encargadoEmail?: string;
+  assignedToId?: string | null;
+  assignedByNombre?: string;
   requirementsProgress?: Record<string, RequirementProgress>;
 }
 

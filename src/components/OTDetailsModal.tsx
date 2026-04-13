@@ -214,6 +214,38 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                            <Calendar size={14} className="text-slate-400" /> {(() => { const d = safeDate(ot.createdAt); return d ? format(d, "d MMMM, yyyy", { locale: es }) : 'N/A'; })()}
                         </span>
                       </div>
+                      {ot.projectName && (
+                        <div className="flex justify-between items-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                          <span className="text-xs font-bold text-slate-500">Proyecto</span>
+                          <span className="text-sm font-black text-slate-900">{ot.projectName}</span>
+                        </div>
+                      )}
+                      {ot.procedureCountry && (
+                        <div className="flex justify-between items-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                          <span className="text-xs font-bold text-slate-500">País del Trámite</span>
+                          <span className="text-sm font-black text-slate-900">{ot.procedureCountry}</span>
+                        </div>
+                      )}
+                      {ot.contactLanguage && (
+                        <div className="flex justify-between items-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                          <span className="text-xs font-bold text-slate-500">Idioma</span>
+                          <span className="text-sm font-black text-slate-900">
+                            {ot.contactLanguage === 'es' ? 'Español' : ot.contactLanguage === 'en' ? 'English' : 'Português'}
+                          </span>
+                        </div>
+                      )}
+                      {ot.billingCurrency && (
+                        <div className="flex justify-between items-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                          <span className="text-xs font-bold text-slate-500">Moneda</span>
+                          <span className="text-sm font-black text-slate-900">{ot.billingCurrency}</span>
+                        </div>
+                      )}
+                      {ot.paymentTerms && (
+                        <div className="flex justify-between items-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
+                          <span className="text-xs font-bold text-slate-500">Términos de Pago</span>
+                          <span className="text-sm font-black text-slate-900">{ot.paymentTerms}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -254,6 +286,46 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                   </Button>
                 </div>
               </div>
+              {/* ── Financial summary ── */}
+              {(ot.amount || ot.fees || ot.basicCharges || ot.officialFees) && (
+                <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-sm">
+                  <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center gap-2">
+                    Resumen Financiero
+                  </h3>
+                  <div className="space-y-3">
+                    {ot.amount != null && ot.amount > 0 && (
+                      <div className="flex justify-between items-center bg-white border border-slate-100 p-3 rounded-xl">
+                        <span className="text-xs font-bold text-slate-500">Honorarios</span>
+                        <span className="text-sm font-black text-slate-900">{ot.billingCurrency || '$'} {ot.amount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {ot.basicCharges != null && ot.basicCharges > 0 && (
+                      <div className="flex justify-between items-center bg-white border border-slate-100 p-3 rounded-xl">
+                        <span className="text-xs font-bold text-slate-500">Cargos Básicos</span>
+                        <span className="text-sm font-black text-slate-900">{ot.billingCurrency || '$'} {ot.basicCharges.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {ot.officialFees != null && ot.officialFees > 0 && (
+                      <div className="flex justify-between items-center bg-white border border-slate-100 p-3 rounded-xl">
+                        <span className="text-xs font-bold text-slate-500">Tasas Oficiales</span>
+                        <span className="text-sm font-black text-slate-900">{ot.billingCurrency || '$'} {ot.officialFees.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {ot.fees != null && ot.fees > 0 && (
+                      <div className="flex justify-between items-center bg-white border border-slate-100 p-3 rounded-xl">
+                        <span className="text-xs font-bold text-slate-500">Fees</span>
+                        <span className="text-sm font-black text-slate-900">{ot.billingCurrency || '$'} {ot.fees.toLocaleString()}</span>
+                      </div>
+                    )}
+                    {ot.discountPercentage != null && ot.discountPercentage > 0 && (
+                      <div className="flex justify-between items-center bg-emerald-50 border border-emerald-100 p-3 rounded-xl">
+                        <span className="text-xs font-bold text-emerald-700">Descuento</span>
+                        <span className="text-sm font-black text-emerald-700">{ot.discountPercentage}%</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               {/* ── Requirements progress (if procedure type configured) ── */}
               {procedureType && ot.requirementsProgress && (
                 <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 shadow-sm">
@@ -415,6 +487,63 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                     </div>
                  )}
                </div>
+
+               {/* Documents from requirements flow (signed powers, etc.) */}
+               {procedureType && ot.requirementsProgress && (() => {
+                 const reqDocs = (procedureType.requirements || []).filter(req => {
+                   const prog = (ot.requirementsProgress || {})[req.id];
+                   return prog?.documentUrl;
+                 });
+                 if (reqDocs.length === 0) return null;
+                 return (
+                   <div className="mt-8">
+                     <h3 className="text-[10px] font-bold uppercase text-slate-400 tracking-[0.2em] mb-4 flex items-center gap-2">
+                       <Fingerprint size={14} className="text-purple-600" /> Documentos del Trámite
+                     </h3>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       {reqDocs.map(req => {
+                         const prog = (ot.requirementsProgress || {})[req.id];
+                         return (
+                           <div key={req.id} className="bg-white border border-slate-200 p-6 rounded-[2rem] group transition-all shadow-sm hover:shadow-md">
+                             <div className="flex justify-between items-start mb-4">
+                               <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                                 <Fingerprint size={24} />
+                               </div>
+                               <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 px-3 py-1 text-[8px] font-bold uppercase tracking-widest shadow-none">
+                                 Completado
+                               </Badge>
+                             </div>
+                             <h4 className="text-lg font-bold text-slate-800 mb-1 uppercase tracking-tight">{req.label}</h4>
+                             {prog?.signerName && (
+                               <p className="text-xs text-slate-500 mb-1">Firmado por: {prog.signerName}</p>
+                             )}
+                             {prog?.signedAt && (
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                                 {(() => { const d = safeDate(prog.signedAt); return d ? format(d, "d 'de' MMMM, yyyy", { locale: es }) : '—'; })()}
+                               </p>
+                             )}
+                             {prog?.expiresAt && (
+                               <p className="text-[10px] font-bold text-emerald-600 mt-1">
+                                 Vigente hasta: {(() => { const d = safeDate(prog.expiresAt); return d ? format(d, "d MMM yyyy", { locale: es }) : '—'; })()}
+                               </p>
+                             )}
+                             <div className="flex gap-2 mt-4 pt-4 border-t border-slate-50">
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => window.open(prog.documentUrl, "_blank")}
+                                 className="bg-white border-slate-200 text-slate-700 font-bold text-[9px] uppercase tracking-widest h-9 px-4 rounded-xl hover:bg-slate-50 shadow-sm"
+                               >
+                                 Ver Documento <ExternalLink size={12} className="ml-1" />
+                               </Button>
+                             </div>
+                           </div>
+                         );
+                       })}
+                     </div>
+                   </div>
+                 );
+               })()}
 
                {user?.role === 'spi-admin' && (
                  <div className="border-t border-slate-100 pt-6 mt-8 space-y-4">
