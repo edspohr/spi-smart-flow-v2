@@ -122,6 +122,22 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
     setIsApproving(prev => ({ ...prev, [docId]: true }));
     try {
       await updateDocumentStatus(docId, 'validated');
+
+      // Sync with requirementsProgress if this doc matches a requirement
+      const approvedDoc = otDocuments.find(d => d.id === docId);
+      if (approvedDoc && procedureType && ot.requirementsProgress) {
+        const matchingReq = procedureType.requirements.find(req => {
+          const prog = (ot.requirementsProgress || {})[req.id];
+          return prog?.documentUrl === approvedDoc.url || req.id === approvedDoc.type;
+        });
+        if (matchingReq) {
+          const { updateOTDetails } = useOTStore.getState();
+          await updateOTDetails(ot.id, {
+            [`requirementsProgress.${matchingReq.id}.completed`]: true,
+          } as any);
+        }
+      }
+
       toast.success('Documento aprobado');
     } catch {
       toast.error('Error al aprobar el documento');
@@ -135,6 +151,23 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
     setIsRejecting(true);
     try {
       await updateDocumentStatus(rejectTarget, 'rejected', rejectReason || 'No cumple los requisitos');
+
+      // Sync with requirementsProgress if this doc matches a requirement
+      const rejectedDoc = otDocuments.find(d => d.id === rejectTarget);
+      if (rejectedDoc && procedureType && ot.requirementsProgress) {
+        const matchingReq = procedureType.requirements.find(req => {
+          const prog = (ot.requirementsProgress || {})[req.id];
+          return prog?.documentUrl === rejectedDoc.url || req.id === rejectedDoc.type;
+        });
+        if (matchingReq) {
+          const { updateOTDetails } = useOTStore.getState();
+          await updateOTDetails(ot.id, {
+            [`requirementsProgress.${matchingReq.id}.completed`]: false,
+            [`requirementsProgress.${matchingReq.id}.documentUrl`]: null,
+          } as any);
+        }
+      }
+
       toast.info('Documento rechazado');
       setRejectTarget(null);
       setRejectReason("");
@@ -492,7 +525,10 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                {procedureType && ot.requirementsProgress && (() => {
                  const reqDocs = (procedureType.requirements || []).filter(req => {
                    const prog = (ot.requirementsProgress || {})[req.id];
-                   return prog?.documentUrl;
+                   if (!prog?.documentUrl) return false;
+                   // Exclude if already shown in the main documents grid
+                   const alreadyShown = otDocuments.some(d => d.url === prog.documentUrl);
+                   return !alreadyShown;
                  });
                  if (reqDocs.length === 0) return null;
                  return (
