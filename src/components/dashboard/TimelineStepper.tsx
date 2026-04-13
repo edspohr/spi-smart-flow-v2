@@ -50,7 +50,7 @@ const TimelineStepper = ({ currentStage }: TimelineStepperProps) => {
                 )}
               </div>
               <div className="absolute -bottom-6 w-20 text-center">
-                <span 
+                <span
                   className={cn(
                     "text-[9px] font-black uppercase tracking-tight transition-colors duration-300",
                     isActive ? "text-blue-600" : isCompleted ? "text-slate-500" : "text-slate-300"
@@ -59,6 +59,14 @@ const TimelineStepper = ({ currentStage }: TimelineStepperProps) => {
                   {stage.label}
                 </span>
               </div>
+              {isActive && (stage.id === 'solicitud' || stage.id === 'pago_adelanto') && (
+                <div className="absolute -bottom-14 w-20 text-center">
+                  <span className="flex items-center justify-center gap-1 text-[8px] font-black text-blue-600 uppercase tracking-widest">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    Envío docs
+                  </span>
+                </div>
+              )}
             </div>
           );
         })}

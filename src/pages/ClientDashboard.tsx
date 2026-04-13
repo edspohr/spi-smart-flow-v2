@@ -10,6 +10,7 @@ import RequirementsChecklist from '@/components/RequirementsChecklist';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
+import ClientProgressSummary from '@/components/ClientProgressSummary';
 import {
   FileText,
   Loader2,
@@ -18,6 +19,7 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowRight,
+  Clock,
 } from 'lucide-react';
 import { cn, safeDate } from '@/lib/utils';
 
@@ -71,26 +73,6 @@ const ClientDashboard = () => {
     return (safeDate(b.createdAt)?.getTime() || 0) - (safeDate(a.createdAt)?.getTime() || 0);
   });
 
-  const stats = {
-    active: ots.filter(o => o.stage !== 'finalizado').length,
-    pending: ots
-      .filter(o => o.stage !== 'finalizado')
-      .reduce((acc, ot) => {
-        if (!ot.procedureTypeId) {
-          return acc + documents.filter(d =>
-            d.otId === ot.id &&
-            (d.status === 'pending' || d.status === 'rejected')
-          ).length;
-        }
-        const progress = ot.requirementsProgress || {};
-        const pendingCount = Object.values(progress).filter(
-          (p: any) => !p?.completed && !p?.signedAt && !p?.documentUrl
-        ).length;
-        return acc + pendingCount;
-      }, 0),
-    finalized: ots.filter(o => o.stage === 'finalizado').length,
-  };
-
   const getDocIcon = (status: string) => {
     switch (status) {
       case 'pending':
@@ -140,29 +122,8 @@ const ClientDashboard = () => {
         </p>
       </div>
 
-      {/* Stat row */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 text-center">
-          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Activas</p>
-          <p className="text-3xl font-black text-slate-900 mt-1">{stats.active}</p>
-        </div>
-        <div className={cn(
-          'rounded-2xl border shadow-sm p-6 text-center',
-          stats.pending > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-slate-100',
-        )}>
-          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Pendientes</p>
-          <p className={cn(
-            'text-3xl font-black mt-1',
-            stats.pending > 0 ? 'text-red-600' : 'text-slate-900',
-          )}>
-            {stats.pending}
-          </p>
-        </div>
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 text-center">
-          <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Finalizadas</p>
-          <p className="text-3xl font-black text-slate-900 mt-1">{stats.finalized}</p>
-        </div>
-      </div>
+      {/* Progress summary */}
+      <ClientProgressSummary ots={ots} documents={documents} />
 
       {/* OT cards */}
       <div className="grid gap-6">
@@ -206,9 +167,65 @@ const ClientDashboard = () => {
               </div>
 
               {/* ROW 2 — Timeline */}
-              <div className="pb-6">
+              <div className="pb-8">
                 <TimelineStepper currentStage={ot.stage} />
               </div>
+
+              {/* Mini progress bar — always visible */}
+              {(() => {
+                const pt = procedureTypes.find(p => p.id === ot.procedureTypeId);
+                if (!pt || ot.stage === 'finalizado') return null;
+                const reqs = pt.requirements?.filter(r => r.isRequired) || [];
+                const prog = ot.requirementsProgress || {};
+                const done = reqs.filter(r => {
+                  const p = prog[r.id];
+                  return p?.completed || p?.signedAt || p?.documentUrl || (r.type === 'form_field' && p?.value);
+                }).length;
+                const total = reqs.length;
+                if (total === 0) return null;
+                const pct = Math.round((done / total) * 100);
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                        Documentación
+                      </span>
+                      <span className={cn(
+                        'text-[10px] font-black uppercase tracking-widest',
+                        pct === 100 ? 'text-emerald-600' : 'text-slate-500',
+                      )}>
+                        {done}/{total} · {pct}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={cn(
+                          'h-full rounded-full transition-all duration-700',
+                          pct === 100 ? 'bg-emerald-500' : pct >= 50 ? 'bg-blue-500' : 'bg-amber-500',
+                        )}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    {ot.discountDeadline && (() => {
+                      const days = Math.ceil((new Date(ot.discountDeadline).getTime() - Date.now()) / 86400000);
+                      if (days < 0) return null;
+                      return (
+                        <div className={cn(
+                          'flex items-center gap-2 text-[10px] font-black uppercase tracking-widest rounded-lg px-2 py-1 w-fit',
+                          days <= 2 ? 'bg-rose-50 text-rose-600 animate-pulse' :
+                          days <= 5 ? 'bg-amber-50 text-amber-600' :
+                          'bg-emerald-50 text-emerald-600',
+                        )}>
+                          <Clock className="h-3 w-3" />
+                          {days === 0 ? 'Último día para descuento' :
+                           days === 1 ? '1 día para descuento' :
+                           `${days} días para descuento`}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              })()}
 
               {/* ROW 3 — Requirements checklist or doc list */}
               <div className="space-y-3">
