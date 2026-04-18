@@ -163,3 +163,15 @@ export interface ProcedureType {
   createdAt: any;
   updatedAt: any;
 }
+
+export type TrackedCurrency = 'USD' | 'CLP' | 'COP' | 'MXN' | 'PEN' | 'BRL' | 'ARS';
+
+// Conversion formula: amountInUSD = amountInLocalCurrency / perUSD
+export interface ExchangeRate {
+  currency: TrackedCurrency;
+  perUSD: number;
+  source: 'api' | 'manual';
+  updatedAt: any;
+  overriddenBy?: string;
+  overriddenAt?: any;
+}

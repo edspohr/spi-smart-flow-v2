@@ -596,7 +596,7 @@ scripts/serviceAccountKey.json
 
 ### 2. Variables de entorno del frontend
 
-Crea `.env.local` en la raíz con tus valores de Firebase y activa el modo de pruebas:
+Crea `.env.local` en la raíz con tus valores de Firebase:
 
 ```env
 VITE_FIREBASE_API_KEY=...
@@ -605,10 +605,10 @@ VITE_FIREBASE_PROJECT_ID=spi-smart-flow
 VITE_FIREBASE_STORAGE_BUCKET=...
 VITE_FIREBASE_MESSAGING_SENDER_ID=...
 VITE_FIREBASE_APP_ID=...
-VITE_MOCK_MODE=true
+VITE_SPI_WHATSAPP_NUMBER=573001234567
 ```
 
-Cuando `VITE_MOCK_MODE=true`, se mostrará un banner amarillo en todas las rutas autenticadas indicando que la integración con Pipefy está desactivada. La validación con Gemini **no se ve afectada** por esta variable.
+`VITE_SPI_WHATSAPP_NUMBER` es opcional — si no se define, el botón flotante de WhatsApp queda oculto. Formato internacional sin `+` ni espacios.
 
 ### 3. Variables de entorno de Cloud Functions
 
@@ -620,21 +620,20 @@ PIPEFY_DISABLED=true
 
 Esto hace que el webhook de Pipefy devuelva `{ status: 'ignored' }` sin ejecutar ninguna lógica. Útil para desarrollo local y staging.
 
-### 4. Ejecutar el seed
+### 4. Limpieza de datos de prueba
 
-Instala las dependencias y ejecuta el script:
+Para resetear el proyecto completamente (borrar OTs, documentos, logs, empresas, usuarios no-admin y archivos en Storage) ejecuta el script de wipe:
 
 ```bash
 npm install
-npm run seed
+npm run wipe
 ```
 
-El script es **idempotente** — puedes ejecutarlo múltiples veces sin crear duplicados. Crea:
-- 6 usuarios cliente con contraseña `SpiTest2025!` (excepto `cliente@test.spi.com` que usa `Test1234!`)
-- 3 empresas de prueba (Nova, Tech, Andina)
-- 7 OTs en distintas etapas del kanban
-
-El usuario `spi-admin` existente en Firebase **no es modificado**.
+El script requiere `scripts/serviceAccountKey.json`, solicita confirmación interactiva (`YES`) y preserva:
+- Colección `procedureTypes`
+- Usuarios con `role === 'spi-admin'`
+- Todos los usuarios de Firebase Auth (nunca se tocan)
+- Archivos en Storage fuera de `ots/`, `documents/`, `signed-powers/`
 
 ---
 

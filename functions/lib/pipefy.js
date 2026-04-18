@@ -106,8 +106,10 @@ async function findOrCreateCompany(db, companyName, pipefyTitularId) {
 // ── Helper 3: Find or create Client user in Firestore (no Firebase Auth) ──────
 async function findOrCreateClientUser(db, clientEmail, clientName, clientPhone, companyId) {
     if (!clientEmail) {
-        console.warn('[pipefy] No client email in Titular — using pipefy-guest');
-        return 'pipefy-guest';
+        const titularContext = { clientName, clientPhone, companyId };
+        firebase_functions_1.logger.error('[pipefy] No client email in Titular — OT will be created as orphaned', titularContext);
+        Sentry.captureMessage('Pipefy card received without Titular email — OT orphaned', { level: 'error', extra: titularContext });
+        return null;
     }
     const snap = await db.collection('users')
         .where('email', '==', clientEmail)
@@ -333,6 +335,8 @@ const registerPipefyHandlers = (db) => {
                 deadline: safeISODate(deadlineStr),
                 companyId,
                 clientId,
+                authLinked: clientId !== null,
+                orphaned: clientId === null,
                 source: 'pipefy',
             };
             const docRef = await db.collection('ots').add(otData);
@@ -359,7 +363,9 @@ const registerPipefyHandlers = (db) => {
             await db.collection('logs').add({
                 otId: docRef.id,
                 userId: 'system',
-                action: `OT created via Pipefy. Titular: ${titular.companyName}. Encargado: ${encargadoEmail}`,
+                action: clientId === null
+                    ? `OT huérfana creada via Pipefy (Titular sin email). Titular: ${titular.companyName}. Encargado: ${encargadoEmail}`
+                    : `OT created via Pipefy. Titular: ${titular.companyName}. Encargado: ${encargadoEmail}`,
                 type: 'system',
                 timestamp: new Date().toISOString(),
                 metadata: {
@@ -369,7 +375,7 @@ const registerPipefyHandlers = (db) => {
                     assignedToId: assignedToId || null,
                     encargadoEmail,
                     titularEmail: titular.clientEmail,
-                    authLinked: titular.clientEmail ? false : null,
+                    orphaned: clientId === null,
                 },
             });
             res.status(200).send({

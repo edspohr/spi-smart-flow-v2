@@ -41,8 +41,6 @@ function notifIcon(action: string) {
   return <Activity className="h-4 w-4 text-slate-400" />;
 }
 
-const mockMode = import.meta.env.VITE_MOCK_MODE === 'true';
-
 const AppLayout = () => {
   const { user, loading, logout } = useAuthStore();
   const location = useLocation();
@@ -123,6 +121,7 @@ const AppLayout = () => {
     '/spi-admin/companies': 'Empresas',
     '/spi-admin/vault': 'Bóveda Global',
     '/spi-admin/configuracion-solicitudes': 'Tipos de Actuación',
+    '/spi-admin/tasas-cambio': 'Tasas de Cambio',
   };
   const currentTitle = breadcrumbMap[location.pathname] || 'Portal SPI';
   const isSpi = user.role === 'spi-admin';
@@ -132,21 +131,12 @@ const AppLayout = () => {
       "min-h-screen font-sans selection:bg-blue-200 selection:text-blue-900",
       isSpi ? "bg-[#0B1121] text-slate-200" : "bg-slate-50/30"
     )}>
-      {mockMode && (
-        <div className="fixed top-0 left-0 right-0 z-50 h-10 bg-yellow-400 flex items-center justify-center">
-          <span className="text-xs font-black text-yellow-900 tracking-wide">
-            ⚠️ Modo de pruebas activo — integración con Pipefy desactivada
-          </span>
-        </div>
-      )}
-
       <Sidebar />
 
-      <div className={cn("pl-72 transition-all duration-300", mockMode && "mt-10")}>
+      <div className="pl-72 transition-all duration-300">
         {/* Header */}
         <header className={cn(
-          "fixed right-0 left-72 z-40 h-20 backdrop-blur-2xl flex items-center justify-between px-10 border-b",
-          mockMode ? "top-10" : "top-0",
+          "fixed top-0 right-0 left-72 z-40 h-20 backdrop-blur-2xl flex items-center justify-between px-10 border-b",
           isSpi ? "bg-[#0B1121]/80 border-slate-800" : "bg-white/60 border-slate-100"
         )}>
           <div className="flex items-center gap-4">

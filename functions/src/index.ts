@@ -6,6 +6,7 @@ import * as Sentry from "@sentry/node";
 
 import { registerPipefyHandlers } from './pipefy';
 import { registerReminderHandlers } from './reminders';
+import { registerExchangeRateHandlers } from './exchangeRates';
 
 admin.initializeApp();
 
@@ -235,3 +236,7 @@ export { createOTFromPipefy };
 // Reminders & Automation
 const { checkDocumentDeadlines, triggerDeadlinesCheck } = registerReminderHandlers(db);
 export { checkDocumentDeadlines, triggerDeadlinesCheck };
+
+// Exchange Rates
+const { refreshExchangeRates, triggerExchangeRatesRefresh } = registerExchangeRateHandlers(db);
+export { refreshExchangeRates, triggerExchangeRatesRefresh };

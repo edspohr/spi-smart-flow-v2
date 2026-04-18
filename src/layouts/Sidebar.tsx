@@ -8,6 +8,7 @@ import {
   LogOut,
   Users,
   Cog,
+  DollarSign,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ const Sidebar = () => {
           { href: '/spi-admin/companies', label: 'Empresas',          icon: Building2 },
           { href: '/spi-admin/vault',     label: 'Bóveda Global',     icon: ShieldCheck },
           { href: '/spi-admin/configuracion-solicitudes', label: 'Tipos de Actuación', icon: Cog },
+          { href: '/spi-admin/tasas-cambio', label: 'Tasas de Cambio', icon: DollarSign },
         ];
       case 'guest':
         return [];

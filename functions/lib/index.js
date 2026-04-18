@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.triggerDeadlinesCheck = exports.checkDocumentDeadlines = exports.createOTFromPipefy = exports.activateUser = exports.createUser = exports.analyzeDocument = void 0;
+exports.triggerExchangeRatesRefresh = exports.refreshExchangeRates = exports.triggerDeadlinesCheck = exports.checkDocumentDeadlines = exports.createOTFromPipefy = exports.activateUser = exports.createUser = exports.analyzeDocument = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const generative_ai_1 = require("@google/generative-ai");
@@ -8,6 +8,7 @@ const params_1 = require("firebase-functions/params");
 const Sentry = require("@sentry/node");
 const pipefy_1 = require("./pipefy");
 const reminders_1 = require("./reminders");
+const exchangeRates_1 = require("./exchangeRates");
 admin.initializeApp();
 // Sentry: only initializes when SENTRY_DSN env var is set in the Functions environment.
 // Set it via: firebase functions:config:set sentry.dsn="https://..."
@@ -185,4 +186,8 @@ exports.createOTFromPipefy = createOTFromPipefy;
 const { checkDocumentDeadlines, triggerDeadlinesCheck } = (0, reminders_1.registerReminderHandlers)(db);
 exports.checkDocumentDeadlines = checkDocumentDeadlines;
 exports.triggerDeadlinesCheck = triggerDeadlinesCheck;
+// Exchange Rates
+const { refreshExchangeRates, triggerExchangeRatesRefresh } = (0, exchangeRates_1.registerExchangeRateHandlers)(db);
+exports.refreshExchangeRates = refreshExchangeRates;
+exports.triggerExchangeRatesRefresh = triggerExchangeRatesRefresh;
 //# sourceMappingURL=index.js.map

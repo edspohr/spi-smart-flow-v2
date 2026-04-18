@@ -99,6 +99,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ── ExchangeRates ─────────────────────────────────────────────────────────
+    // Admin: full access (manual overrides + restore from API).
+    // Authenticated users: read-only (USD-equivalent conversions in dashboards).
+    match /exchangeRates/{currency} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     // ── Default: deny everything else ────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

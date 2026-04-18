@@ -12,6 +12,7 @@ import PICompletionPage from './pages/PICompletionPage';
 import OTCompletionPage from './pages/OTCompletionPage';
 import UsuariosPage from './pages/UsuariosPage';
 import ConfiguracionSolicitudesPage from './pages/ConfiguracionSolicitudesPage';
+import TasasCambioPage from './pages/TasasCambioPage';
 import NotFoundPage from './pages/NotFoundPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import PendientePage from './pages/PendientePage';
@@ -48,6 +49,7 @@ export default function AppRouter() {
             <Route path="/spi-admin/vault" element={<SPIVault />} />
             <Route path="/spi-admin/companies" element={<CompaniesPage />} />
             <Route path="/spi-admin/configuracion-solicitudes" element={<ConfiguracionSolicitudesPage />} />
+            <Route path="/spi-admin/tasas-cambio" element={<TasasCambioPage />} />
           </Route>
 
         </Route>
