@@ -8,6 +8,8 @@ import { registerPipefyHandlers } from './pipefy';
 import { registerReminderHandlers } from './reminders';
 import { registerExchangeRateHandlers } from './exchangeRates';
 import { onComprobanteApproved } from './paymentAdvance';
+import { registerSignatureEvent } from './signatureEvents';
+import { deleteUser } from './userAdmin';
 
 admin.initializeApp();
 
@@ -26,6 +28,7 @@ const db = admin.firestore();
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
 
 const AUTO_APPROVE_CONFIDENCE_THRESHOLD = 0.85;
+const ANALYZE_DOC_DAILY_LIMIT = 100;
 
 interface AnalyzeDocumentData {
   fileBase64: string;
@@ -34,13 +37,63 @@ interface AnalyzeDocumentData {
   otId?: string;   // OT ID for audit log linkage
 }
 
+// Next-midnight-UTC helper for daily rate-limit resets.
+function nextMidnightUTC(now: Date = new Date()): Date {
+  const d = new Date(now);
+  d.setUTCHours(24, 0, 0, 0);
+  return d;
+}
+
+/**
+ * Enforce a per-user, per-day cap on analyzeDocument invocations.
+ * Transactional — safe under concurrent calls. Throws HttpsError('resource-exhausted')
+ * when the cap is exceeded.
+ */
+async function enforceAnalyzeDocumentRateLimit(uid: string): Promise<void> {
+  const ref = db.collection('rateLimits').doc(uid);
+  const now = new Date();
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.exists ? (snap.data() as any) : null;
+    const resetAt: Date | null = data?.resetAt?.toDate?.() ?? null;
+    const expired = !resetAt || resetAt.getTime() <= now.getTime();
+    const nextCount = expired ? 1 : (data?.analyzeDocumentCount ?? 0) + 1;
+
+    if (nextCount > ANALYZE_DOC_DAILY_LIMIT) {
+      throw new HttpsError(
+        'resource-exhausted',
+        `Rate limit exceeded: ${ANALYZE_DOC_DAILY_LIMIT} analyzeDocument calls per day.`,
+      );
+    }
+
+    tx.set(
+      ref,
+      {
+        analyzeDocumentCount: nextCount,
+        resetAt: expired ? nextMidnightUTC(now) : data.resetAt,
+        lastCallAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  });
+}
+
 export const analyzeDocument = onCall(
-  { secrets: [geminiApiKey], timeoutSeconds: 60, memory: '512MiB' },
+  {
+    secrets: [geminiApiKey],
+    timeoutSeconds: 60,
+    memory: '512MiB',
+    maxInstances: 10,
+    concurrency: 1,
+  },
   async (request) => {
   // 1. Security Check
   if (!request.auth) {
     throw new HttpsError("unauthenticated", "The function must be called while authenticated.");
   }
+
+  // 1b. Per-user daily rate limit (throws if exceeded).
+  await enforceAnalyzeDocumentRateLimit(request.auth.uid);
 
   const { fileBase64, mimeType, docId, otId } = request.data as AnalyzeDocumentData;
 
@@ -244,3 +297,9 @@ export { refreshExchangeRates, triggerExchangeRatesRefresh };
 
 // Payment comprobante auto-advance
 export { onComprobanteApproved };
+
+// Reinforced POA signature (Ley 527)
+export { registerSignatureEvent };
+
+// User admin (soft delete)
+export { deleteUser };

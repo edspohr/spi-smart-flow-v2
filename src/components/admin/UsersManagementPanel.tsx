@@ -18,7 +18,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn, safeDate } from '@/lib/utils';
-import { Search, Users, ChevronDown, Loader2 } from 'lucide-react';
+import { Search, Users, ChevronDown, Loader2, UserPlus, Trash2 } from 'lucide-react';
+import CreateUserModal from './CreateUserModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -40,8 +42,16 @@ function formatDate(raw: any): string {
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 
-function StatusBadge({ role }: { role: AppUser['role'] }) {
-    if (role === 'guest') {
+function StatusBadge({ user }: { user: AppUser }) {
+    if (user.disabled) {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-800">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                Eliminado
+            </span>
+        );
+    }
+    if (user.role === 'guest') {
         return (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
                 <span className="w-1.5 h-1.5 rounded-full bg-yellow-500 animate-pulse" />
@@ -49,7 +59,7 @@ function StatusBadge({ role }: { role: AppUser['role'] }) {
             </span>
         );
     }
-    if (role === 'spi-admin') {
+    if (user.role === 'spi-admin') {
         return (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
@@ -82,6 +92,7 @@ function ActivateModal({ user, companies, onClose }: ModalProps) {
     const [selectedRole, setSelectedRole] = useState<'client' | 'spi-admin'>(
         user.role === 'spi-admin' ? 'spi-admin' : 'client'
     );
+    const [editedName, setEditedName] = useState(user.name || user.displayName || '');
     const [companySearch, setCompanySearch] = useState('');
     const [showDropdown, setShowDropdown] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -123,6 +134,9 @@ function ActivateModal({ user, companies, onClose }: ModalProps) {
         }
 
         setIsLoading(true);
+        const trimmedName = editedName.trim();
+        const nameChanged = trimmedName && trimmedName !== (user.name || user.displayName || '');
+
         try {
             if (isGuest) {
                 // Activation: store method handles Firestore update + CF call
@@ -132,6 +146,14 @@ function ActivateModal({ user, companies, onClose }: ModalProps) {
                     selectedRole,
                     adminUser?.uid ?? ''
                 );
+                // Persist name change separately (updateUserActivation doesn't accept it).
+                if (nameChanged) {
+                    await updateDoc(doc(db, 'users', user.id), {
+                        name: trimmedName,
+                        displayName: trimmedName,
+                        updatedAt: serverTimestamp(),
+                    });
+                }
                 toast.success(
                     `Usuario activado correctamente. Se envió notificación a ${user.email}.`
                 );
@@ -140,6 +162,7 @@ function ActivateModal({ user, companies, onClose }: ModalProps) {
                 await updateDoc(doc(db, 'users', user.id), {
                     companyId: selectedCompanyId,
                     role: selectedRole,
+                    ...(nameChanged && { name: trimmedName, displayName: trimmedName }),
                     updatedAt: serverTimestamp(),
                 });
                 toast.success('Usuario actualizado correctamente.');
@@ -154,7 +177,7 @@ function ActivateModal({ user, companies, onClose }: ModalProps) {
 
     return (
         <Dialog open onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogContent className="sm:max-w-md rounded-2xl bg-white border-slate-100">
                 <DialogHeader>
                     <DialogTitle className="text-lg font-bold text-slate-900">
                         {isGuest ? 'Activar usuario' : 'Editar usuario'}
@@ -167,24 +190,29 @@ function ActivateModal({ user, companies, onClose }: ModalProps) {
                 </DialogHeader>
 
                 <div className="space-y-5 pt-2">
-                    {/* Read-only info */}
-                    <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl">
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                                Nombre
-                            </p>
-                            <p className="text-sm font-semibold text-slate-900 truncate">
-                                {displayName(user)}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                                Correo
-                            </p>
-                            <p className="text-sm font-semibold text-slate-900 truncate">
-                                {user.email}
-                            </p>
-                        </div>
+                    {/* Email (read-only — changing email requires a separate Firebase Auth flow) */}
+                    <div className="p-4 bg-slate-50 rounded-xl">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                            Correo
+                        </p>
+                        <p className="text-sm font-semibold text-slate-900 truncate">
+                            {user.email}
+                        </p>
+                    </div>
+
+                    {/* Editable name */}
+                    <div className="space-y-1.5">
+                        <Label htmlFor="edit-name" className="text-sm font-semibold text-slate-700">
+                            Nombre
+                        </Label>
+                        <Input
+                            id="edit-name"
+                            value={editedName}
+                            onChange={(e) => setEditedName(e.target.value)}
+                            placeholder="Nombre completo del usuario"
+                            disabled={isLoading}
+                            className="rounded-xl border-slate-200"
+                        />
                     </div>
 
                     {/* Searchable company dropdown */}
@@ -279,10 +307,28 @@ function ActivateModal({ user, companies, onClose }: ModalProps) {
 // ── Main Panel ────────────────────────────────────────────────────────────────
 
 const UsersManagementPanel = () => {
-    const { users, companies, subscribeToUsers, subscribeToCompanies } = useAdminStore();
+    const { users, companies, subscribeToUsers, subscribeToCompanies, deleteUser } = useAdminStore();
+    const { user: currentAdmin } = useAuthStore();
     const [showPendingOnly, setShowPendingOnly] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
+    const [createOpen, setCreateOpen] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<AppUser | null>(null);
+    const [deleting, setDeleting] = useState(false);
+
+    const handleDelete = async () => {
+        if (!userToDelete) return;
+        setDeleting(true);
+        try {
+            await deleteUser(userToDelete.id);
+            toast.success(`Usuario ${userToDelete.email} eliminado.`);
+            setUserToDelete(null);
+        } catch (err: any) {
+            toast.error(err?.message || 'Error al eliminar el usuario.');
+        } finally {
+            setDeleting(false);
+        }
+    };
 
     useEffect(() => {
         const unsubUsers = subscribeToUsers();
@@ -330,6 +376,13 @@ const UsersManagementPanel = () => {
                         )}
                     </p>
                 </div>
+                <Button
+                    onClick={() => setCreateOpen(true)}
+                    className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-widest gap-2 h-10 px-5"
+                >
+                    <UserPlus className="h-4 w-4" />
+                    Nuevo Usuario
+                </Button>
             </div>
 
             {/* Filters */}
@@ -430,21 +483,35 @@ const UsersManagementPanel = () => {
                                             {formatDate(u.createdAt)}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <StatusBadge role={u.role} />
+                                            <StatusBadge user={u} />
                                         </td>
                                         <td className="px-6 py-4">
-                                            <button
-                                                type="button"
-                                                onClick={() => setSelectedUser(u)}
-                                                className={cn(
-                                                    'px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
-                                                    u.role === 'guest'
-                                                        ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                            <div className="flex items-center gap-2">
+                                                {!u.disabled && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setSelectedUser(u)}
+                                                        className={cn(
+                                                            'px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
+                                                            u.role === 'guest'
+                                                                ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                        )}
+                                                    >
+                                                        {u.role === 'guest' ? 'Activar usuario' : 'Editar'}
+                                                    </button>
                                                 )}
-                                            >
-                                                {u.role === 'guest' ? 'Activar usuario' : 'Editar'}
-                                            </button>
+                                                {!u.disabled && u.id !== currentAdmin?.uid && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setUserToDelete(u)}
+                                                        className="px-2 py-1.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 transition-all"
+                                                        title="Eliminar usuario"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -462,6 +529,29 @@ const UsersManagementPanel = () => {
                     onClose={() => setSelectedUser(null)}
                 />
             )}
+
+            {/* Create user modal */}
+            <CreateUserModal
+                open={createOpen}
+                onOpenChange={setCreateOpen}
+                companies={companies}
+            />
+
+            {/* Delete user confirmation */}
+            <ConfirmDialog
+                open={!!userToDelete}
+                onOpenChange={(open) => { if (!open) setUserToDelete(null); }}
+                title="Eliminar usuario"
+                description={
+                    userToDelete
+                        ? `¿Confirmás eliminar a ${displayName(userToDelete)} (${userToDelete.email})? Se bloquea su acceso y se marca el perfil como eliminado. El historial de auditoría se conserva.`
+                        : ''
+                }
+                confirmLabel="Eliminar"
+                confirmVariant="destructive"
+                onConfirm={handleDelete}
+                loading={deleting}
+            />
         </div>
     );
 };

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onComprobanteApproved = exports.triggerExchangeRatesRefresh = exports.refreshExchangeRates = exports.triggerDeadlinesCheck = exports.checkDocumentDeadlines = exports.createOTFromPipefy = exports.activateUser = exports.createUser = exports.analyzeDocument = void 0;
+exports.deleteUser = exports.registerSignatureEvent = exports.onComprobanteApproved = exports.triggerExchangeRatesRefresh = exports.refreshExchangeRates = exports.triggerDeadlinesCheck = exports.checkDocumentDeadlines = exports.createOTFromPipefy = exports.activateUser = exports.createUser = exports.analyzeDocument = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const generative_ai_1 = require("@google/generative-ai");
@@ -11,6 +11,10 @@ const reminders_1 = require("./reminders");
 const exchangeRates_1 = require("./exchangeRates");
 const paymentAdvance_1 = require("./paymentAdvance");
 Object.defineProperty(exports, "onComprobanteApproved", { enumerable: true, get: function () { return paymentAdvance_1.onComprobanteApproved; } });
+const signatureEvents_1 = require("./signatureEvents");
+Object.defineProperty(exports, "registerSignatureEvent", { enumerable: true, get: function () { return signatureEvents_1.registerSignatureEvent; } });
+const userAdmin_1 = require("./userAdmin");
+Object.defineProperty(exports, "deleteUser", { enumerable: true, get: function () { return userAdmin_1.deleteUser; } });
 admin.initializeApp();
 // Sentry: only initializes when SENTRY_DSN env var is set in the Functions environment.
 // Set it via: firebase functions:config:set sentry.dsn="https://..."
@@ -25,11 +29,51 @@ if (process.env.SENTRY_DSN) {
 const db = admin.firestore();
 const geminiApiKey = (0, params_1.defineSecret)("GEMINI_API_KEY");
 const AUTO_APPROVE_CONFIDENCE_THRESHOLD = 0.85;
-exports.analyzeDocument = (0, https_1.onCall)({ secrets: [geminiApiKey], timeoutSeconds: 60, memory: '512MiB' }, async (request) => {
+const ANALYZE_DOC_DAILY_LIMIT = 100;
+// Next-midnight-UTC helper for daily rate-limit resets.
+function nextMidnightUTC(now = new Date()) {
+    const d = new Date(now);
+    d.setUTCHours(24, 0, 0, 0);
+    return d;
+}
+/**
+ * Enforce a per-user, per-day cap on analyzeDocument invocations.
+ * Transactional — safe under concurrent calls. Throws HttpsError('resource-exhausted')
+ * when the cap is exceeded.
+ */
+async function enforceAnalyzeDocumentRateLimit(uid) {
+    const ref = db.collection('rateLimits').doc(uid);
+    const now = new Date();
+    await db.runTransaction(async (tx) => {
+        var _a, _b, _c, _d;
+        const snap = await tx.get(ref);
+        const data = snap.exists ? snap.data() : null;
+        const resetAt = (_c = (_b = (_a = data === null || data === void 0 ? void 0 : data.resetAt) === null || _a === void 0 ? void 0 : _a.toDate) === null || _b === void 0 ? void 0 : _b.call(_a)) !== null && _c !== void 0 ? _c : null;
+        const expired = !resetAt || resetAt.getTime() <= now.getTime();
+        const nextCount = expired ? 1 : ((_d = data === null || data === void 0 ? void 0 : data.analyzeDocumentCount) !== null && _d !== void 0 ? _d : 0) + 1;
+        if (nextCount > ANALYZE_DOC_DAILY_LIMIT) {
+            throw new https_1.HttpsError('resource-exhausted', `Rate limit exceeded: ${ANALYZE_DOC_DAILY_LIMIT} analyzeDocument calls per day.`);
+        }
+        tx.set(ref, {
+            analyzeDocumentCount: nextCount,
+            resetAt: expired ? nextMidnightUTC(now) : data.resetAt,
+            lastCallAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+    });
+}
+exports.analyzeDocument = (0, https_1.onCall)({
+    secrets: [geminiApiKey],
+    timeoutSeconds: 60,
+    memory: '512MiB',
+    maxInstances: 10,
+    concurrency: 1,
+}, async (request) => {
     // 1. Security Check
     if (!request.auth) {
         throw new https_1.HttpsError("unauthenticated", "The function must be called while authenticated.");
     }
+    // 1b. Per-user daily rate limit (throws if exceeded).
+    await enforceAnalyzeDocumentRateLimit(request.auth.uid);
     const { fileBase64, mimeType, docId, otId } = request.data;
     if (!fileBase64 || !mimeType) {
         throw new https_1.HttpsError("invalid-argument", "The function must be called with 'fileBase64' and 'mimeType'.");

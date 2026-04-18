@@ -24,6 +24,7 @@ interface AdminState {
   createUserAccount: (data: { email: string; password: string; displayName: string; role: AppUser['role']; companyId?: string }) => Promise<void>;
   sendPasswordReset: (email: string) => Promise<void>;
   toggleUserDisabled: (userId: string, disabled: boolean) => Promise<void>;
+  deleteUser: (uid: string) => Promise<void>;
   // Activation: updates Firestore + calls activateUser Cloud Function
   updateUserActivation: (uid: string, companyId: string, role: AppUser['role'], activatedBy: string) => Promise<void>;
 
@@ -105,6 +106,18 @@ const useAdminStore = create<AdminState>((set) => ({
       await logAction('admin', 'system', `Usuario ${disabled ? 'desactivado' : 'activado'}: ${userId}`);
     } catch (err: any) {
       const message = err?.message || 'Error al actualizar el usuario';
+      set({ error: message });
+      throw err;
+    }
+  },
+
+  deleteUser: async (uid) => {
+    set({ error: null });
+    try {
+      const fn = httpsCallable(functions, 'deleteUser');
+      await fn({ uid });
+    } catch (err: any) {
+      const message = err?.message || 'Error al eliminar el usuario';
       set({ error: message });
       throw err;
     }

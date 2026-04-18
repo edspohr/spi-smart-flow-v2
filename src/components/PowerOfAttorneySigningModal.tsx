@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { db, storage } from '@/lib/firebase';
+import { db, storage, functions } from '@/lib/firebase';
 import {
   doc, getDoc, collection, query, where, getDocs, updateDoc, setDoc, addDoc,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { httpsCallable } from 'firebase/functions';
+import * as Sentry from '@sentry/react';
 import SignatureCanvas from 'react-signature-canvas';
 import {
   Dialog,
@@ -16,13 +18,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  CheckCircle2,
+  Download,
   Eraser,
   FileText,
   Fingerprint,
   Loader2,
   RefreshCw,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -30,6 +36,7 @@ import { generatePOAPdf } from '@/lib/generatePOAPdf';
 import useAuthStore from '@/store/useAuthStore';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { CONSENT_DECLARATION_ES_SHORT } from '@/lib/signatureConsent';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -116,7 +123,15 @@ const PowerOfAttorneySigningModal = ({
   // Step 2 signature
   const sigPadRef     = useRef<SignatureCanvas>(null);
   const [strokeCount, setStrokeCount] = useState(0);
+  const [consentChecked, setConsentChecked] = useState(false);
   const MIN_STROKES = 3;
+
+  // Step 3 result
+  const [signResult, setSignResult] = useState<
+    | { kind: 'success'; finalPdfUrl: string; finalPdfHash: string; expiresAt: Date }
+    | { kind: 'evidence_failed' }
+    | null
+  >(null);
 
   const today     = new Date();
   const expiresAt = addYears(today, 5);
@@ -128,6 +143,8 @@ const PowerOfAttorneySigningModal = ({
     setStep(1);
     setError(null);
     setStrokeCount(0);
+    setConsentChecked(false);
+    setSignResult(null);
 
     setLoadingData(true);
     (async () => {
@@ -177,17 +194,22 @@ const PowerOfAttorneySigningModal = ({
 
   const handleConfirmSignature = async () => {
     if (!sigPadRef.current || sigPadRef.current.isEmpty()) return;
+    if (!consentChecked) return;
     const signatureDataUrl = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
 
     setStep(3);
     setProcessing(true);
     setError(null);
 
-    try {
-      const signedAt    = new Date();
-      const expiresAtD  = addYears(signedAt, 5);
-      const documentRef = crypto.randomUUID();
+    const signedAt    = new Date();
+    const expiresAtD  = addYears(signedAt, 5);
+    const documentRef = crypto.randomUUID();
+    const storagePath = `signed-powers/${companyId}/${otId}/${requirementId}_${documentRef}.pdf`;
 
+    let rawDownloadUrl: string | null = null;
+    let documentId: string | null = null;
+
+    try {
       // 1 — Generate PDF
       const pdfBytes = await generatePOAPdf({
         signerName:       signerName.trim(),
@@ -201,49 +223,23 @@ const PowerOfAttorneySigningModal = ({
         expiresAt:        expiresAtD,
       });
 
-      // 2 — Upload to Firebase Storage
-      // Pass Uint8Array directly — avoid .buffer which can include unused bytes
-      const pdfBlob     = new Blob([pdfBytes], { type: 'application/pdf' });
-      const storagePath = `signed-powers/${companyId}/${otId}/${requirementId}_${documentRef}.pdf`;
-      const storageRef  = ref(storage, storagePath);
-      const snapshot    = await uploadBytes(storageRef, pdfBlob);
-      const downloadUrl = await getDownloadURL(snapshot.ref);
+      // 2 — Upload original to Firebase Storage (archive — CF will read this)
+      const pdfBlob   = new Blob([pdfBytes], { type: 'application/pdf' });
+      const storageRef = ref(storage, storagePath);
+      const snapshot  = await uploadBytes(storageRef, pdfBlob);
+      rawDownloadUrl  = await getDownloadURL(snapshot.ref);
 
-      // 3 — Update OT requirementsProgress
-      await updateDoc(doc(db, 'ots', otId), {
-        [`requirementsProgress.${requirementId}`]: {
-          completed:   true,
-          documentUrl: downloadUrl,
-          signedAt:    signedAt.toISOString(),
-          signerName:  signerName.trim(),
-          expiresAt:   expiresAtD.toISOString(),
-          documentRef,
-        },
-        updatedAt: new Date().toISOString(),
-      });
-
-      // 4 — Write to company vault subcollection
-      await setDoc(doc(collection(db, 'companies', companyId, 'vault'), documentRef), {
-        type:         'poder_simple',
-        documentUrl:  downloadUrl,
-        signedAt:     signedAt.toISOString(),
-        signerName:   signerName.trim(),
-        expiresAt:    expiresAtD.toISOString(),
-        companyId,
-        otId,
-        requirementId,
-        documentRef,
-      });
-
-      // 5 — Create record in main documents collection (admin visibility)
-      await addDoc(collection(db, 'documents'), {
+      // 3 — Create Document record first so the CF has a stable id to update.
+      //      Starts pointing to the raw PDF (no evidence page yet); the CF
+      //      overwrites the url/fileUrl with the final evidence-appended PDF.
+      const docRef = await addDoc(collection(db, 'documents'), {
         otId,
         clientId: user?.uid || '',
         companyId,
         name: 'Poder Simple Firmado',
         type: 'poder_legal',
         status: 'validated',
-        url: downloadUrl,
+        url: rawDownloadUrl,
         isVaultEligible: true,
         validUntil: expiresAtD.toISOString(),
         uploadedAt: signedAt.toISOString(),
@@ -254,28 +250,104 @@ const PowerOfAttorneySigningModal = ({
           requiresManualReview: false,
         },
       });
-
-      toast.success(
-        `Poder firmado correctamente. Vigencia hasta el ${formatDMY(expiresAtD)}.`,
-        { duration: 6000 },
-      );
-
-      onSuccess({ documentUrl: downloadUrl, expiresAt: expiresAtD.toISOString() });
-      onClose();
+      documentId = docRef.id;
     } catch (err) {
-      console.error('POA signing error:', err);
+      console.error('POA pre-signature error:', err);
+      Sentry.captureException(err, { extra: { otId, requirementId, stage: 'pre-cf' } });
       const message = err instanceof Error && err.message
         ? `Error al generar el documento: ${err.message}`
         : 'Error al generar el documento. Intenta nuevamente.';
       setError(message);
       setProcessing(false);
+      return;
+    }
+
+    // 4 — Register signature event via Cloud Function (Ley 527 evidence).
+    try {
+      const call = httpsCallable<
+        { otId: string; requirementId: string; documentId: string; pdfStoragePath: string },
+        { signatureEventId: string; finalPdfUrl: string; finalPdfHash: string }
+      >(functions, 'registerSignatureEvent');
+
+      const res = await call({
+        otId,
+        requirementId,
+        documentId: documentId!,
+        pdfStoragePath: storagePath,
+      });
+
+      const { finalPdfUrl, finalPdfHash } = res.data;
+
+      // 5 — Update OT requirementsProgress pointing to the final PDF
+      await updateDoc(doc(db, 'ots', otId), {
+        [`requirementsProgress.${requirementId}`]: {
+          completed:   true,
+          documentUrl: finalPdfUrl,
+          signedAt:    signedAt.toISOString(),
+          signerName:  signerName.trim(),
+          expiresAt:   expiresAtD.toISOString(),
+          documentRef,
+        },
+        updatedAt: new Date().toISOString(),
+      });
+
+      // 6 — Write to company vault subcollection
+      await setDoc(doc(collection(db, 'companies', companyId, 'vault'), documentRef), {
+        type:         'poder_simple',
+        documentUrl:  finalPdfUrl,
+        signedAt:     signedAt.toISOString(),
+        signerName:   signerName.trim(),
+        expiresAt:    expiresAtD.toISOString(),
+        companyId,
+        otId,
+        requirementId,
+        documentRef,
+      });
+
+      setSignResult({
+        kind: 'success',
+        finalPdfUrl,
+        finalPdfHash,
+        expiresAt: expiresAtD,
+      });
+      setProcessing(false);
+
+      toast.success(
+        `Poder firmado con evidencia Ley 527. Vigencia hasta ${formatDMY(expiresAtD)}.`,
+        { duration: 6000 },
+      );
+
+      // `onSuccess` is intentionally NOT called here — parents typically close
+      // the modal on success, which would hide the confirmation view. We fire
+      // it from the "Cerrar" button in the success UI instead.
+    } catch (err) {
+      console.error('POA evidence registration failed:', err);
+      Sentry.captureException(err, {
+        extra: { otId, requirementId, documentId, stage: 'register-signature-event' },
+      });
+      setSignResult({ kind: 'evidence_failed' });
+      setProcessing(false);
+      // Intentionally do NOT update OT requirementsProgress nor the vault —
+      // admin must reconcile manually so partial legal state doesn't propagate.
     }
   };
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <Dialog open={isOpen} onOpenChange={(o) => !o && !processing && onClose()}>
+    <Dialog
+      open={isOpen}
+      onOpenChange={(o) => {
+        if (o || processing) return;
+        if (signResult?.kind === 'success') {
+          onSuccess({
+            documentUrl: signResult.finalPdfUrl,
+            expiresAt: signResult.expiresAt.toISOString(),
+          });
+        }
+        onClose();
+      }}
+    >
       <DialogContent className="max-w-2xl p-0 rounded-[2rem] bg-[#0B1121] border-slate-800 shadow-2xl shadow-black/60 gap-0 max-h-[90vh] flex flex-col overflow-hidden">
         <DialogHeader className="px-8 pt-7 pb-0 shrink-0">
           <div className="flex items-center gap-3 mb-1">
@@ -430,6 +502,27 @@ const PowerOfAttorneySigningModal = ({
                 </button>
               </div>
 
+              {/* Consent checkbox (Ley 527) */}
+              <label className="flex items-start gap-3 p-3 rounded-xl bg-purple-500/5 border border-purple-500/20 cursor-pointer hover:border-purple-500/40 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={consentChecked}
+                  onChange={(e) => setConsentChecked(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-900 text-purple-600 focus:ring-2 focus:ring-purple-500/40 cursor-pointer accent-purple-600"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Shield className="h-3 w-3 text-purple-400" />
+                    <span className="text-[10px] font-black text-purple-300 uppercase tracking-widest">
+                      Consentimiento Ley 527
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {CONSENT_DECLARATION_ES_SHORT}
+                  </p>
+                </div>
+              </label>
+
               <p className="text-sm font-bold text-slate-300">
                 Firme en el recuadro a continuación
               </p>
@@ -463,8 +556,9 @@ const PowerOfAttorneySigningModal = ({
 
                 <Button
                   onClick={handleConfirmSignature}
-                  disabled={strokeCount < MIN_STROKES}
+                  disabled={strokeCount < MIN_STROKES || !consentChecked}
                   className="flex-1 h-9 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest gap-2 disabled:opacity-40"
+                  title={!consentChecked ? 'Aceptá el consentimiento Ley 527 para continuar' : undefined}
                 >
                   Confirmar firma <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
@@ -472,13 +566,13 @@ const PowerOfAttorneySigningModal = ({
             </div>
           )}
 
-          {/* ── STEP 3: Processing ── */}
+          {/* ── STEP 3: Processing / Result ── */}
           {step === 3 && (
-            <div className="py-8 flex flex-col items-center gap-5 animate-in fade-in duration-200">
+            <div className="py-8 animate-in fade-in duration-200">
               {error ? (
-                <>
+                <div className="flex flex-col items-center gap-5">
                   <div className="w-16 h-16 rounded-full bg-rose-500/20 border border-rose-500/30 flex items-center justify-center">
-                    <span className="text-2xl">⚠️</span>
+                    <AlertTriangle className="h-7 w-7 text-rose-400" />
                   </div>
                   <p className="text-sm font-bold text-rose-400 text-center">{error}</p>
                   <Button
@@ -487,9 +581,72 @@ const PowerOfAttorneySigningModal = ({
                   >
                     <RefreshCw className="h-4 w-4" /> Reintentar
                   </Button>
-                </>
+                </div>
+              ) : signResult?.kind === 'success' ? (
+                <div className="flex flex-col items-center gap-5 text-center">
+                  <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center">
+                    <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-base font-black text-white">Poder firmado con éxito</p>
+                    <p className="text-xs font-medium text-slate-400 max-w-sm">
+                      Tu firma fue registrada con evidencia Ley 527. Podés descargar el PDF final
+                      o verificar su autenticidad con el hash:
+                    </p>
+                    <p className="text-[10px] font-mono text-purple-300 bg-slate-900/50 border border-slate-800 rounded-lg px-3 py-1.5 inline-block mt-2">
+                      {signResult.finalPdfHash.slice(0, 16)}…
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2 w-full max-w-sm">
+                    <Button
+                      asChild
+                      className="flex-1 h-10 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-widest gap-2"
+                    >
+                      <a href={signResult.finalPdfUrl} target="_blank" rel="noreferrer">
+                        <Download className="h-4 w-4" /> Descargar PDF
+                      </a>
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        onSuccess({
+                          documentUrl: signResult.finalPdfUrl,
+                          expiresAt: signResult.expiresAt.toISOString(),
+                        });
+                        onClose();
+                      }}
+                      variant="ghost"
+                      className="flex-1 h-10 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 font-black text-xs uppercase tracking-widest"
+                    >
+                      Cerrar
+                    </Button>
+                  </div>
+                  <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mt-2">
+                    Vigencia hasta {formatDMY(signResult.expiresAt)}
+                  </p>
+                </div>
+              ) : signResult?.kind === 'evidence_failed' ? (
+                <div className="flex flex-col items-center gap-5 text-center">
+                  <div className="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+                    <AlertTriangle className="h-7 w-7 text-amber-400" />
+                  </div>
+                  <div className="space-y-1 max-w-sm">
+                    <p className="text-base font-black text-white">
+                      Firma guardada — evidencia pendiente
+                    </p>
+                    <p className="text-xs font-medium text-slate-400 leading-relaxed">
+                      Tu firma se guardó pero el registro de evidencia falló. SPI fue notificado
+                      automáticamente. Por favor contactanos si no recibís confirmación en 24h.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={onClose}
+                    className="h-10 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs uppercase tracking-widest"
+                  >
+                    Cerrar
+                  </Button>
+                </div>
               ) : (
-                <>
+                <div className="flex flex-col items-center gap-5">
                   <div className="relative">
                     <div className="absolute inset-0 bg-purple-500/20 blur-xl rounded-full scale-150 animate-pulse" />
                     <div className="relative w-16 h-16 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
@@ -497,12 +654,14 @@ const PowerOfAttorneySigningModal = ({
                     </div>
                   </div>
                   <div className="text-center space-y-1">
-                    <p className="text-sm font-black text-white">Generando documento firmado...</p>
+                    <p className="text-sm font-black text-white">
+                      Registrando firma con evidencia Ley 527...
+                    </p>
                     <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                       Guardando en bóveda · Paso 3 de 3
                     </p>
                   </div>
-                </>
+                </div>
               )}
             </div>
           )}

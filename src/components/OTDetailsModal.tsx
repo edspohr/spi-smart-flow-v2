@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  collection, query, where, orderBy, onSnapshot,
+  collection, query, where, orderBy, onSnapshot, getDocs,
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import {
@@ -32,6 +32,7 @@ import {
   History,
   ChevronDown,
   Fingerprint,
+  Download,
 } from "lucide-react";
 import useOTStore from "../store/useOTStore";
 import useDocumentStore from "../store/useDocumentStore";
@@ -47,6 +48,7 @@ import PaymentWidget from "./PaymentWidget";
 import UploadComprobanteModal from "./UploadComprobanteModal";
 import RejectComprobanteModal from "./RejectComprobanteModal";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { buildAuditCsv, downloadCsv, type SignatureEventRecord } from "../lib/auditExport";
 
 interface OTDetailsModalProps {
   ot: any;
@@ -86,6 +88,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrol
   const [rejectComprobanteDocId, setRejectComprobanteDocId] = useState<string | null>(null);
   const [approveComprobanteOpen, setApproveComprobanteOpen] = useState(false);
   const [approvingComprobante, setApprovingComprobante] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   const nextStage = (() => {
     const i = STAGE_ORDER.indexOf(ot.stage);
@@ -149,6 +152,41 @@ const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrol
       return tb - ta;
     })[0];
   })();
+
+  const handleExportAuditCsv = async () => {
+    setExportingCsv(true);
+    try {
+      // Pull authoritative logs + signatureEvents for this OT.
+      const [logsSnap, eventsSnap] = await Promise.all([
+        getDocs(query(
+          collection(db, 'logs'),
+          where('otId', '==', ot.id),
+          orderBy('timestamp', 'asc'),
+        )),
+        getDocs(query(
+          collection(db, 'signatureEvents'),
+          where('otId', '==', ot.id),
+        )),
+      ]);
+
+      const logRows: Log[] = logsSnap.docs.map(
+        (d) => ({ id: d.id, ...d.data() } as Log),
+      );
+      const evRows: SignatureEventRecord[] = eventsSnap.docs.map(
+        (d) => ({ id: d.id, ...(d.data() as any) } as SignatureEventRecord),
+      );
+
+      const csv = buildAuditCsv(logRows, evRows, {});
+      const date = new Date().toISOString().split('T')[0];
+      downloadCsv(`auditoria-ot-${ot.id}-${date}.csv`, csv);
+      toast.success('Auditoría exportada');
+    } catch (err: any) {
+      console.error('Audit export failed:', err);
+      toast.error(err?.message || 'Error al exportar la auditoría');
+    } finally {
+      setExportingCsv(false);
+    }
+  };
 
   const handleApproveComprobante = async () => {
     if (!comprobantePagoDoc) return;
@@ -681,6 +719,20 @@ const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrol
             </TabsContent>
 
             <TabsContent value="history" className="mt-0">
+               {user?.role === 'spi-admin' && (
+                 <div className="flex justify-end mb-4">
+                   <Button
+                     onClick={handleExportAuditCsv}
+                     disabled={exportingCsv}
+                     variant="ghost"
+                     size="sm"
+                     className="rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-black text-[10px] uppercase tracking-widest gap-2 disabled:opacity-60"
+                   >
+                     <Download className="h-3.5 w-3.5" />
+                     {exportingCsv ? 'Exportando...' : 'Exportar auditoría CSV'}
+                   </Button>
+                 </div>
+               )}
                <div className="space-y-4">
                  {otLogs.map((log) => (
                    <div key={log.id} className="flex gap-4 items-start bg-white p-5 rounded-2xl border border-slate-100 shadow-sm transition-all hover:bg-slate-50">

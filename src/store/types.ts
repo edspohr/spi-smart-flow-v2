@@ -82,6 +82,10 @@ export interface Document {
   mimeType?: string;
   reviewedBy?: string;
   reviewedAt?: string;
+  // Reinforced POA signature (Ley 527)
+  signatureEventId?: string;
+  reinforcedSignature?: boolean;
+  fileUrl?: string;
 }
 
 export interface Log {
