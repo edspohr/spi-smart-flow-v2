@@ -2,7 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from './layouts/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
-import ClientDashboard from './pages/ClientDashboard';
+import ClientInboxPage from './pages/ClientInboxPage';
+import ClientOTsPage from './pages/ClientOTsPage';
 import ClientVault from './pages/ClientVault';
 import GuestDashboard from './pages/GuestDashboard';
 import SPIAdminDashboard from './pages/SPIAdminDashboard';
@@ -13,6 +14,7 @@ import OTCompletionPage from './pages/OTCompletionPage';
 import UsuariosPage from './pages/UsuariosPage';
 import ConfiguracionSolicitudesPage from './pages/ConfiguracionSolicitudesPage';
 import TasasCambioPage from './pages/TasasCambioPage';
+import TorreDeControlPage from './pages/TorreDeControlPage';
 import NotFoundPage from './pages/NotFoundPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import PendientePage from './pages/PendientePage';
@@ -31,7 +33,8 @@ export default function AppRouter() {
 
           {/* Client Routes */}
           <Route element={<ProtectedRoute allowedRoles={['client']} />}>
-            <Route path="/client" element={<ClientDashboard />} />
+            <Route path="/client" element={<ClientInboxPage />} />
+            <Route path="/client/ots" element={<ClientOTsPage />} />
             <Route path="/client/vault" element={<ClientVault />} />
             <Route path="/client/ot/:otId/completar" element={<PICompletionPage />} />
             <Route path="/client/ot/:otId/completar-v2" element={<OTCompletionPage />} />
@@ -45,6 +48,7 @@ export default function AppRouter() {
           {/* SPI Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={['spi-admin']} />}>
             <Route path="/spi-admin" element={<SPIAdminDashboard />} />
+            <Route path="/spi-admin/torre-de-control" element={<TorreDeControlPage />} />
             <Route path="/spi-admin/usuarios" element={<UsuariosPage />} />
             <Route path="/spi-admin/vault" element={<SPIVault />} />
             <Route path="/spi-admin/companies" element={<CompaniesPage />} />

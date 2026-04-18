@@ -131,6 +131,7 @@ export interface AppUser {
   createdAt?: string;
   activatedAt?: string;
   activatedBy?: string;
+  lastNotificationReadAt?: string; // ISO timestamp of last bell-open by this user
 }
 
 export type PIDocumentType =

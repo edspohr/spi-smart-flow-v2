@@ -10,7 +10,6 @@ import * as Sentry from "@sentry/node";
 
 const API_URL = 'https://open.er-api.com/v6/latest/USD';
 const TRACKED_CURRENCIES = ['USD', 'CLP', 'COP', 'MXN', 'PEN', 'BRL', 'ARS'] as const;
-type TrackedCurrency = typeof TRACKED_CURRENCIES[number];
 
 interface OpenErApiResponse {
   result: 'success' | 'error';

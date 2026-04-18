@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.triggerExchangeRatesRefresh = exports.refreshExchangeRates = exports.triggerDeadlinesCheck = exports.checkDocumentDeadlines = exports.createOTFromPipefy = exports.activateUser = exports.createUser = exports.analyzeDocument = void 0;
+exports.onComprobanteApproved = exports.triggerExchangeRatesRefresh = exports.refreshExchangeRates = exports.triggerDeadlinesCheck = exports.checkDocumentDeadlines = exports.createOTFromPipefy = exports.activateUser = exports.createUser = exports.analyzeDocument = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const generative_ai_1 = require("@google/generative-ai");
@@ -9,6 +9,8 @@ const Sentry = require("@sentry/node");
 const pipefy_1 = require("./pipefy");
 const reminders_1 = require("./reminders");
 const exchangeRates_1 = require("./exchangeRates");
+const paymentAdvance_1 = require("./paymentAdvance");
+Object.defineProperty(exports, "onComprobanteApproved", { enumerable: true, get: function () { return paymentAdvance_1.onComprobanteApproved; } });
 admin.initializeApp();
 // Sentry: only initializes when SENTRY_DSN env var is set in the Functions environment.
 // Set it via: firebase functions:config:set sentry.dsn="https://..."

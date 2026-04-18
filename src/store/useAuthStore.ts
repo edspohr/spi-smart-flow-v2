@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { auth, db } from "../lib/firebase";
 import { onAuthStateChanged, signOut as firebaseSignOut, signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 // Define types for roles
 export type UserRole = "client" | "spi-admin" | "guest";
@@ -23,6 +23,7 @@ interface AuthState {
   initializeAuthListener: () => () => void;
   logout: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  markNotificationsRead: () => Promise<void>;
 }
 
 const useAuthStore = create<AuthState>((set) => ({
@@ -104,6 +105,18 @@ const useAuthStore = create<AuthState>((set) => ({
     } catch (error) {
       set({ loading: false });
       throw error;
+    }
+  },
+
+  markNotificationsRead: async () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    try {
+      await updateDoc(doc(db, 'users', uid), {
+        lastNotificationReadAt: serverTimestamp(),
+      });
+    } catch (e) {
+      console.warn('Failed to mark notifications read:', e);
     }
   },
 

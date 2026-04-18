@@ -9,6 +9,8 @@ import {
   Users,
   Cog,
   DollarSign,
+  Inbox,
+  KanbanSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -25,12 +27,14 @@ const Sidebar = () => {
     switch (user.role) {
       case 'client':
         return [
-          { href: '/client',       label: 'Mis Solicitudes',      icon: FileText },
+          { href: '/client',       label: 'Bandeja de Entrada',   icon: Inbox },
+          { href: '/client/ots',   label: 'Mis Solicitudes',      icon: FileText },
           { href: '/client/vault', label: 'Bóveda de Documentos', icon: ShieldCheck },
         ];
       case 'spi-admin':
         return [
-          { href: '/spi-admin',           label: 'Torre de Control', icon: LayoutDashboard },
+          { href: '/spi-admin/torre-de-control', label: 'Torre de Control', icon: LayoutDashboard },
+          { href: '/spi-admin',           label: 'Pipeline',          icon: KanbanSquare },
           { href: '/spi-admin/usuarios',  label: 'Usuarios',          icon: Users },
           { href: '/spi-admin/companies', label: 'Empresas',          icon: Building2 },
           { href: '/spi-admin/vault',     label: 'Bóveda Global',     icon: ShieldCheck },

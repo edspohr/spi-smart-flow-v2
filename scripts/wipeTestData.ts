@@ -17,6 +17,7 @@
  *   - Firebase Auth users (never touched)
  *   - Storage files outside the three listed prefixes (e.g. config/)
  */
+import admin from 'firebase-admin';
 import * as readline from 'readline';
 
 import * as path from 'path';
@@ -30,7 +31,7 @@ const serviceAccount = JSON.parse(
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  storageBucket: `${serviceAccount.project_id}.appspot.com`,
+  storageBucket: `${serviceAccount.project_id}.firebasestorage.app`,
 });
 
 const db = admin.firestore();

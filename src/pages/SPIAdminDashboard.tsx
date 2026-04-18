@@ -412,10 +412,10 @@ const SPIAdminDashboard = () => {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-4xl font-extrabold text-white tracking-tight">Torre de Control SPI</h1>
+          <h1 className="text-4xl font-extrabold text-white tracking-tight">Pipeline</h1>
           <p className="text-slate-400 font-bold uppercase text-[10px] tracking-[0.4em] mt-1.5 flex items-center gap-2">
             <span className="w-8 h-[2px] bg-blue-600 rounded-full" />
-            Visión Global de Operaciones
+            Flujo Operacional
           </p>
         </div>
         <Button

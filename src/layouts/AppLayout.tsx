@@ -25,6 +25,10 @@ import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestor
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import type { Log } from '../store/types';
+import ClientNotificationBell from '../components/ClientNotificationBell';
+import OTDetailsModal from '../components/OTDetailsModal';
+import useGlobalModalStore from '../store/useGlobalModalStore';
+import useOTStore from '../store/useOTStore';
 
 const LAST_SEEN_KEY = (uid: string) => `spi_notif_seen_${uid}`;
 const MAX_NOTIFS = 20;
@@ -114,9 +118,11 @@ const AppLayout = () => {
   if (!user) return <Navigate to="/login" replace />;
 
   const breadcrumbMap: Record<string, string> = {
-    '/client': 'Mi Tablero',
+    '/client': 'Bandeja de Entrada',
+    '/client/ots': 'Mis Solicitudes',
     '/client/vault': 'Bóveda Smart',
-    '/spi-admin': 'Torre de Control',
+    '/spi-admin': 'Pipeline',
+    '/spi-admin/torre-de-control': 'Torre de Control',
     '/spi-admin/usuarios': 'Usuarios',
     '/spi-admin/companies': 'Empresas',
     '/spi-admin/vault': 'Bóveda Global',
@@ -174,6 +180,8 @@ const AppLayout = () => {
             </div>
 
             {/* Bell / Notifications */}
+            {user.role === 'client' && <ClientNotificationBell />}
+            {isSpi && (
             <DropdownMenu open={notifOpen} onOpenChange={handleBellOpen}>
               <DropdownMenuTrigger asChild>
                 <div className="relative">
@@ -270,6 +278,7 @@ const AppLayout = () => {
                 </ScrollArea>
               </DropdownMenuContent>
             </DropdownMenu>
+            )}
 
             <Separator orientation="vertical" className={cn("h-8", isSpi ? "bg-slate-800" : "bg-slate-100")} />
 
@@ -332,8 +341,32 @@ const AppLayout = () => {
           </ErrorBoundary>
         </main>
       </div>
+
+      {user.role === 'client' && <GlobalOTDetailsModal />}
     </div>
   );
 };
+
+function GlobalOTDetailsModal() {
+  const otDetails = useGlobalModalStore((s) => s.otDetails);
+  const closeOTDetails = useGlobalModalStore((s) => s.closeOTDetails);
+  const ots = useOTStore((s) => s.ots);
+
+  if (!otDetails) return null;
+  const ot = ots.find((o) => o.id === otDetails.otId);
+  if (!ot) return null;
+
+  return (
+    <OTDetailsModal
+      ot={ot}
+      open
+      onOpenChange={(open) => {
+        if (!open) closeOTDetails();
+      }}
+      defaultTab={otDetails.defaultTab}
+      scrollToRequirementId={otDetails.scrollToRequirementId}
+    />
+  );
+}
 
 export default AppLayout;

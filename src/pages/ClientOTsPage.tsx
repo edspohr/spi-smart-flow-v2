@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { cn, safeDate } from '@/lib/utils';
 
-const ClientDashboard = () => {
+const ClientOTsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { ots, loading } = useOTStore();
@@ -308,4 +308,4 @@ const ClientDashboard = () => {
   );
 };
 
-export default ClientDashboard;
+export default ClientOTsPage;
