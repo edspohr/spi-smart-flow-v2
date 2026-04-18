@@ -5,8 +5,9 @@ export type OTStage =
   | 'pago_cierre'
   | 'finalizado';
 
-export type DocumentStatus = 'pending' | 'uploaded' | 'validated' | 'rejected' | 
-  'validating_ai' | 'ocr_processed' | 'awaiting_signature' | 'vault_matched';
+export type DocumentStatus = 'pending' | 'uploaded' | 'validated' | 'rejected' |
+  'validating_ai' | 'ocr_processed' | 'awaiting_signature' | 'vault_matched' |
+  'pending_review' | 'approved';
 
 export interface OT {
   id: string;
@@ -69,6 +70,18 @@ export interface Document {
   validUntil?: string;
   url?: string;
   uploadedAt: string;
+  // Comprobante de pago fields
+  paymentType?: 'adelanto' | 'cierre';
+  paymentDate?: string;
+  receiptNote?: string;
+  amount?: number;
+  currency?: string;
+  rejectionReason?: string;
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
 }
 
 export interface Log {

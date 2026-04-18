@@ -30,6 +30,22 @@ interface DocumentState {
   updateDocumentStatus: (docId: string, status: DocumentStatus, reason?: string) => Promise<void>;
   replaceDocument: (docId: string, file: File) => Promise<void>;
   getDocumentVersions: (docId: string) => Promise<DocumentVersion[]>;
+
+  // Comprobante de pago
+  uploadComprobantePago: (params: {
+    otId: string;
+    companyId: string;
+    file: File;
+    paymentType: 'adelanto' | 'cierre';
+    amount: number;
+    currency: string;
+    paymentDate: string;
+    receiptNote?: string;
+  }) => Promise<string>;
+  reviewComprobantePago: (
+    docId: string,
+    decision: { status: 'approved' | 'rejected'; rejectionReason?: string },
+  ) => Promise<void>;
 }
 
 const useDocumentStore = create<DocumentState>((set, get) => ({
@@ -248,6 +264,100 @@ const useDocumentStore = create<DocumentState>((set, get) => ({
     );
     const snap = await getDocs(q);
     return snap.docs.map((d) => ({ id: d.id, ...d.data() } as DocumentVersion));
+  },
+
+  uploadComprobantePago: async ({
+    otId, companyId, file, paymentType, amount, currency, paymentDate, receiptNote,
+  }) => {
+    set({ error: null });
+    try {
+      const user = useAuthStore.getState().user;
+      const userId = user?.uid || 'client';
+      const timestamp = Date.now();
+      const safeName = file.name.replace(/[^\w.\-]+/g, '_');
+      const fileUrl = await uploadFile(
+        file,
+        `ots/${otId}/comprobantes/${timestamp}_${safeName}`,
+      );
+
+      const nowIso = new Date().toISOString();
+      const docPayload = {
+        otId,
+        companyId,
+        clientId: userId,
+        name: file.name,
+        type: 'comprobante_pago',
+        status: 'pending_review' as DocumentStatus,
+        isVaultEligible: false,
+        url: fileUrl,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+        paymentType,
+        amount,
+        currency,
+        paymentDate,
+        receiptNote: receiptNote || null,
+        uploadedAt: nowIso,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+
+      const ref = await addDoc(collection(db, 'documents'), docPayload);
+
+      await logAction(
+        userId,
+        otId,
+        'Comprobante de pago subido',
+        { docId: ref.id, paymentType, amount, currency },
+      );
+
+      return ref.id;
+    } catch (err: any) {
+      const message = err?.message || 'Error al subir el comprobante de pago';
+      set({ error: message });
+      throw err;
+    }
+  },
+
+  reviewComprobantePago: async (docId, decision) => {
+    set({ error: null });
+    try {
+      const user = useAuthStore.getState().user;
+      const userId = user?.uid || 'admin';
+      const docRef = doc(db, 'documents', docId);
+
+      const updates: Record<string, any> = {
+        status: decision.status,
+        reviewedBy: userId,
+        reviewedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      if (decision.status === 'rejected') {
+        updates.rejectionReason = decision.rejectionReason || null;
+      } else {
+        updates.rejectionReason = null;
+      }
+
+      await updateDoc(docRef, updates);
+
+      const snap = await getDoc(docRef);
+      const data = snap.exists() ? (snap.data() as Document) : null;
+      const otId = data?.otId || 'general';
+      const action =
+        decision.status === 'approved'
+          ? 'Comprobante de pago aprobado'
+          : 'Comprobante de pago rechazado';
+      await logAction(userId, otId, action, {
+        docId,
+        paymentType: data?.paymentType,
+        ...(decision.status === 'rejected' && { reason: decision.rejectionReason }),
+      });
+    } catch (err: any) {
+      const message = err?.message || 'Error al revisar el comprobante';
+      set({ error: message });
+      throw err;
+    }
   },
 }));
 

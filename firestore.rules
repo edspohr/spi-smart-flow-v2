@@ -71,7 +71,8 @@ service cloud.firestore {
 
       allow update: if isAuthenticated()
         && resource.data.companyId == myCompanyId()
-        && !(request.resource.data.status == 'validated' && resource.data.status != 'validated');
+        && !(request.resource.data.status == 'validated' && resource.data.status != 'validated')
+        && !(request.resource.data.status == 'approved' && resource.data.status != 'approved');
     }
 
     // ── Logs ──────────────────────────────────────────────────────────────────

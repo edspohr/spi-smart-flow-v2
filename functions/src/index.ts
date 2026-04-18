@@ -7,6 +7,7 @@ import * as Sentry from "@sentry/node";
 import { registerPipefyHandlers } from './pipefy';
 import { registerReminderHandlers } from './reminders';
 import { registerExchangeRateHandlers } from './exchangeRates';
+import { onComprobanteApproved } from './paymentAdvance';
 
 admin.initializeApp();
 
@@ -240,3 +241,6 @@ export { checkDocumentDeadlines, triggerDeadlinesCheck };
 // Exchange Rates
 const { refreshExchangeRates, triggerExchangeRatesRefresh } = registerExchangeRateHandlers(db);
 export { refreshExchangeRates, triggerExchangeRatesRefresh };
+
+// Payment comprobante auto-advance
+export { onComprobanteApproved };

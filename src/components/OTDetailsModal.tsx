@@ -43,11 +43,17 @@ import { es } from "date-fns/locale";
 import { cn, safeDate } from "@/lib/utils";
 import { toast } from "sonner";
 import { OTStage, Log, DocumentVersion } from "../store/types";
+import PaymentWidget from "./PaymentWidget";
+import UploadComprobanteModal from "./UploadComprobanteModal";
+import RejectComprobanteModal from "./RejectComprobanteModal";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 interface OTDetailsModalProps {
   ot: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultTab?: 'overview' | 'documents' | 'history';
+  scrollToRequirementId?: string;
 }
 
 const STAGE_ORDER: OTStage[] = [
@@ -59,9 +65,9 @@ const STAGE_LABELS: Record<OTStage, string> = {
   finalizado: 'Finalizado',
 };
 
-const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
+const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrollToRequirementId }: OTDetailsModalProps) => {
   const { updateOTStage, updateOTDetails } = useOTStore();
-  const { documents, updateDocumentStatus, getDocumentVersions } = useDocumentStore();
+  const { documents, updateDocumentStatus, getDocumentVersions, reviewComprobantePago } = useDocumentStore();
   const { user } = useAuthStore();
   const { procedureTypes } = useProcedureTypeStore();
   const procedureType = procedureTypes.find((p) => p.id === ot.procedureTypeId);
@@ -76,6 +82,10 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
   const [versions, setVersions] = useState<Record<string, DocumentVersion[]>>({}); // docId → versions
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [isApproving, setIsApproving] = useState<Record<string, boolean>>({});
+  const [uploadComprobanteOpen, setUploadComprobanteOpen] = useState(false);
+  const [rejectComprobanteDocId, setRejectComprobanteDocId] = useState<string | null>(null);
+  const [approveComprobanteOpen, setApproveComprobanteOpen] = useState(false);
+  const [approvingComprobante, setApprovingComprobante] = useState(false);
 
   const nextStage = (() => {
     const i = STAGE_ORDER.indexOf(ot.stage);
@@ -104,7 +114,55 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
     return unsub;
   }, [open, ot.id]);
 
+  useEffect(() => {
+    if (!open || !scrollToRequirementId || defaultTab !== 'documents') return;
+    const timer = setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(
+        `[data-requirement-id="${scrollToRequirementId}"]`,
+      );
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('ring-4', 'ring-blue-400', 'ring-offset-2', 'transition-shadow');
+      const fadeTimer = setTimeout(() => {
+        el.classList.remove('ring-4', 'ring-blue-400', 'ring-offset-2');
+      }, 2000);
+      (el as HTMLElement & { _spiFadeTimer?: number })._spiFadeTimer = fadeTimer as unknown as number;
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [open, scrollToRequirementId, defaultTab, ot.id]);
+
   const otDocuments = documents.filter((d) => d.otId === ot.id);
+
+  const currentPaymentType: 'adelanto' | 'cierre' | null =
+    ot.stage === 'pago_adelanto' ? 'adelanto' :
+    ot.stage === 'pago_cierre' ? 'cierre' : null;
+
+  const comprobantePagoDoc = (() => {
+    if (!currentPaymentType) return undefined;
+    const matches = otDocuments.filter(
+      (d) => d.type === 'comprobante_pago' && d.paymentType === currentPaymentType,
+    );
+    if (matches.length === 0) return undefined;
+    return matches.sort((a, b) => {
+      const ta = Date.parse(a.uploadedAt || '') || 0;
+      const tb = Date.parse(b.uploadedAt || '') || 0;
+      return tb - ta;
+    })[0];
+  })();
+
+  const handleApproveComprobante = async () => {
+    if (!comprobantePagoDoc) return;
+    setApprovingComprobante(true);
+    try {
+      await reviewComprobantePago(comprobantePagoDoc.id, { status: 'approved' });
+      toast.success('Pago aprobado — OT avanzará automáticamente');
+      setApproveComprobanteOpen(false);
+    } catch (err: any) {
+      toast.error(err?.message || 'Error al aprobar el comprobante');
+    } finally {
+      setApprovingComprobante(false);
+    }
+  };
 
   const handleSaveNotes = async () => {
     setIsSavingNotes(true);
@@ -214,7 +272,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
 
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="flex-1 flex flex-col mt-6 min-h-0">
+        <Tabs defaultValue={defaultTab} key={`${ot?.id}-${defaultTab}`} className="flex-1 flex flex-col mt-6 min-h-0">
           <TabsList className="px-8 bg-transparent border-b border-slate-100 h-14 gap-8 shrink-0">
             <TabsTrigger value="overview" className="bg-transparent text-slate-400 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 px-0 h-14 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all">Resumen</TabsTrigger>
             <TabsTrigger value="documents" className="bg-transparent text-slate-400 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 px-0 h-14 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all">Documentación ({otDocuments.length})</TabsTrigger>
@@ -223,6 +281,17 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
 
           <ScrollArea className="flex-1 min-h-0 p-8">
             <TabsContent value="overview" className="mt-0 space-y-8">
+              {currentPaymentType && (
+                <PaymentWidget
+                  ot={ot}
+                  comprobante={comprobantePagoDoc}
+                  userRole={user?.role}
+                  onUploadClick={() => setUploadComprobanteOpen(true)}
+                  onApprove={() => setApproveComprobanteOpen(true)}
+                  onReject={() => comprobantePagoDoc && setRejectComprobanteDocId(comprobantePagoDoc.id)}
+                  approving={approvingComprobante}
+                />
+              )}
               <div className="grid md:grid-cols-2 gap-8">
                 {/* Left Column: Client Info */}
                 <div className="space-y-6">
@@ -540,7 +609,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
                        {reqDocs.map(req => {
                          const prog = (ot.requirementsProgress || {})[req.id];
                          return (
-                           <div key={req.id} className="bg-white border border-slate-200 p-6 rounded-[2rem] group transition-all shadow-sm hover:shadow-md">
+                           <div key={req.id} data-requirement-id={req.id} className="bg-white border border-slate-200 p-6 rounded-[2rem] group transition-all shadow-sm hover:shadow-md">
                              <div className="flex justify-between items-start mb-4">
                                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center">
                                  <Fingerprint size={24} />
@@ -701,6 +770,31 @@ const OTDetailsModal = ({ ot, open, onOpenChange }: OTDetailsModalProps) => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    {currentPaymentType && (
+      <UploadComprobanteModal
+        ot={ot}
+        open={uploadComprobanteOpen}
+        onOpenChange={setUploadComprobanteOpen}
+      />
+    )}
+
+    <RejectComprobanteModal
+      docId={rejectComprobanteDocId}
+      open={!!rejectComprobanteDocId}
+      onOpenChange={(open) => { if (!open) setRejectComprobanteDocId(null); }}
+    />
+
+    <ConfirmDialog
+      open={approveComprobanteOpen}
+      onOpenChange={setApproveComprobanteOpen}
+      title="Aprobar comprobante de pago"
+      description="¿Confirmás que el pago fue recibido y querés aprobar este comprobante? La OT avanzará automáticamente al siguiente stage."
+      confirmLabel="Aprobar pago"
+      confirmVariant="default"
+      onConfirm={handleApproveComprobante}
+      loading={approvingComprobante}
+    />
     </>
   );
 };
