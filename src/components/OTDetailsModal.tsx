@@ -301,12 +301,19 @@ const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrol
               <OTStatusBadge stage={ot.stage} size="sm" />
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">OT: {ot.id.substring(0, 10)}</span>
             </div>
+            {ot.pipefyCardId && (
+              <DialogDescription className="text-[11px] font-mono font-semibold text-slate-500 tracking-wide uppercase mb-1">
+                OT #{ot.pipefyCardId}
+              </DialogDescription>
+            )}
             <DialogTitle className="text-3xl font-black text-slate-900 tracking-tight uppercase">
               {ot.brandName || ot.title}
             </DialogTitle>
-            <DialogDescription className="sr-only">
-              Detalle completo de la orden de trabajo seleccionada
-            </DialogDescription>
+            {!ot.pipefyCardId && (
+              <DialogDescription className="sr-only">
+                Detalle completo de la orden de trabajo seleccionada
+              </DialogDescription>
+            )}
           </div>
 
         </DialogHeader>

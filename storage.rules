@@ -59,6 +59,11 @@ service firebase.storage {
       allow read, write: if isAdmin() || isOwnCompany(companyId);
     }
 
+    // SOW uploads at sows/{companyId}/{otId}/sow_*.png
+    match /sows/{companyId}/{allPaths=**} {
+      allow read, write: if isAdmin() || isOwnCompany(companyId);
+    }
+
     // Catch-all deny
     match /{allPaths=**} {
       allow read, write: if false;

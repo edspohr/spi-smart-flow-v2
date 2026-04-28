@@ -143,6 +143,11 @@ const ClientOTsPage = () => {
               {/* ROW 1 — Title + badges */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
+                  {ot.pipefyCardId && (
+                    <p className="text-[11px] font-mono font-semibold text-slate-500 tracking-wide mb-1">
+                      OT #{ot.pipefyCardId}
+                    </p>
+                  )}
                   <h3 className="font-bold text-slate-900 text-lg leading-snug">
                     {ot.brandName || ot.title}
                   </h3>

@@ -12,6 +12,27 @@ import {
 import { toast } from 'sonner';
 import { AlertTriangle, FlaskConical, Plus, Save } from 'lucide-react';
 
+const COUNTRIES = [
+  'Argentina',
+  'Bolivia',
+  'Brasil',
+  'Chile',
+  'Colombia',
+  'Costa Rica',
+  'Ecuador',
+  'El Salvador',
+  'Guatemala',
+  'Honduras',
+  'México',
+  'Nicaragua',
+  'Panamá',
+  'Paraguay',
+  'Perú',
+  'República Dominicana',
+  'Uruguay',
+  'Venezuela',
+];
+
 import useAuthStore from '@/store/useAuthStore';
 import useAdminStore from '@/store/useAdminStore';
 import { db } from '@/lib/firebase';
@@ -59,6 +80,7 @@ const ManualOTPage = () => {
   // Activity details
   const [actividadAsignada, setActividadAsignada] = useState('');
   const [marcaAsunto, setMarcaAsunto] = useState('');
+  const [country, setCountry] = useState<string>('Colombia');
   const [amount, setAmount] = useState('');
   const [fees, setFees] = useState('');
   const [paymentTerms, setPaymentTerms] = useState('Contado');
@@ -189,6 +211,7 @@ const ManualOTPage = () => {
         titularName,
         encargadoEmail: selectedAssigneeEmail,
         assignedToId:   assignedToId || null,
+        country,
         amount:         parseFloat(amount) || 0,
         fees:           parseFloat(fees) || 0,
         paymentTerms,
@@ -506,6 +529,20 @@ const ManualOTPage = () => {
                   placeholder="Ej: FITBIOTIC"
                   className="h-12 rounded-xl border-slate-200 bg-slate-50 font-medium"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  País del trámite
+                </Label>
+                <select
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 font-medium text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  {COUNTRIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

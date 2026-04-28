@@ -122,6 +122,13 @@ function KanbanCard({
     >
       <div className="flex flex-col gap-2.5">
 
+        {/* Row 0 — consecutive OT number from Pipefy */}
+        {ot.pipefyCardId && (
+          <p className="text-[10px] font-mono font-semibold text-slate-500 tracking-wide">
+            OT #{ot.pipefyCardId}
+          </p>
+        )}
+
         {/* Row 1 — procedure type chip + source badge */}
         <div className="flex items-center justify-between gap-2">
           {ot.procedureTypeCode ? (
@@ -612,6 +619,7 @@ const SPIAdminDashboard = () => {
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-white/95 backdrop-blur-md z-10 border-b border-slate-100">
                   <tr>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 w-32">N° OT</th>
                     <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Operación</th>
                     <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Empresa</th>
                     <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 text-center">Etapa</th>
@@ -625,6 +633,11 @@ const SPIAdminDashboard = () => {
                       onClick={() => setSelectedOT(ot)}
                       className="group hover:bg-slate-50/80 transition-all cursor-pointer"
                     >
+                      <td className="p-6">
+                        <span className="text-xs font-mono font-semibold text-slate-700">
+                          {ot.pipefyCardId ? `#${ot.pipefyCardId}` : '—'}
+                        </span>
+                      </td>
                       <td className="p-6">
                         <div className="flex flex-col">
                             <span className="font-black text-slate-900 group-hover:text-blue-600 transition-colors uppercase text-xs tracking-tight">
@@ -652,7 +665,7 @@ const SPIAdminDashboard = () => {
                   ))}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="py-16 text-center text-slate-500 text-sm font-bold">
+                      <td colSpan={5} className="py-16 text-center text-slate-500 text-sm font-bold">
                         Sin resultados
                       </td>
                     </tr>

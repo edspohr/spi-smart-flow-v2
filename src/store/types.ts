@@ -58,6 +58,10 @@ export interface OT {
   // Discount countdown — resolved when stage hits 'finalizado'
   discountStatus?: 'pending' | 'earned' | 'lost';
   discountResolvedAt?: string;
+  // Country selected when the OT was created (manual flow or Pipefy)
+  country?: string;
+  // Set when the client signs the per-OT Statement of Work
+  sowSignedAt?: string;
 }
 
 export interface Document {
@@ -145,6 +149,7 @@ export type PIDocumentType =
   | 'poder_legal'
   | 'cedula'
   | 'logo'
+  | 'sow'
   | 'certificado_constitucion'
   | 'unknown';
 
