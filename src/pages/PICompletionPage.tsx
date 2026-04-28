@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import ColorPicker from '@/components/ColorPicker';
 import DocumentUpload from '@/components/DocumentUpload';
 import PowerOfAttorneySigningModal from '@/components/PowerOfAttorneySigningModal';
+import { DiscountCountdown } from '@/components/DiscountCountdown';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
@@ -362,6 +363,9 @@ const PICompletionPage = () => {
           Marca: <span className="text-blue-600 font-black">{ot.brandName || ot.title}</span>
         </p>
       </div>
+
+      {/* Discount countdown banner */}
+      <DiscountCountdown ot={ot} variant="banner" className="mb-6" />
 
       {/* Progress bar */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 mb-6">

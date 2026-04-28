@@ -48,6 +48,7 @@ import PaymentWidget from "./PaymentWidget";
 import UploadComprobanteModal from "./UploadComprobanteModal";
 import RejectComprobanteModal from "./RejectComprobanteModal";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { DiscountCountdown } from "./DiscountCountdown";
 import { buildAuditCsv, downloadCsv, type SignatureEventRecord } from "../lib/auditExport";
 
 interface OTDetailsModalProps {
@@ -310,7 +311,11 @@ const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrol
 
         </DialogHeader>
 
-        <Tabs defaultValue={defaultTab} key={`${ot?.id}-${defaultTab}`} className="flex-1 flex flex-col mt-6 min-h-0">
+        <div className="px-8 pt-4 shrink-0">
+          <DiscountCountdown ot={ot} variant="banner" className="mb-4" />
+        </div>
+
+        <Tabs defaultValue={defaultTab} key={`${ot?.id}-${defaultTab}`} className="flex-1 flex flex-col mt-2 min-h-0">
           <TabsList className="px-8 bg-transparent border-b border-slate-100 h-14 gap-8 shrink-0">
             <TabsTrigger value="overview" className="bg-transparent text-slate-400 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 px-0 h-14 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all">Resumen</TabsTrigger>
             <TabsTrigger value="documents" className="bg-transparent text-slate-400 data-[state=active]:text-slate-900 data-[state=active]:border-b-2 data-[state=active]:border-blue-600 px-0 h-14 rounded-none text-[10px] font-bold uppercase tracking-widest transition-all">Documentación ({otDocuments.length})</TabsTrigger>

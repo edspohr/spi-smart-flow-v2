@@ -27,7 +27,7 @@ interface OTState {
   updateOTDetails: (otId: string, data: Partial<OT>) => Promise<void>;
 }
 
-const useOTStore = create<OTState>((set) => ({
+const useOTStore = create<OTState>((set, get) => ({
   ots: [],
   logs: [],
   loading: false,
@@ -159,7 +159,24 @@ const useOTStore = create<OTState>((set) => ({
     set({ error: null });
     try {
       const otRef = doc(db, 'ots', otId);
-      await updateDoc(otRef, { stage, updatedAt: new Date().toISOString() });
+      const updates: Record<string, any> = {
+        stage,
+        updatedAt: new Date().toISOString(),
+      };
+
+      // Resolve discount when reaching 'finalizado' for the first time
+      const ot = get().ots.find((o) => o.id === otId);
+      if (stage === 'finalizado' && ot && !ot.discountStatus) {
+        const createdAtMs = new Date(ot.createdAt).getTime();
+        const elapsedDays = (Date.now() - createdAtMs) / (24 * 60 * 60 * 1000);
+        const earned = elapsedDays <= 30;
+
+        updates.discountStatus     = earned ? 'earned' : 'lost';
+        updates.discountPercentage = earned ? 10 : 0;
+        updates.discountResolvedAt = new Date().toISOString();
+      }
+
+      await updateDoc(otRef, updates);
       await logAction('system', otId, `Etapa actualizada a: ${stage}`);
     } catch (err: any) {
       const message = err?.message || 'Error al actualizar la etapa';

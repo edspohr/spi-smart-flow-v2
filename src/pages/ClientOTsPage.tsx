@@ -7,6 +7,7 @@ import useProcedureTypeStore from '../store/useProcedureTypeStore';
 import { OTStatusBadge } from '@/components/OTStatusBadge';
 import TimelineStepper from '@/components/dashboard/TimelineStepper';
 import RequirementsChecklist from '@/components/RequirementsChecklist';
+import { DiscountCountdown } from '@/components/DiscountCountdown';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
@@ -163,6 +164,7 @@ const ClientOTsPage = () => {
                       Nuevo
                     </Badge>
                   )}
+                  <DiscountCountdown ot={ot} variant="compact" className="mt-2 sm:mt-0" />
                 </div>
               </div>
 

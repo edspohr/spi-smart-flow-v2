@@ -55,6 +55,9 @@ export interface OT {
   assignedToId?: string | null;
   assignedByNombre?: string;
   requirementsProgress?: Record<string, RequirementProgress>;
+  // Discount countdown — resolved when stage hits 'finalizado'
+  discountStatus?: 'pending' | 'earned' | 'lost';
+  discountResolvedAt?: string;
 }
 
 export interface Document {
