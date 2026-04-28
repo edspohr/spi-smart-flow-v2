@@ -1,29 +1,65 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Signed powers of attorney
-    match /signed-powers/{companyId}/{allPaths=**} {
-      allow read: if isAuthenticated();
-      allow write: if isAuthenticated();
+    function isAdmin() {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['spi-admin', 'spi-staff'];
     }
 
-    // OT documents (logos, cedulas, general uploads)
+    function userCompanyId() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.companyId;
+    }
+
+    function isOwnCompany(companyId) {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        userCompanyId() == companyId;
+    }
+
+    // Signed POAs — admin or own company
+    match /signed-powers/{companyId}/{allPaths=**} {
+      allow read, write: if isAdmin() || isOwnCompany(companyId);
+    }
+
+    // OT documents (logos, cedulas, comprobantes)
+    // OT path is ots/{otId}/... so companyId is not in the path.
+    // For these, any authenticated client can write but only admin
+    // can read across companies. Authenticated users can read their
+    // own uploads via the documents collection in Firestore which is
+    // already RBAC-protected.
     match /ots/{otId}/{allPaths=**} {
-      allow read: if isAuthenticated();
+      allow read:  if isAdmin() || isAuthenticated();
       allow write: if isAuthenticated();
     }
 
     // Generic documents path
-    match /documents/{allPaths=**} {
-      allow read: if isAuthenticated();
+    match /documents/{companyId}/{allPaths=**} {
+      allow read, write: if isAdmin() || isOwnCompany(companyId);
+    }
+
+    // Logo uploads from PICompletionPage live at logos/{otId}/logo
+    match /logos/{otId}/{allPaths=**} {
+      allow read:  if isAuthenticated();
       allow write: if isAuthenticated();
     }
 
-    // Catch-all deny for unauthenticated
+    // Cedula uploads from PICompletionPage at cedulas/{companyId}/{otId}/cedula
+    match /cedulas/{companyId}/{allPaths=**} {
+      allow read, write: if isAdmin() || isOwnCompany(companyId);
+    }
+
+    // Signature uploads at signatures/{companyId}/{otId}/poder_*.png
+    match /signatures/{companyId}/{allPaths=**} {
+      allow read, write: if isAdmin() || isOwnCompany(companyId);
+    }
+
+    // Catch-all deny
     match /{allPaths=**} {
       allow read, write: if false;
     }

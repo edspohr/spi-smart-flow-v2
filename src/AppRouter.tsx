@@ -15,6 +15,7 @@ import OTCompletionPage from './pages/OTCompletionPage';
 import NotFoundPage from './pages/NotFoundPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 import PendientePage from './pages/PendientePage';
+import ManualOTPage from './pages/ManualOTPage';
 
 // Admin routes — lazy-loaded so client bundle stays small.
 const SPIAdminDashboard           = lazy(() => import('./pages/SPIAdminDashboard'));
@@ -120,6 +121,14 @@ export default function AppRouter() {
                   <Suspense fallback={<PageLoader />}>
                     <TasasCambioPage />
                   </Suspense>
+                </AdminErrorBoundary>
+              }
+            />
+            <Route
+              path="/spi-admin/crear-ot-manual"
+              element={
+                <AdminErrorBoundary>
+                  <ManualOTPage />
                 </AdminErrorBoundary>
               }
             />

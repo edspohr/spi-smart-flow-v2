@@ -11,6 +11,7 @@ import {
   DollarSign,
   Inbox,
   KanbanSquare,
+  FlaskConical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -38,6 +39,7 @@ const Sidebar = () => {
           { href: '/spi-admin/usuarios',  label: 'Usuarios',          icon: Users },
           { href: '/spi-admin/companies', label: 'Empresas',          icon: Building2 },
           { href: '/spi-admin/vault',     label: 'Bóveda Global',     icon: ShieldCheck },
+          { href: '/spi-admin/crear-ot-manual', label: 'Crear OT Manual', icon: FlaskConical },
           { href: '/spi-admin/configuracion-solicitudes', label: 'Tipos de Actuación', icon: Cog },
           { href: '/spi-admin/tasas-cambio', label: 'Tasas de Cambio', icon: DollarSign },
         ];

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { db } from '@/lib/firebase';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import useOTStore from '../store/useOTStore';
 import useDocumentStore from '../store/useDocumentStore';
 import useAuthStore from '../store/useAuthStore';
@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
+import ColorPicker from '@/components/ColorPicker';
 import DocumentUpload from '@/components/DocumentUpload';
 import PowerOfAttorneySigningModal from '@/components/PowerOfAttorneySigningModal';
 import { cn } from '@/lib/utils';
@@ -117,7 +119,6 @@ const PICompletionPage = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { ots } = useOTStore();
-  const updateOTDetails = useOTStore((s) => s.updateOTDetails);
   const {
     documents,
     loading: docsLoading,
@@ -145,9 +146,11 @@ const PICompletionPage = () => {
   const initDone = useRef(false);
 
   // Section 1 form
+  const [brandName, setBrandName] = useState('');
+  const [description, setDescription] = useState('');
   const [usesColors, setUsesColors] = useState(false);
+  const [colors, setColors] = useState<string[]>([]);
   const [pantone, setPantone] = useState('');
-  const [brandClass, setBrandClass] = useState('');
   const [savingBrand, setSavingBrand] = useState(false);
 
   // Section 3 POA modal
@@ -188,15 +191,19 @@ const PICompletionPage = () => {
     if (initDone.current || !ot || docsLoading) return;
     initDone.current = true;
 
+    if (ot.brandName) setBrandName(ot.brandName);
+    if (ot.description) setDescription(ot.description);
     if (ot.pantone) setPantone(ot.pantone);
-    if ((ot as any).brandClass) setBrandClass((ot as any).brandClass);
-    if (ot.colors?.length) setUsesColors(true);
+    if (ot.colors?.length) {
+      setColors(ot.colors);
+      setUsesColors(true);
+    }
 
     const lDoc = documents.find((d) => d.otId === otId && d.type === 'logo');
     const pDoc = documents.find((d) => d.otId === otId && d.type === 'poder_legal');
     const cDoc = documents.find((d) => d.otId === otId && d.type === 'cedula');
 
-    const s1 = !!(ot.pantone || (ot as any).brandClass);
+    const s1 = !!(ot.brandName && ot.description);
     const s2 = !!lDoc;
     const s3 = !!pDoc;
     const s4 = !!cDoc;
@@ -225,10 +232,12 @@ const PICompletionPage = () => {
     if (!otId || savingBrand) return;
     setSavingBrand(true);
     try {
-      await updateOTDetails(otId, {
-        pantone: usesColors && pantone ? pantone : undefined,
-        colors: usesColors ? [pantone || 'Sin especificar'] : [],
-        ...({ brandClass } as any),
+      await updateDoc(doc(db, 'ots', otId), {
+        brandName:   brandName.trim(),
+        description: description.trim(),
+        colors:      usesColors ? colors : [],
+        pantone:     usesColors ? pantone.trim() : '',
+        updatedAt:   new Date().toISOString(),
       });
       setSec1Done(true);
       setOpen1(false);
@@ -382,46 +391,63 @@ const PICompletionPage = () => {
           onToggle={() => setOpen1((v) => !v)}
         >
           <div className="space-y-5">
+            {/* Brand name */}
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Nombre comercial de la marca <span className="text-blue-600">*</span>
+              </Label>
+              <Input
+                value={brandName}
+                onChange={(e) => setBrandName(e.target.value)}
+                placeholder="Ej: FITBIOTIC"
+                className="h-12 rounded-xl border-slate-200 bg-slate-50 font-medium"
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                Descripción de productos/servicios <span className="text-blue-600">*</span>
+              </Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Ej: Suplementos nutricionales y probióticos..."
+                rows={3}
+                className="rounded-xl border-slate-200 bg-slate-50 font-medium"
+              />
+            </div>
+
             {/* Colors toggle */}
             <div className="flex items-center justify-between py-2">
               <div>
-                <p className="text-sm font-bold text-slate-800">¿La marca usa colores específicos?</p>
+                <p className="text-sm font-bold text-slate-800">¿La marca usa colores?</p>
                 <p className="text-xs text-slate-400 font-medium">Activa si el diseño tiene colores registrados</p>
               </div>
               <Switch checked={usesColors} onCheckedChange={setUsesColors} />
             </div>
 
-            {/* Pantone (conditional) */}
+            {/* Color picker + Pantone (conditional) */}
             {usesColors && (
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                  Color Pantone (Opcional)
-                </Label>
-                <Input
-                  value={pantone}
-                  onChange={(e) => setPantone(e.target.value)}
-                  placeholder="ej. Pantone 286 C / 19-4052 Classic Blue"
-                  className="h-12 rounded-xl border-slate-200 bg-slate-50 font-medium"
-                />
-              </div>
+              <>
+                <ColorPicker colors={colors} onChange={setColors} />
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                    Color Pantone (Opcional)
+                  </Label>
+                  <Input
+                    value={pantone}
+                    onChange={(e) => setPantone(e.target.value)}
+                    placeholder="ej. Pantone 286 C / 19-4052 Classic Blue"
+                    className="h-12 rounded-xl border-slate-200 bg-slate-50 font-medium"
+                  />
+                </div>
+              </>
             )}
-
-            {/* Brand class */}
-            <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
-                Clase de Marca <span className="text-blue-600">*</span>
-              </Label>
-              <Input
-                value={brandClass}
-                onChange={(e) => setBrandClass(e.target.value)}
-                placeholder="ej. Clase 35 — Publicidad y gestión empresarial"
-                className="h-12 rounded-xl border-slate-200 bg-slate-50 font-medium"
-              />
-            </div>
 
             <Button
               onClick={handleSaveBrand}
-              disabled={savingBrand || !brandClass.trim()}
+              disabled={savingBrand || !brandName.trim() || !description.trim()}
               className="h-11 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black uppercase tracking-widest text-xs disabled:opacity-50"
             >
               {savingBrand
