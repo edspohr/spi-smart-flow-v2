@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { auth, db } from "../lib/firebase";
-import { onAuthStateChanged, signOut as firebaseSignOut, signInWithEmailAndPassword } from 'firebase/auth';
+import {
+  onAuthStateChanged,
+  signOut as firebaseSignOut,
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+} from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 // Define types for roles
@@ -23,6 +29,7 @@ interface AuthState {
   initializeAuthListener: () => () => void;
   logout: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   markNotificationsRead: () => Promise<void>;
 }
 
@@ -104,6 +111,42 @@ const useAuthStore = create<AuthState>((set) => ({
       // onAuthStateChanged handles the rest
     } catch (error) {
       set({ loading: false });
+      throw error;
+    }
+  },
+
+  signInWithGoogle: async () => {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const email = result.user.email || '';
+      const domain = email.split('@')[1]?.toLowerCase() || '';
+
+      const allowedDomains = (import.meta.env.VITE_ALLOWED_AUTH_DOMAINS || '')
+        .split(',')
+        .map((d: string) => d.trim().toLowerCase())
+        .filter(Boolean);
+
+      // Domain whitelist check
+      if (allowedDomains.length > 0 && !allowedDomains.includes(domain)) {
+        await firebaseSignOut(auth);
+        throw new Error(
+          `El dominio ${domain} no está autorizado. Usa una cuenta corporativa.`
+        );
+      }
+
+      // Auto-heal: the existing onAuthStateChanged listener creates a
+      // Firestore user doc with role: 'guest' on first sign-in. No
+      // additional work needed here regardless of provider.
+    } catch (error: any) {
+      if (error.code === 'auth/popup-closed-by-user') {
+        throw new Error('Inicio de sesión cancelado.');
+      }
+      if (error.code === 'auth/popup-blocked') {
+        throw new Error('El navegador bloqueó la ventana emergente. Habilítala e intenta de nuevo.');
+      }
       throw error;
     }
   },
