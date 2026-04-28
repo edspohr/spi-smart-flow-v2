@@ -35,7 +35,7 @@ SPI Smart Flow es una aplicación web que permite a SPI Americas gestionar el re
 | **Validación IA de documentos** | Análisis automático con Gemini 2.5 Flash: extracción de RUT, nombre, vigencia y tipo de documento |
 | **Auto-aprobación** | Si la IA tiene confianza > 85% y el documento es legible, se valida automáticamente sin intervención manual |
 | **Bóveda inteligente** | Documentos vigentes y validados se reutilizan en futuras OTs del mismo cliente/empresa |
-| **Autenticación sin contraseña** | Acceso por magic link enviado al correo; no se almacenan contraseñas |
+| **Autenticación corporativa** | Google Sign-In (preferido, dominios autorizados) y email + contraseña como fallback |
 | **Firma digital** | Captura de firma en canvas integrado en el flujo documental |
 | **Integración Pipefy** | Creación automática de OTs y sincronización de etapas/pagos desde el CRM vía webhooks |
 | **Recordatorios automáticos** | Alertas de vencimiento y escalamientos generados por Cloud Functions programadas |
@@ -45,7 +45,7 @@ SPI Smart Flow es una aplicación web que permite a SPI Americas gestionar el re
 
 ## 2. Roles y permisos
 
-El sistema tiene tres roles con acceso completamente diferenciado:
+El sistema tiene cuatro roles con acceso diferenciado:
 
 ### `spi-admin` — Equipo interno SPI Americas
 - Acceso completo a todas las OTs, documentos y empresas
@@ -54,6 +54,13 @@ El sistema tiene tres roles con acceso completamente diferenciado:
 - Gestionar el catálogo de empresas y usuarios
 - Cambiar etapas del kanban
 - Ver bitácora de todos los clientes
+
+### `spi-staff` — Equipo interno SPI (auto-creado desde Pipefy)
+Mismo nivel de acceso que spi-admin para esta versión piloto.
+Se crea automáticamente cuando el webhook de Pipefy detecta un
+Encargado de Actividad cuyo email no existe en Smart Flow. El
+password inicial debe ser reemplazado vía password reset.
+Diferenciación de permisos vs spi-admin queda como ítem post-pilot.
 
 ### `client` — Cliente corporativo
 - Ver únicamente sus propias OTs (filtradas por `companyId`)
@@ -79,30 +86,31 @@ El sistema tiene tres roles con acceso completamente diferenciado:
 └─────────────┘    └───────────────┘    └──────────┘    └──────────────┘    └────────────┘
 ```
 
-1. **Creación** — Un admin crea la OT en `NewRequestPage` o llega automáticamente desde Pipefy
-2. **Documentación** — El cliente sube los documentos requeridos desde `ClientDashboard`
+1. **Creación** — Un admin crea la OT manualmente en `ManualOTPage` (modo pruebas) o llega automáticamente desde Pipefy
+2. **Documentación** — El cliente sube los documentos requeridos desde `ClientInboxPage` / `ClientOTsPage`
 3. **Validación IA** — Cada documento se analiza con Gemini 2.5 Flash en el momento de la subida
 4. **Auto-aprobación o revisión manual** — Si `confidence > 0.85` y `requiresManualReview === false`, el sistema aprueba automáticamente; si no, queda pendiente para el admin
 5. **Avance de etapa** — El admin mueve la OT por el kanban a medida que se completan los requisitos de pago y gestión
 6. **Cierre** — La OT llega a `finalizado` y los documentos vigentes quedan disponibles en la Bóveda
 
-### Flujo de autenticación (Magic Link)
+### Autenticación
 
-```
-Usuario ingresa email
-        ↓
-Sistema envía magic link al correo (Firebase Auth)
-        ↓
-Usuario hace clic en el enlace
-        ↓
-completeMagicLinkSignIn() detecta el callback URL
-        ↓
-onAuthStateChanged busca perfil en Firestore /users/{uid}
-        ↓
-Si no existe → auto-heal: crea perfil con role: "guest"
-        ↓
-AppRouter redirige según role: client | spi-admin | guest
-```
+El sistema soporta dos métodos de autenticación:
+
+#### Google Sign-In (recomendado para usuarios SPI)
+Usuarios con cuenta de Google Workspace de dominios autorizados
+pueden ingresar con un click. La whitelist de dominios se configura
+via `VITE_ALLOWED_AUTH_DOMAINS` (separados por coma, sin espacios).
+
+#### Email + contraseña (fallback)
+Para usuarios sin cuenta corporativa Google. La creación de cuentas
+es admin-only — un spi-admin crea el usuario en Firebase Console y
+setea su rol y companyId en Firestore.
+
+#### Auto-heal de usuarios nuevos
+Cualquier usuario que ingrese por primera vez sin documento en
+/users/{uid} obtiene rol 'guest' automáticamente. Un spi-admin
+debe promoverlo a 'client' o 'spi-admin' desde CompaniesPage.
 
 ### Flujo de validación documental
 
@@ -140,11 +148,6 @@ Documento vigente con isVaultEligible: true → disponible en Bóveda
 - Vista global de todas las OTs con filtros y búsqueda
 - Estadísticas por empresa, etapa y área (PI / AR)
 
-### Creación de OT (`/spi-admin/new-request`)
-- Formulario completo: empresa, cliente, servicio, montos, fechas límite
-- Carga de logo y captura de firma digital
-- Asignación de colores corporativos de la marca
-
 ### Bóveda Admin (`/spi-admin/vault`)
 - Vista de todos los documentos validados del sistema
 - Acciones de validación/rechazo manual
@@ -153,6 +156,30 @@ Documento vigente con isVaultEligible: true → disponible en Bóveda
 - CRUD de empresas
 - Estadísticas de OTs y documentos por empresa
 - Gestión de usuarios asociados
+
+### Creación manual de OT — modo pruebas (`/spi-admin/crear-ot-manual`)
+Pantalla temporal para crear OTs sin depender de Pipefy. Banner
+amarillo indica claramente que es modo de pruebas. Solo accesible
+para spi-admin. Permite capturar todos los campos que llegarían
+desde Pipefy incluyendo el pipefyCardId que se ingresa manualmente.
+
+### Sistema de descuento por cierre temprano
+Las OTs nacen con un countdown de 30 días desde su `createdAt`.
+Si el cliente lleva la OT a stage `finalizado` dentro de ese
+plazo, conserva un 10% de descuento sobre `amount + fees`. Pasados
+los 30 días el descuento se pierde automáticamente.
+
+El countdown es visible en:
+- ClientOTsPage (badge compacto al lado de cada OT)
+- PICompletionPage (banner arriba del flujo)
+- OTDetailsModal (banner para spi-admin)
+
+Estados visuales: activo (azul), urgente (amarillo, ≤ 7 días),
+crítico (rojo + animate-pulse, ≤ 24 h), ganado (verde permanente),
+perdido (gris permanente).
+
+Resolución del descuento sucede server-side en useOTStore.updateOTStage
+cuando el stage cambia a 'finalizado'.
 
 ---
 
@@ -187,7 +214,7 @@ La capa de datos está dividida en stores modulares de Zustand. Cada store suscr
 ```
 src/store/
 ├── types.ts              # Tipos compartidos (OT, Document, Log, Company…)
-├── useAuthStore.ts       # Sesión, magic link, perfil de usuario
+├── useAuthStore.ts       # Sesión (Google Sign-In + email/password), perfil de usuario
 ├── useOTStore.ts         # OTs, bitácora, subscripciones, createOT, updateOTStage
 ├── useDocumentStore.ts   # Documentos, Bóveda, validaciones, reemplazo de archivos
 ├── useAdminStore.ts      # Usuarios, empresas, CRUD admin
@@ -220,7 +247,7 @@ src/lib/
 ### Backend / Infraestructura
 | Tecnología | Uso |
 |---|---|
-| Firebase Authentication | Autenticación sin contraseña (magic links) |
+| Firebase Authentication | Google Sign-In (con whitelist de dominios) + email/contraseña |
 | Cloud Firestore | Base de datos NoSQL en tiempo real |
 | Firebase Storage | Almacenamiento de archivos/documentos |
 | Cloud Functions (Gen 2, Node 22) | Lógica server-side, webhooks, tareas programadas |
@@ -244,11 +271,11 @@ spi-smart-flow-v2/
 │   ├── App.tsx                     # Root — inicializa auth listener
 │   ├── AppRouter.tsx               # Routing por rol
 │   ├── pages/
-│   │   ├── LoginPage.tsx           # Magic link auth
-│   │   ├── ClientDashboard.tsx     # Kanban del cliente
+│   │   ├── LoginPage.tsx           # Google Sign-In + email/password
+│   │   ├── ClientInboxPage.tsx     # Bandeja de acciones del cliente
+│   │   ├── ClientOTsPage.tsx       # Listado de OTs del cliente
 │   │   ├── ClientVault.tsx         # Bóveda del cliente
 │   │   ├── SPIAdminDashboard.tsx   # Panel admin
-│   │   ├── NewRequestPage.tsx      # Creación de OT
 │   │   ├── SPIVault.tsx            # Bóveda admin
 │   │   ├── CompaniesPage.tsx       # Gestión de empresas
 │   │   └── GuestDashboard.tsx      # Vista invitado
@@ -456,17 +483,20 @@ Procesa eventos entrantes de Pipefy. Rutea según `payload.action`:
 |---|---|
 | `card.create` (default) | Crea OT + documentos por defecto; busca cliente por email |
 | `card.move` | Mapea el nombre de la fase Pipefy al stage de la OT y actualiza Firestore |
-| `card.field.update` | Sincroniza `amount`, `fees`, `paymentTerms`, `deadline` |
+| `card.field_update` | Sincroniza `amount`, `fees`, `paymentTerms`, `deadline` |
 
 **Mapeo de fases Pipefy → stages:**
 
 | Keywords de la fase | Stage |
 |---|---|
-| solicitud, recepción, inicio, nueva | `solicitud` |
-| pago adelanto, cobro inicial, adelanto | `pago_adelanto` |
-| gestión, proceso, trámite | `gestion` |
-| pago cierre, cobro final, cierre | `pago_cierre` |
-| finalizado, completado, terminado | `finalizado` |
+| asignando | `solicitud` |
+| en proceso | `pago_adelanto` |
+| en espera | `gestion` |
+| hecho | `finalizado` |
+| cancelado | `finalizado` |
+
+Note: el mapeo a `pago_cierre` está pendiente — ver
+/docs/debt/DEBT-003.
 
 ---
 
@@ -486,11 +516,11 @@ Misma lógica que `checkDocumentDeadlines`, activable manualmente para testing.
 - **Dirección:** Pipefy → SPI Smart Flow (inbound webhook)
 - **URL:** `https://createotfrompipefy-my5tykotyq-uc.a.run.app`
 - **Autenticación:** Por IP o secret header (configurar en Pipefy Automation)
-- **Eventos soportados:** `card.create`, `card.move`, `card.field.update`
+- **Eventos soportados:** `card.create`, `card.move`, `card.field_update`
 
 ### Firebase Authentication
-- Proveedor: **Email link (passwordless)**
-- Debe estar habilitado en Firebase Console → Authentication → Sign-in method
+- Proveedores: **Google** (recomendado, con whitelist de dominios via `VITE_ALLOWED_AUTH_DOMAINS`) y **Email + contraseña** (fallback)
+- Ambos proveedores deben estar habilitados en Firebase Console → Authentication → Sign-in method
 - Dominios autorizados: `localhost` (dev) + dominio de producción
 
 ### Google Gemini

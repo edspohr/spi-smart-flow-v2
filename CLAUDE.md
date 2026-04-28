@@ -41,19 +41,22 @@ No test suite is configured.
 - **Frontend:** React 19 + TypeScript, Vite, Tailwind CSS, Radix UI (shadcn/ui pattern)
 - **State:** Zustand — modular stores (see below)
 - **Backend:** Firebase — Auth, Firestore, Storage, Cloud Functions (Node 22)
-- **AI:** Google Gemini 1.5 Flash via Cloud Function for document OCR/analysis
+- **AI:** Google Gemini 2.5 Flash via Cloud Function for document OCR/analysis
 - **Path alias:** `@` → `./src`
 
 ### Authentication
-Email + password for all users via `signInWithEmailAndPassword`. Registration is admin-only (via Firebase Console — create user, set password, then set their role + companyId in Firestore `users` collection).
-
-- New users without a Firestore document are auto-healed to a `guest` role on first sign-in
-- Magic link is disabled (was unreliable); can be re-enabled later via `useAuthStore` if needed
+Two auth methods:
+- Google Sign-In via `signInWithGoogle` (preferred). Domain whitelist
+  enforced client-side via `VITE_ALLOWED_AUTH_DOMAINS`.
+- Email + password via `signInWithEmailAndPassword` (fallback).
+Registration is admin-only. New users without a Firestore document
+are auto-healed to a guest role on first sign-in.
 
 ### User Roles & Routing
-Three roles defined in `src/AppRouter.tsx`:
-- **client** → `ClientDashboard`, `ClientVault`
-- **spi-admin** → `SPIAdminDashboard`, `NewRequestPage`, `SPIVault`, `CompaniesPage`
+Four roles:
+- **client** → `ClientInboxPage`, `ClientOTsPage`, `ClientVault`
+- **spi-admin** → `SPIAdminDashboard`, `ManualOTPage`, `SPIVault`, `CompaniesPage`
+- **spi-staff** → same routes as `spi-admin` (label-only differentiation)
 - **guest** → `GuestDashboard`
 
 ### Zustand Stores
@@ -62,7 +65,7 @@ The data layer is split into three modular stores. `src/store/useDataStore.ts` i
 
 | Store | File | Owns |
 |---|---|---|
-| `useAuthStore` | `src/store/useAuthStore.ts` | Auth state, magic-link methods, user profile |
+| `useAuthStore` | `src/store/useAuthStore.ts` | Auth state, Google + email/password sign-in, user profile |
 | `useOTStore` | `src/store/useOTStore.ts` | `ots[]`, `logs[]`, OT subscriptions, `createOT`, `updateOTStage` |
 | `useDocumentStore` | `src/store/useDocumentStore.ts` | `documents[]`, `vaultDocuments[]`, vault logic, `updateDocumentStatus`, `replaceDocument` |
 | `useAdminStore` | `src/store/useAdminStore.ts` | `users[]`, `companies[]`, company CRUD, admin subscriptions |
@@ -90,7 +93,7 @@ Stage transitions: `useOTStore.updateOTStage()`. Pipefy `card.move` events also 
 ### Document Flow
 1. User uploads file via `DocumentUpload.tsx`
 2. `analyzeDocument(file, docId, otId)` in `src/lib/gemini.ts` calls the Cloud Function
-3. Cloud Function calls Gemini 1.5 Flash, extracts: `documentType`, `name`, `rut`, `validUntil`, `confidence`, `requiresManualReview`
+3. Cloud Function calls Gemini 2.5 Flash, extracts: `documentType`, `name`, `rut`, `validUntil`, `confidence`, `requiresManualReview`
 4. **Auto-approval**: if `confidence > 0.85` AND `requiresManualReview === false`, the function updates the document to `status: 'validated'` server-side and returns `autoApproved: true`
 5. Manual review path: `pending` → `uploaded` → `validating_ai` → `ocr_processed` → `validated`
 
@@ -104,8 +107,36 @@ Stage transitions: `useOTStore.updateOTStage()`. Pipefy `card.move` events also 
 - `pipefy.ts` — `createOTFromPipefy` (HTTPS webhook): routes on `payload.action`
   - `card.create` → creates OT + default documents
   - `card.move` → maps Pipefy phase name to OT stage via keyword table, updates Firestore
-  - `card.field.update` → syncs `amount`, `fees`, `paymentTerms`, `deadline`
+  - `card.field_update` → syncs `amount`, `fees`, `paymentTerms`, `deadline`
 - `reminders.ts` — Scheduled daily function for deadline reminders and escalation alerts
+
+PHASE_TO_STAGE keyword mapping (real Pipefy pipe phase names):
+- `asignando` → `solicitud`
+- `en proceso` → `pago_adelanto`
+- `en espera` → `gestion`
+- `hecho` → `finalizado`
+- `cancelado` → `finalizado`
+- (`pago_cierre` mapping is pending — see /docs/debt/DEBT-003)
+
+### Companies & Users management (CompaniesPage)
+Single page header "Empresas". Each company card has an expandable
+"Usuarios Vinculados" section that shows users filtered by companyId.
+No top-level tabs.
+
+### Manual OT entry — pilot test mode
+Route `/spi-admin/crear-ot-manual`. spi-admin-only. Yellow banner
+marks the page as temporary. Captures the same fields a Pipefy
+card would deliver, including `pipefyCardId` entered manually.
+Used for internal pilot testing without Pipefy dependency.
+Will be removed or hidden behind a feature flag once Pipefy
+integration is fully validated.
+
+### Discount countdown
+OTs gain a 10% discount if they reach stage `finalizado` within
+30 days of `createdAt`. Resolution is server-side in
+`useOTStore.updateOTStage`. Visible in `ClientOTsPage` (compact pill),
+`PICompletionPage` (banner), `OTDetailsModal` (banner). Helper:
+`src/lib/discountCountdown.ts`. Component: `src/components/DiscountCountdown.tsx`.
 
 ### Environment
 Requires `.env.local` with `VITE_FIREBASE_*` variables (apiKey, authDomain, projectId, storageBucket, messagingSenderId, appId). Firebase project: `spi-smart-flow`.

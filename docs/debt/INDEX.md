@@ -5,8 +5,9 @@
 ## Resumen
 - Críticos abiertos: 0
 - Altos abiertos: 3
-- Medios abiertos: 9
+- Medios abiertos: 8
 - Bajos abiertos: 5
+- Resueltos: 1
 
 ## Cómo usar este registro
 1. Cada item tiene su propio archivo `DEBT-NNN-slug.md`
@@ -31,7 +32,7 @@
 | [DEBT-008](./DEBT-008-userspage-dead-code.md) | UsersPage.tsx sin uso (335 líneas dead code) | Low | Open | Post-pilot | S |
 | [DEBT-009](./DEBT-009-otstatusbadge-spec-mismatch.md) | OTStatusBadge usa -50/-700 en vez de -100/-800 | Low | Open | Post-pilot | S |
 | [DEBT-010](./DEBT-010-spivault-type-filter.md) | SPIVault no filtra por tipos vault | Low | Open | Post-pilot | S |
-| [DEBT-011](./DEBT-011-readme-claudemd-drift.md) | README y CLAUDE.md desactualizados | Medium | In progress | Post-pilot | M |
+| [DEBT-011](./DEBT-011-readme-claudemd-drift.md) | README y CLAUDE.md desactualizados | Medium | Resolved | Post-pilot | M |
 | [DEBT-012](./DEBT-012-google-domain-server-side.md) | Whitelist de dominios solo en cliente | High | Open | Production | M |
 | [DEBT-013](./DEBT-013-guest-promotion-notification.md) | No hay notificación cuando entra guest nuevo | Medium | Open | Post-pilot | S |
 | [DEBT-014](./DEBT-014-role-promotion-ui.md) | No hay UI para promover guest a client/spi-admin | Medium | Open | Post-pilot | M |
