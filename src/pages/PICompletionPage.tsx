@@ -367,7 +367,8 @@ const PICompletionPage = () => {
       setOpen1(false);
       if (!sec2Done) setOpen2(true);
       toast.success('Información de marca guardada');
-    } catch {
+    } catch (err) {
+      console.error('[Section 1] Save brand failed:', err);
       toast.error('Error al guardar');
     } finally {
       setSavingBrand(false);
@@ -394,7 +395,8 @@ const PICompletionPage = () => {
       setOpen2(false);
       if (!sec3Done) setOpen3(true);
       toast.success('Logotipo guardado');
-    } catch {
+    } catch (err) {
+      console.error('[Section 2] Logo upload failed:', err);
       toast.error('Error al guardar logotipo');
     } finally {
       setIsUploadingLogo(false);
@@ -415,7 +417,8 @@ const PICompletionPage = () => {
         setOpen4(false);
         toast.success('Cédula vinculada desde Bóveda');
       }
-    } catch {
+    } catch (err) {
+      console.error('[Vault link] failed:', err);
       toast.error('Error al vincular documento');
     } finally {
       setSavingVault(null);
@@ -441,7 +444,8 @@ const PICompletionPage = () => {
       setSec4Done(true);
       setOpen4(false);
       toast.success('Cédula guardada');
-    } catch {
+    } catch (err) {
+      console.error('[Section 4] Cedula upload failed:', err);
       toast.error('Error al guardar cédula');
     } finally {
       setIsUploadingCedula(false);

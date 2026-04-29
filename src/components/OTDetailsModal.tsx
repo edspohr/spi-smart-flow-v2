@@ -198,6 +198,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrol
       toast.success('Pago aprobado — OT avanzará automáticamente');
       setApproveComprobanteOpen(false);
     } catch (err: any) {
+      console.error('[OTDetails] approve comprobante failed:', err);
       toast.error(err?.message || 'Error al aprobar el comprobante');
     } finally {
       setApprovingComprobante(false);
@@ -210,6 +211,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrol
       await updateOTDetails(ot.id, { internalNotes });
       toast.success("Notas guardadas correctamente");
     } catch (error) {
+      console.error('[OTDetails] save internal notes failed:', error);
       toast.error("Error al guardar notas");
     } finally {
       setIsSavingNotes(false);
@@ -237,7 +239,8 @@ const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrol
       }
 
       toast.success('Documento aprobado');
-    } catch {
+    } catch (err) {
+      console.error('[OTDetails] approve document failed:', err);
       toast.error('Error al aprobar el documento');
     } finally {
       setIsApproving(prev => ({ ...prev, [docId]: false }));
@@ -269,7 +272,8 @@ const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrol
       toast.info('Documento rechazado');
       setRejectTarget(null);
       setRejectReason("");
-    } catch {
+    } catch (err) {
+      console.error('[OTDetails] reject document failed:', err);
       toast.error('Error al rechazar el documento');
     } finally {
       setIsRejecting(false);
@@ -286,7 +290,8 @@ const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrol
       try {
         const v = await getDocumentVersions(docId);
         setVersions((prev) => ({ ...prev, [docId]: v }));
-      } catch {
+      } catch (err) {
+        console.error('[OTDetails] load document versions failed:', err);
         setVersions((prev) => ({ ...prev, [docId]: [] }));
       }
     }

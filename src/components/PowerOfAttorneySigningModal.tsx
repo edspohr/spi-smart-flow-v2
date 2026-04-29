@@ -161,8 +161,9 @@ const PowerOfAttorneySigningModal = ({
         setDomicile(loc || [company?.address].filter(Boolean).join(''));
         setCity(company?.city || '');
         setCountry(company?.country || '');
-      } catch {
+      } catch (err) {
         // Non-fatal: user can fill fields manually
+        console.error('[POA] load company/user data failed:', err);
       } finally {
         setLoadingData(false);
       }
@@ -252,7 +253,7 @@ const PowerOfAttorneySigningModal = ({
       });
       documentId = docRef.id;
     } catch (err) {
-      console.error('POA pre-signature error:', err);
+      console.error('[POA] PDF generate / upload / addDoc failed:', err);
       Sentry.captureException(err, { extra: { otId, requirementId, stage: 'pre-cf' } });
       const message = err instanceof Error && err.message
         ? `Error al generar el documento: ${err.message}`
@@ -321,7 +322,7 @@ const PowerOfAttorneySigningModal = ({
       // the modal on success, which would hide the confirmation view. We fire
       // it from the "Cerrar" button in the success UI instead.
     } catch (err) {
-      console.error('POA evidence registration failed:', err);
+      console.error('[POA] CF call / OT update / vault subcollection write failed:', err);
       Sentry.captureException(err, {
         extra: { otId, requirementId, documentId, stage: 'register-signature-event' },
       });
