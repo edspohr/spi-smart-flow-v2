@@ -132,6 +132,26 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ── Company Vault (subcollection) ────────────────────────────────────────
+    // Reusable signed documents (POAs, cédulas, etc.) keyed by companyId.
+    // Subcollections do NOT inherit parent rules in Firestore — explicit match required.
+    match /companies/{companyId}/vault/{doc=**} {
+      // Read: admins always; clients only their own company
+      allow read: if isAdmin() ||
+                     (isAuthenticated() && myCompanyId() == companyId);
+
+      // Write: admins always; clients only their own company AND only for
+      // vault-eligible document types
+      allow create, update: if isAdmin() ||
+                               (isAuthenticated()
+                                && myCompanyId() == companyId
+                                && request.resource.data.type in
+                                   ['poder_legal', 'poder_simple', 'cedula', 'certificado_constitucion']);
+
+      // Delete: admin-only
+      allow delete: if isAdmin();
+    }
+
     // ── Default: deny everything else ────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
