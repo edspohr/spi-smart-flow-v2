@@ -84,16 +84,21 @@ const CreateUserModal = ({ open, onOpenChange, companies }: Props) => {
     if (!canSubmit) return;
     setSubmitting(true);
     try {
-      await createUserAccount({
+      const result = await createUserAccount({
         email: email.trim(),
         password,
         displayName: displayName.trim() || email.trim().split('@')[0],
         role,
         companyId: companyRequired ? companyId : '',
       });
-      toast.success(`Usuario ${email.trim()} creado correctamente.`);
+      toast.success(
+        result.reactivated
+          ? `Usuario ${email.trim()} reactivado correctamente.`
+          : `Usuario ${email.trim()} creado correctamente.`,
+      );
       onOpenChange(false);
     } catch (err: any) {
+      console.error('[CreateUser] failed:', err);
       toast.error(err?.message || 'Error al crear el usuario.');
     } finally {
       setSubmitting(false);

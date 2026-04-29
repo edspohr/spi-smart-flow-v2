@@ -156,23 +156,61 @@ exports.createUser = (0, https_1.onCall)(async (request) => {
         throw new https_1.HttpsError('invalid-argument', 'email, password and role are required.');
     }
     try {
-        const userRecord = await admin.auth().createUser({ email, password, displayName });
-        await db.collection('users').doc(userRecord.uid).set({
+        // Probe for existing Auth user — reactivate if soft-deleted, create otherwise
+        let authUser;
+        let isReactivation = false;
+        try {
+            authUser = await admin.auth().getUserByEmail(email);
+            isReactivation = true;
+            console.log(`createUser: reactivating existing user ${email} (uid=${authUser.uid})`);
+            if (authUser.disabled) {
+                await admin.auth().updateUser(authUser.uid, { disabled: false });
+            }
+            if (password) {
+                await admin.auth().updateUser(authUser.uid, { password });
+            }
+            if (displayName && displayName !== authUser.displayName) {
+                await admin.auth().updateUser(authUser.uid, { displayName });
+            }
+        }
+        catch (err) {
+            if ((err === null || err === void 0 ? void 0 : err.code) === 'auth/user-not-found') {
+                authUser = await admin.auth().createUser({ email, password, displayName });
+                console.log(`createUser: created new user ${email} (uid=${authUser.uid})`);
+            }
+            else {
+                throw err;
+            }
+        }
+        // Write/overwrite Firestore profile, clearing any soft-delete flags on reactivation
+        const profile = {
             email,
-            displayName: displayName || '',
+            displayName: displayName || email.split('@')[0],
             role,
             companyId: companyId || '',
-            disabled: false,
-            createdAt: new Date().toISOString(),
-        });
+            updatedAt: new Date().toISOString(),
+        };
+        if (isReactivation) {
+            profile.reactivatedAt = new Date().toISOString();
+            profile.reactivatedBy = request.auth.uid;
+            profile.disabled = admin.firestore.FieldValue.delete();
+            profile.deletedAt = admin.firestore.FieldValue.delete();
+        }
+        else {
+            profile.createdAt = new Date().toISOString();
+            profile.disabled = false;
+        }
+        await db.collection('users').doc(authUser.uid).set(profile, { merge: true });
         await db.collection('logs').add({
             otId: 'system',
             userId: request.auth.uid,
-            action: `Usuario creado: ${email} (${role})`,
+            action: isReactivation
+                ? `Usuario reactivado: ${email} (${role})`
+                : `Usuario creado: ${email} (${role})`,
             type: 'system',
             timestamp: new Date().toISOString(),
         });
-        return { uid: userRecord.uid };
+        return { uid: authUser.uid, email, reactivated: isReactivation };
     }
     catch (error) {
         console.error('Error creating user:', error);

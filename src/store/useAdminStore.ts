@@ -21,7 +21,7 @@ interface AdminState {
   subscribeToCompanies: () => () => void;
 
   // User management
-  createUserAccount: (data: { email: string; password: string; displayName: string; role: AppUser['role']; companyId?: string }) => Promise<void>;
+  createUserAccount: (data: { email: string; password: string; displayName: string; role: AppUser['role']; companyId?: string }) => Promise<{ uid: string; email: string; reactivated: boolean }>;
   sendPasswordReset: (email: string) => Promise<void>;
   toggleUserDisabled: (userId: string, disabled: boolean) => Promise<void>;
   deleteUser: (uid: string) => Promise<void>;
@@ -77,8 +77,9 @@ const useAdminStore = create<AdminState>((set) => ({
   createUserAccount: async (data) => {
     set({ loading: true, error: null });
     try {
-      const fn = httpsCallable(functions, 'createUser');
-      await fn(data);
+      const fn = httpsCallable<typeof data, { uid: string; email: string; reactivated: boolean }>(functions, 'createUser');
+      const res = await fn(data);
+      return res.data;
     } catch (err: any) {
       const message = err?.message || 'Error al crear el usuario';
       set({ error: message });
