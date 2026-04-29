@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
   DragEndEvent,
@@ -20,7 +21,8 @@ import {
   Building2,
   CheckCircle2,
   Search,
-  Plus,
+  FlaskConical,
+  Scale,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -29,8 +31,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton, SkeletonCard } from '@/components/ui/skeleton';
 import { OTStatusBadge } from '@/components/OTStatusBadge';
+import { AreaBadge } from '@/components/AreaBadge';
 import OTDetailsModal from '@/components/OTDetailsModal';
-import NewOTModal from '@/components/NewOTModal';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -129,22 +131,25 @@ function KanbanCard({
           </p>
         )}
 
-        {/* Row 1 — procedure type chip + source badge */}
+        {/* Row 1 — procedure type chip + source/area badges */}
         <div className="flex items-center justify-between gap-2">
           {ot.procedureTypeCode ? (
             <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-blue-100 text-blue-700 border border-blue-200 shrink-0">
               {ot.procedureTypeCode}
             </span>
           ) : <span />}
-          {ot.source === 'pipefy' ? (
-            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-blue-600 text-white border border-blue-700">
-              Pipefy
-            </span>
-          ) : ot.source === 'manual' ? (
-            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200">
-              Manual
-            </span>
-          ) : null}
+          <div className="flex items-center gap-1.5">
+            {ot.source === 'pipefy' ? (
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-blue-600 text-white border border-blue-700">
+                Pipefy
+              </span>
+            ) : ot.source === 'manual' ? (
+              <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200">
+                Manual
+              </span>
+            ) : null}
+            <AreaBadge area={ot.area ?? 'PI'} />
+          </div>
         </div>
 
         {/* Row 2 — company name (primary) */}
@@ -283,10 +288,11 @@ const SPIAdminDashboard = () => {
   const { subscribeToAll: subscribeToProcedureTypes } = useProcedureTypeStore();
   const { companies, subscribeToCompanies } = useAdminStore();
 
+  const navigate = useNavigate();
   const [selectedOT, setSelectedOT] = useState<OT | null>(null);
-  const [showNewOTModal, setShowNewOTModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCompany, setFilterCompany] = useState('all');
+  const [areaFilter, setAreaFilter] = useState<'all' | 'PI' | 'AR'>('all');
 
   // Inline approve/reject state
   const [rejectingId, setRejectingId] = useState<string | null>(null);
@@ -329,12 +335,31 @@ const SPIAdminDashboard = () => {
     toast.success(`OT movida a ${STAGE_LABELS[newStage]}`);
   };
 
+  // ── Area filter ────────────────────────────────────────────────────────────
+
+  const filteredOTs = useMemo(() => {
+    if (areaFilter === 'all') return ots;
+    return ots.filter((ot) => (ot.area ?? 'PI') === areaFilter);
+  }, [ots, areaFilter]);
+
+  const filteredOTIds = useMemo(
+    () => new Set(filteredOTs.map((o) => o.id)),
+    [filteredOTs],
+  );
+
+  const filteredPendingDocs = useMemo(
+    () => (areaFilter === 'all'
+      ? pendingDocs
+      : pendingDocs.filter((d) => d.otId && filteredOTIds.has(d.otId))),
+    [pendingDocs, filteredOTIds, areaFilter],
+  );
+
   // ── Stats ──────────────────────────────────────────────────────────────────
 
   const stats = {
-    active: ots.filter((o) => o.stage !== 'finalizado').length,
-    pending: pendingDocs.length,
-    finalized: ots.filter((o) => {
+    active: filteredOTs.filter((o) => o.stage !== 'finalizado').length,
+    pending: filteredPendingDocs.length,
+    finalized: filteredOTs.filter((o) => {
       if (o.stage !== 'finalizado' || !o.updatedAt) return false;
       const u = toDate(o.updatedAt);
       if (!u) return false;
@@ -342,7 +367,7 @@ const SPIAdminDashboard = () => {
       return u.getMonth() === n.getMonth() && u.getFullYear() === n.getFullYear();
     }).length,
     companies: new Set(
-      ots.filter((o) => o.stage !== 'finalizado').map((o) => o.companyId),
+      filteredOTs.filter((o) => o.stage !== 'finalizado').map((o) => o.companyId),
     ).size,
   };
 
@@ -355,9 +380,9 @@ const SPIAdminDashboard = () => {
 
   // ── Lista filters ──────────────────────────────────────────────────────────
 
-  const uniqueCompanies = Array.from(new Set(ots.map((o) => o.companyId))).filter(Boolean);
+  const uniqueCompanies = Array.from(new Set(filteredOTs.map((o) => o.companyId))).filter(Boolean);
 
-  const filtered = ots.filter((ot) => {
+  const filtered = filteredOTs.filter((ot) => {
     const term = searchTerm.toLowerCase();
     const matchSearch =
       ot.title?.toLowerCase().includes(term) ||
@@ -370,7 +395,7 @@ const SPIAdminDashboard = () => {
 
   // ── Pendientes grouped ─────────────────────────────────────────────────────
 
-  const grouped = pendingDocs.reduce(
+  const grouped = filteredPendingDocs.reduce(
     (acc, d) => {
       const k = (d as any).companyId || 'Sin empresa';
       if (!acc[k]) acc[k] = [];
@@ -382,7 +407,7 @@ const SPIAdminDashboard = () => {
 
   // ── Default tab ────────────────────────────────────────────────────────────
 
-  const defaultTab = pendingDocs.length > 0 ? 'pendientes' : 'kanban';
+  const defaultTab = filteredPendingDocs.length > 0 ? 'pendientes' : 'kanban';
 
   // ── Handlers ───────────────────────────────────────────────────────────────
 
@@ -426,11 +451,11 @@ const SPIAdminDashboard = () => {
           </p>
         </div>
         <Button
-          onClick={() => setShowNewOTModal(true)}
+          onClick={() => navigate('/spi-admin/crear-ot-manual')}
           className="h-11 px-6 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-black text-[10px] uppercase tracking-widest gap-2 shadow-lg shadow-blue-900/20 transition-all"
         >
-          <Plus className="h-4 w-4" />
-          Nueva Solicitud
+          <FlaskConical className="w-4 h-4 mr-2" />
+          Crear OT Manual
         </Button>
       </div>
 
@@ -526,6 +551,33 @@ const SPIAdminDashboard = () => {
         )}
       </div>
 
+      {/* ── Area filter toggle ── */}
+      <div className="flex items-center gap-3">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
+          Área
+        </span>
+        <div className="inline-flex bg-slate-100 rounded-xl p-1 gap-1">
+          {[
+            { value: 'all', label: 'Todos' },
+            { value: 'PI',  label: 'Propiedad Industrial' },
+            { value: 'AR',  label: 'Asuntos Regulatorios' },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setAreaFilter(opt.value as typeof areaFilter)}
+              className={cn(
+                'px-4 py-2 rounded-lg text-xs font-bold transition uppercase tracking-wide',
+                areaFilter === opt.value
+                  ? 'bg-white shadow-sm text-slate-900'
+                  : 'text-slate-600 hover:text-slate-900',
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* ── Tabs ── */}
       <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="bg-white p-2 rounded-[2rem] border border-slate-200 w-full sm:w-auto shadow-xl shadow-slate-200/40 h-auto gap-1">
@@ -550,7 +602,7 @@ const SPIAdminDashboard = () => {
                 : 'data-[state=active]:bg-slate-900 data-[state=active]:text-white'
             )}
           >
-            Pendientes ({pendingDocs.length})
+            Pendientes ({filteredPendingDocs.length})
           </TabsTrigger>
         </TabsList>
 
@@ -566,6 +618,12 @@ const SPIAdminDashboard = () => {
                 </div>
               ))}
             </div>
+          ) : areaFilter === 'AR' && filteredOTs.length === 0 ? (
+            <div className="text-center py-16 text-slate-500">
+              <Scale className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+              <p className="font-medium">No hay OTs de Asuntos Regulatorios</p>
+              <p className="text-sm">Crea una desde "Crear OT Manual" para empezar.</p>
+            </div>
           ) : (
             <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
               <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
@@ -573,8 +631,8 @@ const SPIAdminDashboard = () => {
                   <KanbanColumn
                     key={stage}
                     stage={stage}
-                    ots={ots}
-                    pendingDocs={pendingDocs}
+                    ots={filteredOTs}
+                    pendingDocs={filteredPendingDocs}
                     companyMap={companyMap}
                     onOTClick={(ot) => setSelectedOT(ot)}
                   />
@@ -620,6 +678,7 @@ const SPIAdminDashboard = () => {
                 <thead className="sticky top-0 bg-white/95 backdrop-blur-md z-10 border-b border-slate-100">
                   <tr>
                     <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 w-32">N° OT</th>
+                    <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 w-12">Área</th>
                     <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Operación</th>
                     <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Empresa</th>
                     <th className="p-6 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 text-center">Etapa</th>
@@ -637,6 +696,9 @@ const SPIAdminDashboard = () => {
                         <span className="text-xs font-mono font-semibold text-slate-700">
                           {ot.pipefyCardId ? `#${ot.pipefyCardId}` : '—'}
                         </span>
+                      </td>
+                      <td className="p-6">
+                        <AreaBadge area={ot.area ?? 'PI'} />
                       </td>
                       <td className="p-6">
                         <div className="flex flex-col">
@@ -665,7 +727,7 @@ const SPIAdminDashboard = () => {
                   ))}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-16 text-center text-slate-500 text-sm font-bold">
+                      <td colSpan={6} className="py-16 text-center text-slate-500 text-sm font-bold">
                         Sin resultados
                       </td>
                     </tr>
@@ -678,7 +740,7 @@ const SPIAdminDashboard = () => {
 
         {/* ── PENDIENTES TAB ── */}
         <TabsContent value="pendientes" className="mt-6 outline-none">
-          {pendingDocs.length === 0 ? (
+          {filteredPendingDocs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
               <CheckCircle2 className="h-16 w-16 text-emerald-500/60" />
               <p className="text-slate-400 font-black uppercase tracking-widest text-sm">
@@ -808,8 +870,6 @@ const SPIAdminDashboard = () => {
         />
       )}
 
-      {/* New OT Modal */}
-      <NewOTModal open={showNewOTModal} onOpenChange={setShowNewOTModal} />
     </div>
   );
 };

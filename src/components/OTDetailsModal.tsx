@@ -18,6 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { OTStatusBadge } from "./OTStatusBadge";
+import { AreaBadge } from "./AreaBadge";
 import {
   FileText,
   MessageSquare,
@@ -299,6 +300,7 @@ const OTDetailsModal = ({ ot, open, onOpenChange, defaultTab = 'overview', scrol
           <div>
             <div className="flex items-center gap-3 mb-2">
               <OTStatusBadge stage={ot.stage} size="sm" />
+              <AreaBadge area={ot.area ?? 'PI'} />
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">OT: {ot.id.substring(0, 10)}</span>
             </div>
             {ot.pipefyCardId && (

@@ -5,6 +5,7 @@ import useDocumentStore from '../store/useDocumentStore';
 import useAuthStore from '../store/useAuthStore';
 import useProcedureTypeStore from '../store/useProcedureTypeStore';
 import { OTStatusBadge } from '@/components/OTStatusBadge';
+import { AreaBadge } from '@/components/AreaBadge';
 import TimelineStepper from '@/components/dashboard/TimelineStepper';
 import RequirementsChecklist from '@/components/RequirementsChecklist';
 import { DiscountCountdown } from '@/components/DiscountCountdown';
@@ -148,9 +149,12 @@ const ClientOTsPage = () => {
                       OT #{ot.pipefyCardId}
                     </p>
                   )}
-                  <h3 className="font-bold text-slate-900 text-lg leading-snug">
-                    {ot.brandName || ot.title}
-                  </h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-slate-900 text-lg leading-snug">
+                      {ot.brandName || ot.title}
+                    </h3>
+                    <AreaBadge area={ot.area ?? 'PI'} />
+                  </div>
                   {ot.procedureTypeCode && (
                     <span className="inline-block mt-1 text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-lg">
                       {ot.procedureTypeCode} · {ot.procedureTypeName}

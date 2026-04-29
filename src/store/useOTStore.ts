@@ -41,7 +41,10 @@ const useOTStore = create<OTState>((set, get) => ({
     return onSnapshot(
       q,
       (snapshot) => {
-        const ots: OT[] = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as OT));
+        const ots: OT[] = snapshot.docs.map((d) => {
+          const data = d.data();
+          return { id: d.id, ...data, area: (data.area as 'PI' | 'AR') ?? 'PI' } as OT;
+        });
         set({ ots, loading: false });
       },
       (error) => {
@@ -57,7 +60,10 @@ const useOTStore = create<OTState>((set, get) => ({
     return onSnapshot(
       q,
       (snapshot) => {
-        const ots: OT[] = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as OT));
+        const ots: OT[] = snapshot.docs.map((d) => {
+          const data = d.data();
+          return { id: d.id, ...data, area: (data.area as 'PI' | 'AR') ?? 'PI' } as OT;
+        });
         set({ ots });
       },
       (error) => {
@@ -72,7 +78,10 @@ const useOTStore = create<OTState>((set, get) => ({
     return onSnapshot(
       q,
       (snapshot) => {
-        const ots: OT[] = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as OT));
+        const ots: OT[] = snapshot.docs.map((d) => {
+          const data = d.data();
+          return { id: d.id, ...data, area: (data.area as 'PI' | 'AR') ?? 'PI' } as OT;
+        });
         set({ ots, loading: false });
       },
       (error) => {
@@ -87,7 +96,10 @@ const useOTStore = create<OTState>((set, get) => ({
     return onSnapshot(
       q,
       (snapshot) => {
-        const ots: OT[] = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as OT));
+        const ots: OT[] = snapshot.docs.map((d) => {
+          const data = d.data();
+          return { id: d.id, ...data, area: (data.area as 'PI' | 'AR') ?? 'PI' } as OT;
+        });
         set({ ots });
       },
       (error) => {

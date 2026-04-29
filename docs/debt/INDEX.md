@@ -1,11 +1,11 @@
 # SPI Smart Flow — Registro de Deuda Técnica
 
-Última actualización: 2026-04-27
+Última actualización: 2026-04-29
 
 ## Resumen
 - Críticos abiertos: 0
 - Altos abiertos: 4
-- Medios abiertos: 8
+- Medios abiertos: 9
 - Bajos abiertos: 5
 - Resueltos: 1
 
@@ -41,3 +41,4 @@
 | [DEBT-017](./DEBT-017-discount-clientside-clock.md) | Reloj del countdown corre client-side (manipulable) | Low | Open | Post-pilot | M |
 | [DEBT-018](./DEBT-018-expired-ots-monitoring.md) | Sin monitoreo de OTs expiradas (>30d sin finalizar) | Medium | Open | Post-pilot | M |
 | [DEBT-019](./DEBT-019-sow-placeholder-text.md) | SOW usa texto genérico placeholder | High | Open | Production | S |
+| [DEBT-020](./DEBT-020-ar-module-content.md) | Asuntos Regulatorios sin contenido funcional propio | Medium | Open | Post-pilot | L |

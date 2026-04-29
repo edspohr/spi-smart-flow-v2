@@ -78,6 +78,7 @@ const ManualOTPage = () => {
   const [assignedToId, setAssignedToId] = useState('');
 
   // Activity details
+  const [area, setArea] = useState<'PI' | 'AR'>('PI');
   const [actividadAsignada, setActividadAsignada] = useState('');
   const [marcaAsunto, setMarcaAsunto] = useState('');
   const [country, setCountry] = useState<string>('Colombia');
@@ -211,6 +212,7 @@ const ManualOTPage = () => {
         titularName,
         encargadoEmail: selectedAssigneeEmail,
         assignedToId:   assignedToId || null,
+        area,
         country,
         amount:         parseFloat(amount) || 0,
         fees:           parseFloat(fees) || 0,
@@ -506,6 +508,20 @@ const ManualOTPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="area" className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Área del trámite
+                </Label>
+                <select
+                  id="area"
+                  value={area}
+                  onChange={(e) => setArea(e.target.value as 'PI' | 'AR')}
+                  className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 font-medium text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="PI">Propiedad Industrial</option>
+                  <option value="AR">Asuntos Regulatorios</option>
+                </select>
+              </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                   Actividad asignada <span className="text-rose-500">*</span>

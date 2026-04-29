@@ -54,12 +54,17 @@ const LeftPanel = () => (
                     Gestión inteligente de Propiedad Intelectual
                 </p>
             </div>
-            <div className="flex flex-wrap justify-center gap-3 mt-8">
-                {["Registro de Marcas", "Gestión Documental", "Firma Digital"].map((feat) => (
-                    <span key={feat} className="bg-white/10 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-sm uppercase tracking-wider">
-                        {feat}
-                    </span>
-                ))}
+            <div className="flex flex-col items-center gap-3 mt-8">
+                <span className="text-blue-200/70 text-[10px] font-semibold uppercase tracking-[0.2em]">
+                    Áreas de servicio
+                </span>
+                <div className="flex flex-wrap justify-center gap-2">
+                    {["Registro de Marcas", "Gestión Documental", "Firma Digital", "Asuntos regulatorios"].map((feat) => (
+                        <span key={feat} className="bg-white/10 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-sm uppercase tracking-wider">
+                            {feat}
+                        </span>
+                    ))}
+                </div>
             </div>
         </div>
         <div className="absolute bottom-8 text-blue-300/60 text-xs font-medium">
