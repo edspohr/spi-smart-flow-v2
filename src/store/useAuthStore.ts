@@ -7,7 +7,18 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+  where,
+} from 'firebase/firestore';
+import { toast } from 'sonner';
 
 // Define types for roles
 export type UserRole = "client" | "spi-admin" | "guest";
@@ -43,57 +54,97 @@ const useAuthStore = create<AuthState>((set) => ({
   // Initialize Firebase Auth Listener
   initializeAuthListener: () => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const docRef = doc(db, "users", firebaseUser.uid);
-          const docSnap = await getDoc(docRef);
+      if (!firebaseUser) {
+        set({ user: null, loading: false, initialized: true });
+        return;
+      }
 
-          if (docSnap.exists()) {
-            const userData = docSnap.data();
-            set({
-              user: {
-                uid: firebaseUser.uid,
-                email: firebaseUser.email,
-                displayName: firebaseUser.displayName,
-                role: userData.role || "guest",
-                companyId: userData.companyId,
-              },
-              loading: false,
-              initialized: true,
-            });
-          } else {
-            // Auto-heal: new magic-link user with no Firestore doc yet
-            const guestDoc = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              displayName: firebaseUser.email?.split('@')[0] || 'Usuario',
-              role: "guest" as UserRole,
-              companyId: "",
-              createdAt: new Date().toISOString(),
-            };
-            try {
-              await setDoc(docRef, guestDoc);
-            } catch (e) {
-              console.warn("No se pudo crear el perfil de usuario:", e);
-            }
-            set({ user: guestDoc, loading: false, initialized: true });
+      try {
+        const docRef = doc(db, "users", firebaseUser.uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+
+          // Defense A: refuse seating disabled/deleted profiles
+          if (userData.disabled === true || userData.deletedAt) {
+            console.warn(
+              '[auth] Disabled/deleted profile detected, signing out:',
+              firebaseUser.email,
+            );
+            await firebaseSignOut(auth);
+            toast.error('Tu cuenta ha sido archivada. Contacta al administrador.');
+            set({ user: null, loading: false, initialized: true });
+            return;
           }
-        } catch (error: any) {
-          console.warn("Aviso: No se pudo obtener el perfil de Firestore:", error.message);
+
           set({
             user: {
               uid: firebaseUser.uid,
               email: firebaseUser.email,
               displayName: firebaseUser.displayName,
-              role: "guest",
-              companyId: "Pendiente",
+              role: userData.role || "guest",
+              companyId: userData.companyId,
             },
             loading: false,
             initialized: true,
           });
+          return;
         }
-      } else {
-        set({ user: null, loading: false, initialized: true });
+
+        // Defense B: email-based probe before creating a guest profile.
+        // If a doc already exists at a DIFFERENT ID (UID mismatch), bail out
+        // rather than spawning a duplicate guest record.
+        if (firebaseUser.email) {
+          const emailQuery = query(
+            collection(db, 'users'),
+            where('email', '==', firebaseUser.email),
+          );
+          const emailSnap = await getDocs(emailQuery);
+          if (!emailSnap.empty) {
+            console.warn(
+              '[auth] Auth UID mismatch detected for',
+              firebaseUser.email,
+              '— existing doc(s):',
+              emailSnap.docs.map((d) => d.id),
+            );
+            await firebaseSignOut(auth);
+            toast.error(
+              'Tu cuenta requiere atención del administrador. Por favor contacta a soporte.',
+            );
+            set({ user: null, loading: false, initialized: true });
+            return;
+          }
+        }
+
+        // Genuine first-time user — create guest profile
+        const guestDoc = {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.email?.split('@')[0] || 'Usuario',
+          role: "guest" as UserRole,
+          companyId: "",
+          createdAt: new Date().toISOString(),
+        };
+        try {
+          await setDoc(docRef, guestDoc);
+        } catch (e) {
+          console.warn("No se pudo crear el perfil de usuario:", e);
+        }
+        set({ user: guestDoc, loading: false, initialized: true });
+      } catch (error: any) {
+        console.warn("Aviso: No se pudo obtener el perfil de Firestore:", error.message);
+        set({
+          user: {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            role: "guest",
+            companyId: "Pendiente",
+          },
+          loading: false,
+          initialized: true,
+        });
       }
     });
     return unsubscribe;
