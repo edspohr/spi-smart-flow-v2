@@ -30,3 +30,5 @@ fresh-repo
 
 # Seed script credentials — NEVER commit
 scripts/serviceAccountKey.json
+service-account.json
+*-service-account.json

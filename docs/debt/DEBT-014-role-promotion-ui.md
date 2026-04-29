@@ -24,3 +24,9 @@ CompaniesPage:
     auth check (solo spi-admin)
   - Cloud Function actualiza /users/{uid} y opcionalmente
     setCustomUserClaims para que el role esté en el token
+
+## Notes
+2026-04-29: createUser ahora reactiva usuarios soft-deleted en
+lugar de fallar con auth/email-already-exists, lo que reduce un
+modo de bloqueo histórico. La promoción de roles (guest → client /
+spi-admin) sigue siendo manual.

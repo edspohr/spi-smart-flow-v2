@@ -23,3 +23,9 @@ ser asignado, su acceso queda en limbo.
    en tiempo real cuando llegue un guest nuevo
 3. Opcional: enviar email a una lista de admins (DEBT-013 conecta
    con DEBT-014 si se construyen juntos)
+
+## Notes
+2026-04-29: el auto-heal ahora rechaza casos huérfanos (UID
+mismatch o perfil archivado) antes de crear un guest, por lo que
+los guests nuevos solo aparecen cuando son entradas legítimas.
+Aún así, falta la notificación al admin descrita arriba.

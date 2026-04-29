@@ -6,7 +6,7 @@
 - Críticos abiertos: 0
 - Altos abiertos: 4
 - Medios abiertos: 9
-- Bajos abiertos: 5
+- Bajos abiertos: 6
 - Resueltos: 1
 
 ## Cómo usar este registro
@@ -42,3 +42,4 @@
 | [DEBT-018](./DEBT-018-expired-ots-monitoring.md) | Sin monitoreo de OTs expiradas (>30d sin finalizar) | Medium | Open | Post-pilot | M |
 | [DEBT-019](./DEBT-019-sow-placeholder-text.md) | SOW usa texto genérico placeholder | High | Open | Production | S |
 | [DEBT-020](./DEBT-020-ar-module-content.md) | Asuntos Regulatorios sin contenido funcional propio | Medium | Open | Post-pilot | L |
+| [DEBT-021](./DEBT-021-soft-delete-reactivation-ux.md) | Reactivación de usuarios soft-deleted no tiene UI propia | Low | Open | Post-pilot | M |
