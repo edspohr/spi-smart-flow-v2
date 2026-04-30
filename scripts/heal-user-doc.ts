@@ -12,7 +12,9 @@
  * Requires either GOOGLE_APPLICATION_CREDENTIALS env var pointing to a
  * service account JSON, or a ./service-account.json next to the cwd.
  */
-import * as admin from 'firebase-admin';
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getAuth, type UserRecord } from 'firebase-admin/auth';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
@@ -20,11 +22,16 @@ import { resolve } from 'path';
 const SERVICE_ACCOUNT_PATH =
   process.env.GOOGLE_APPLICATION_CREDENTIALS ?? './service-account.json';
 
-admin.initializeApp({
-  credential: admin.credential.cert(
-    JSON.parse(readFileSync(resolve(SERVICE_ACCOUNT_PATH), 'utf8')),
-  ),
+const serviceAccount = JSON.parse(
+  readFileSync(resolve(SERVICE_ACCOUNT_PATH), 'utf8'),
+);
+
+initializeApp({
+  credential: cert(serviceAccount),
 });
+
+const auth = getAuth();
+const db = getFirestore();
 
 const args = process.argv.slice(2);
 const email = args[0];
@@ -40,11 +47,8 @@ if (!email) {
 }
 
 async function heal() {
-  const auth = admin.auth();
-  const db = admin.firestore();
-
   // 1. Fetch Auth user
-  let authUser: admin.auth.UserRecord;
+  let authUser: UserRecord;
   try {
     authUser = await auth.getUserByEmail(email);
   } catch (err: any) {
@@ -83,8 +87,8 @@ async function heal() {
     if (!dryRun) {
       await snap.docs[0].ref.update({
         role: roleArg,
-        disabled: admin.firestore.FieldValue.delete(),
-        deletedAt: admin.firestore.FieldValue.delete(),
+        disabled: FieldValue.delete(),
+        deletedAt: FieldValue.delete(),
         healedAt: new Date().toISOString(),
       });
     }
@@ -108,8 +112,8 @@ async function heal() {
     ...winner.data(),
     email,
     role: roleArg,
-    disabled: admin.firestore.FieldValue.delete(),
-    deletedAt: admin.firestore.FieldValue.delete(),
+    disabled: FieldValue.delete(),
+    deletedAt: FieldValue.delete(),
     healedBy: 'heal-user-doc.ts',
     healedAt: new Date().toISOString(),
     previousDocIds: snap.docs.map((d) => d.id),
