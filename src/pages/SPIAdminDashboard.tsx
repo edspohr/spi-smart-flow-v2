@@ -484,7 +484,7 @@ const SPIAdminDashboard = () => {
           </div>
           <Button
             size="sm"
-            onClick={() => navigate('/spi-admin/empresas')}
+            onClick={() => navigate('/spi-admin/companies')}
             className="shrink-0 h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-[10px] uppercase tracking-widest"
           >
             Activar

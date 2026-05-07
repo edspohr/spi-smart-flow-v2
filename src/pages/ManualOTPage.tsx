@@ -171,7 +171,6 @@ const ManualOTPage = () => {
     !!newCompanyData.clientName.trim();
 
   const canSubmit =
-    !!pipefyCardId.trim() &&
     !!procedureTypeId &&
     !!marcaAsunto.trim() &&
     (!!companyId || newCompanyValid) &&
@@ -344,17 +343,16 @@ const ManualOTPage = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                Número de OT (Pipefy Card ID) <span className="text-rose-500">*</span>
+                Número de OT (Pipefy Card ID) <span className="text-slate-300 font-medium normal-case">(opcional)</span>
               </Label>
               <Input
-                required
                 value={pipefyCardId}
                 onChange={(e) => setPipefyCardId(e.target.value)}
-                placeholder="Ej: 508058339"
+                placeholder="Ej: 508058339 — dejar vacío si no aplica"
                 className="h-12 rounded-xl border-slate-200 bg-slate-50 font-medium"
               />
               <p className="text-xs text-slate-400 font-medium">
-                Este número corresponde al ID de la tarjeta en Pipefy. Debe ingresarse manualmente.
+                ID de la tarjeta en Pipefy. Opcional para OTs creadas directamente en la plataforma.
               </p>
             </CardContent>
           </Card>
