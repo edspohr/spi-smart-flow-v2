@@ -124,12 +124,10 @@ function KanbanCard({
     >
       <div className="flex flex-col gap-2.5">
 
-        {/* Row 0 — consecutive OT number from Pipefy */}
-        {ot.pipefyCardId && (
-          <p className="text-[10px] font-mono font-semibold text-slate-500 tracking-wide">
-            OT #{ot.pipefyCardId}
-          </p>
-        )}
+        {/* Row 0 — internal OT identifier */}
+        <p className="text-[10px] font-mono font-semibold text-slate-500 tracking-wide">
+          OT #{ot.id.slice(0, 8).toUpperCase()}
+        </p>
 
         {/* Row 1 — procedure type chip + source/area badges */}
         <div className="flex items-center justify-between gap-2">
@@ -694,7 +692,7 @@ const SPIAdminDashboard = () => {
                     >
                       <td className="p-6">
                         <span className="text-xs font-mono font-semibold text-slate-700">
-                          {ot.pipefyCardId ? `#${ot.pipefyCardId}` : '—'}
+                          #{ot.id.slice(0, 8).toUpperCase()}
                         </span>
                       </td>
                       <td className="p-6">

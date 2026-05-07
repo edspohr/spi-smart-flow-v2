@@ -60,6 +60,9 @@ export interface OT {
   discountResolvedAt?: string;
   // Country selected when the OT was created (manual flow or Pipefy)
   country?: string;
+  // Client-side contact assigned to this OT
+  clientContactId?: string;
+  clientContactName?: string;
   // Set when the client signs the per-OT Statement of Work
   sowSignedAt?: string;
 }

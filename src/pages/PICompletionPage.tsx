@@ -526,11 +526,9 @@ const PICompletionPage = () => {
           <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
           Volver al Tablero
         </button>
-        {ot.pipefyCardId && (
-          <p className="text-[11px] font-mono font-semibold text-slate-500 tracking-wide">
-            OT #{ot.pipefyCardId}
-          </p>
-        )}
+        <p className="text-[11px] font-mono font-semibold text-slate-500 tracking-wide">
+          OT #{ot.id.slice(0, 8).toUpperCase()}
+        </p>
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Completar Solicitud PI</h1>
         <p className="text-slate-500 mt-1 font-medium">
           Marca: <span className="text-blue-600 font-black">{ot.brandName || ot.title}</span>

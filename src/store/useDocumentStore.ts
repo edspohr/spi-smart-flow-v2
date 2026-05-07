@@ -66,7 +66,7 @@ const useDocumentStore = create<DocumentState>((set, get) => ({
         const vaultDocuments: Document[] = [];
         snapshot.docs.forEach((d) => {
           const data = { id: d.id, ...d.data() } as Document;
-          if (data.isVaultEligible && data.status === 'validated') {
+          if (data.isVaultEligible && (data.status === 'validated' || data.status === 'approved')) {
             vaultDocuments.push(data);
           } else {
             documents.push(data);
@@ -90,7 +90,7 @@ const useDocumentStore = create<DocumentState>((set, get) => ({
       collection(db, 'documents'),
       where('companyId', '==', companyId),
       where('isVaultEligible', '==', true),
-      where('status', '==', 'validated')
+      where('status', 'in', ['validated', 'approved'])
     );
     return onSnapshot(
       q,
@@ -117,7 +117,7 @@ const useDocumentStore = create<DocumentState>((set, get) => ({
     const q = query(
       collection(db, 'documents'),
       where('isVaultEligible', '==', true),
-      where('status', '==', 'validated'),
+      where('status', 'in', ['validated', 'approved']),
       limit(1000)
     );
     return onSnapshot(
@@ -337,6 +337,7 @@ const useDocumentStore = create<DocumentState>((set, get) => ({
         updates.rejectionReason = decision.rejectionReason || null;
       } else {
         updates.rejectionReason = null;
+        updates.isVaultEligible = true;
       }
 
       await updateDoc(docRef, updates);

@@ -35,6 +35,7 @@ const COUNTRIES = [
 
 import useAuthStore from '@/store/useAuthStore';
 import useAdminStore from '@/store/useAdminStore';
+import useProcedureTypeStore from '@/store/useProcedureTypeStore';
 import { db } from '@/lib/firebase';
 
 import { Button } from '@/components/ui/button';
@@ -52,12 +53,14 @@ const ManualOTPage = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { companies, users, subscribeToCompanies, subscribeToUsers } = useAdminStore();
+  const { procedureTypes, subscribeToAll: subscribeToProcedureTypes } = useProcedureTypeStore();
 
   // ── Subscriptions ──────────────────────────────────────────────────────────
   useEffect(() => {
     const u1 = subscribeToCompanies();
     const u2 = subscribeToUsers();
-    return () => { u1(); u2(); };
+    const u3 = subscribeToProcedureTypes();
+    return () => { u1(); u2(); u3(); };
   }, [subscribeToCompanies, subscribeToUsers]);
 
   // ── State ──────────────────────────────────────────────────────────────────
@@ -77,9 +80,12 @@ const ManualOTPage = () => {
   // Encargado SPI
   const [assignedToId, setAssignedToId] = useState('');
 
+  // Encargado Cliente
+  const [clientContactId, setClientContactId] = useState('');
+
   // Activity details
   const [area, setArea] = useState<'PI' | 'AR'>('PI');
-  const [actividadAsignada, setActividadAsignada] = useState('');
+  const [procedureTypeId, setProcedureTypeId] = useState('');
   const [marcaAsunto, setMarcaAsunto] = useState('');
   const [country, setCountry] = useState<string>('Colombia');
   const [amount, setAmount] = useState('');
@@ -112,14 +118,37 @@ const ManualOTPage = () => {
     [spiUsers, assignedToId],
   );
 
+  const clientUsers = useMemo(
+    () => companyId
+      ? users.filter((u) => u.companyId === companyId && u.role === 'client')
+      : [],
+    [users, companyId],
+  );
+
+  const selectedClientContact = useMemo(
+    () => clientUsers.find((u) => u.id === clientContactId),
+    [clientUsers, clientContactId],
+  );
+
   const selectedCompany = useMemo(
     () => companies.find((c) => c.id === companyId),
     [companies, companyId],
   );
 
+  const activeProcedureTypes = useMemo(
+    () => procedureTypes.filter((p) => p.isActive),
+    [procedureTypes],
+  );
+
+  const selectedProcedureType = useMemo(
+    () => procedureTypes.find((p) => p.id === procedureTypeId),
+    [procedureTypes, procedureTypeId],
+  );
+
   const handleSelectCompany = (id: string, name: string) => {
     setCompanyId(id);
     setCompanySearch(name);
+    setClientContactId('');
     setNewCompanyData({ name: '', clientEmail: '', clientName: '', clientPhone: '' });
   };
 
@@ -131,6 +160,7 @@ const ManualOTPage = () => {
   const handleClearCompany = () => {
     setCompanyId(null);
     setCompanySearch('');
+    setClientContactId('');
     setNewCompanyData({ name: '', clientEmail: '', clientName: '', clientPhone: '' });
   };
 
@@ -142,7 +172,7 @@ const ManualOTPage = () => {
 
   const canSubmit =
     !!pipefyCardId.trim() &&
-    !!actividadAsignada.trim() &&
+    !!procedureTypeId &&
     !!marcaAsunto.trim() &&
     (!!companyId || newCompanyValid) &&
     !saving;
@@ -205,13 +235,22 @@ const ManualOTPage = () => {
 
       // Create OT
       const otRef = await addDoc(collection(db, 'ots'), {
-        pipefyCardId:   pipefyCardId.trim(),
-        title:          actividadAsignada.trim(),
-        brandName:      marcaAsunto.trim(),
-        serviceType:    actividadAsignada.trim(),
+        pipefyCardId:        pipefyCardId.trim(),
+        title:               selectedProcedureType
+          ? `${selectedProcedureType.name} — ${marcaAsunto.trim()}`
+          : marcaAsunto.trim(),
+        brandName:           marcaAsunto.trim(),
+        serviceType:         selectedProcedureType?.name || '',
+        procedureTypeId:     procedureTypeId || null,
+        procedureTypeCode:   selectedProcedureType?.code || null,
+        procedureTypeName:   selectedProcedureType?.name || null,
         titularName,
-        encargadoEmail: selectedAssigneeEmail,
-        assignedToId:   assignedToId || null,
+        encargadoEmail:      selectedAssigneeEmail,
+        assignedToId:        assignedToId || null,
+        clientContactId:     clientContactId || null,
+        clientContactName:   selectedClientContact
+          ? (selectedClientContact.displayName || selectedClientContact.name || selectedClientContact.email)
+          : null,
         area,
         country,
         amount:         parseFloat(amount) || 0,
@@ -497,6 +536,44 @@ const ManualOTPage = () => {
             </CardContent>
           </Card>
 
+          {/* ── Encargado Cliente ── */}
+          <Card className="bg-white border-slate-200 rounded-3xl shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-lg font-black text-slate-900">Encargado Cliente</CardTitle>
+              <CardDescription className="text-slate-500 text-sm">
+                Contacto del cliente responsable de esta OT. Selecciona una empresa primero.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                Asignar a
+              </Label>
+              <select
+                value={clientContactId}
+                onChange={(e) => setClientContactId(e.target.value)}
+                disabled={!companyId}
+                className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 font-medium text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">{companyId ? 'Sin encargado' : 'Selecciona una empresa primero'}</option>
+                {clientUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {(u.displayName || u.name || u.email) + ' (' + u.email + ')'}
+                  </option>
+                ))}
+              </select>
+              {companyId && clientUsers.length === 0 && (
+                <p className="text-xs text-amber-600 font-medium">
+                  No hay usuarios cliente registrados para esta empresa.
+                </p>
+              )}
+              {selectedClientContact && (
+                <p className="text-xs text-slate-500 font-medium">
+                  Email: <span className="font-bold text-slate-700">{selectedClientContact.email}</span>
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           {/* ── Detalles de la actividad ── */}
           <Card className="bg-white border-slate-200 rounded-3xl shadow-sm">
             <CardHeader>
@@ -518,21 +595,31 @@ const ManualOTPage = () => {
                   onChange={(e) => setArea(e.target.value as 'PI' | 'AR')}
                   className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 font-medium text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 >
-                  <option value="PI">Propiedad Industrial</option>
+                  <option value="PI">Propiedad Intelectual</option>
                   <option value="AR">Asuntos Regulatorios</option>
                 </select>
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                  Actividad asignada <span className="text-rose-500">*</span>
+                  Tipo de actuación <span className="text-rose-500">*</span>
                 </Label>
-                <Input
-                  required
-                  value={actividadAsignada}
-                  onChange={(e) => setActividadAsignada(e.target.value)}
-                  placeholder="Ej: [BUSQ] Búsqueda de antecedentes"
-                  className="h-12 rounded-xl border-slate-200 bg-slate-50 font-medium"
-                />
+                <select
+                  value={procedureTypeId}
+                  onChange={(e) => setProcedureTypeId(e.target.value)}
+                  className="w-full h-12 px-4 rounded-xl border border-slate-200 bg-slate-50 font-medium text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="">Seleccionar tipo de actuación...</option>
+                  {activeProcedureTypes.map((pt) => (
+                    <option key={pt.id} value={pt.id}>
+                      {pt.code} — {pt.name}
+                    </option>
+                  ))}
+                </select>
+                {activeProcedureTypes.length === 0 && (
+                  <p className="text-xs text-amber-600 font-medium">
+                    No hay tipos de actuación activos. Configúralos en Ajustes.
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">

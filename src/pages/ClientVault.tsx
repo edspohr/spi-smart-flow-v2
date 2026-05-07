@@ -36,9 +36,9 @@ const ClientVault = () => {
         }
     }, [user, subscribeToClientDocuments]);
 
-    const vaultDocs = vaultDocuments.filter(d => 
-        ['poder_legal', 'cedula', 'certificado_constitucion'].includes(d.type)
-    ).filter(d => 
+    const vaultDocs = vaultDocuments.filter(d =>
+        ['poder_legal', 'cedula', 'certificado_constitucion', 'comprobante_pago'].includes(d.type)
+    ).filter(d =>
         d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.type.toLowerCase().includes(searchTerm.toLowerCase())
     );

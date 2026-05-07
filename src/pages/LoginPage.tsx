@@ -51,7 +51,7 @@ const LeftPanel = () => (
                     SPI <span className="opacity-80">Smart Flow</span>
                 </h1>
                 <p className="text-blue-200 text-lg font-medium max-w-xs mx-auto">
-                    Gestión inteligente de Propiedad Intelectual
+                    Gestión inteligente de Propiedad Intelectual y Asuntos Regulatorios
                 </p>
             </div>
             <div className="flex flex-col items-center gap-3 mt-8">
@@ -59,7 +59,7 @@ const LeftPanel = () => (
                     Áreas de servicio
                 </span>
                 <div className="flex flex-wrap justify-center gap-2">
-                    {["Registro de Marcas", "Gestión Documental", "Firma Digital", "Asuntos regulatorios"].map((feat) => (
+                    {["Propiedad Intelectual", "Asuntos Regulatorios", "Registro de Marcas", "Firma Digital"].map((feat) => (
                         <span key={feat} className="bg-white/10 text-white text-[11px] font-semibold px-3 py-1.5 rounded-full border border-white/20 backdrop-blur-sm uppercase tracking-wider">
                             {feat}
                         </span>
@@ -68,7 +68,7 @@ const LeftPanel = () => (
             </div>
         </div>
         <div className="absolute bottom-8 text-blue-300/60 text-xs font-medium">
-            © 2026 SPI Smart Flow · Soluciones IP de Alto Nivel
+            © 2026 SPI Smart Flow · Propiedad Intelectual &amp; Asuntos Regulatorios
         </div>
     </div>
 );

@@ -61,7 +61,7 @@ const GuestDashboard = () => {
                                 </div>
                                 <div>
                                     <h3 className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-1">Activación de Perfil</h3>
-                                    <p className="text-slate-500 text-xs">Una vez verificado, se te asignará tu perfil (Cliente o Admin) y podrás acceder a tu tablero de gestión de Propiedad Intelectual.</p>
+                                    <p className="text-slate-500 text-xs">Una vez verificado, se te asignará tu perfil (Cliente o Admin) y podrás acceder a tu tablero de gestión de trámites legales y regulatorios.</p>
                                 </div>
                             </div>
                         </div>

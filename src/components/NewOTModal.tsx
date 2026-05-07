@@ -135,10 +135,12 @@ function CompanyCombobox({
 // ── Main modal ────────────────────────────────────────────────────────────────
 
 const EMPTY = {
-  companyId:       '',
-  procedureTypeId: '',
-  reference:       '',
-  assigneeUid:     '',
+  companyId:         '',
+  area:              '',
+  procedureTypeId:   '',
+  reference:         '',
+  assigneeUid:       '',
+  clientContactId:   '',
   dueDate:         '',
   notes:           '',
   // Project info
@@ -190,6 +192,10 @@ const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
   const selectedCompany       = companies.find((c) => c.id === form.companyId);
   const selectedProcedureType = procedureTypes.find((p) => p.id === form.procedureTypeId);
   const selectedAssignee      = adminUsers.find((u) => u.id === form.assigneeUid);
+  const clientUsers           = form.companyId
+    ? users.filter((u) => u.companyId === form.companyId && u.role === 'client')
+    : [];
+  const selectedClientContact = clientUsers.find((u) => u.id === form.clientContactId);
 
   const setField = (k: keyof typeof EMPTY, v: string) =>
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -223,9 +229,13 @@ const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
         procedureTypeCode: selectedProcedureType!.code,
         procedureTypeName: selectedProcedureType!.name,
         // Optional fields
-        reference:       form.reference.trim()    || null,
-        assignedTo:      selectedAssignee?.id      || null,
-        assignedToEmail: selectedAssignee?.email   || null,
+        reference:            form.reference.trim()    || null,
+        assignedTo:           selectedAssignee?.id      || null,
+        assignedToEmail:      selectedAssignee?.email   || null,
+        clientContactId:      form.clientContactId      || null,
+        clientContactName:    selectedClientContact
+          ? (selectedClientContact.displayName || selectedClientContact.name || selectedClientContact.email)
+          : null,
         dueDate:         form.dueDate              || null,
         deadline:        form.dueDate              || null, // compat field
         internalNotes:   form.notes.trim()         || null,
@@ -247,7 +257,7 @@ const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
           ? `${selectedProcedureType!.name} — ${form.brandName.trim()}`
           : `${selectedProcedureType!.name} — ${selectedCompany!.name}`,
         serviceType: selectedProcedureType!.name,
-        area:        'PI' as const,
+        area:        (form.area || 'PI') as 'PI' | 'AR',
         amount:      parsedAmount,
         clientId:    form.companyId,
         // Status
@@ -310,6 +320,25 @@ const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
               {errors.companyId && (
                 <p className="text-[10px] font-bold text-rose-400 mt-1.5">{errors.companyId}</p>
               )}
+            </div>
+
+            {/* ── Área ── */}
+            <div>
+              <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                Área del trámite
+              </Label>
+              <div className="relative">
+                <select
+                  value={form.area}
+                  onChange={(e) => setField('area', e.target.value)}
+                  className="w-full h-11 pl-4 pr-10 bg-slate-900 border border-slate-700 text-sm rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/30 text-white"
+                >
+                  <option value="">Seleccionar área...</option>
+                  <option value="PI">Propiedad Intelectual</option>
+                  <option value="AR">Asuntos Regulatorios</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+              </div>
             </div>
 
             {/* ── Tipo de actuación ── */}
@@ -378,6 +407,34 @@ const NewOTModal = ({ open, onOpenChange }: NewOTModalProps) => {
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
               </div>
+            </div>
+
+            {/* ── Encargado Cliente ── */}
+            <div>
+              <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+                Encargado Cliente
+              </Label>
+              <div className="relative">
+                <select
+                  value={form.clientContactId}
+                  onChange={(e) => setField('clientContactId', e.target.value)}
+                  disabled={!form.companyId}
+                  className="w-full h-11 pl-4 pr-10 bg-slate-900 border border-slate-700 text-white text-sm rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <option value="">{form.companyId ? 'Sin encargado' : 'Selecciona empresa primero'}</option>
+                  {clientUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.displayName || u.name || u.email}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 pointer-events-none" />
+              </div>
+              {form.companyId && clientUsers.length === 0 && (
+                <p className="text-[10px] font-bold text-amber-400 mt-1.5">
+                  No hay usuarios cliente registrados para esta empresa.
+                </p>
+              )}
             </div>
 
             {/* ── Fecha límite ── */}
