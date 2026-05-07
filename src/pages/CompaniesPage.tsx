@@ -22,6 +22,7 @@ import {
     Users,
     ChevronDown,
     Settings,
+    UserPlus,
 } from 'lucide-react';
 import {
     Dialog,
@@ -207,6 +208,8 @@ const CompaniesPage = () => {
         c.taxId?.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const pendingGuests = (users as EditableUser[]).filter(u => u.role === 'guest');
+
     const getCompanyHealth = (companyId: string) => {
         const companyOts = ots.filter(ot => ot.companyId === companyId);
         if (companyOts.length === 0) {
@@ -259,6 +262,47 @@ const CompaniesPage = () => {
                     />
                 </div>
             </div>
+
+            {/* Pending guests */}
+            {pendingGuests.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-3xl p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                        <UserPlus className="h-5 w-5 text-amber-600 shrink-0" />
+                        <div>
+                            <h2 className="text-sm font-black text-amber-800 uppercase tracking-widest">
+                                Usuarios pendientes de activación ({pendingGuests.length})
+                            </h2>
+                            <p className="text-xs text-amber-600 font-medium mt-0.5">
+                                Estos usuarios iniciaron sesión pero aún no tienen rol ni empresa asignada.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        {pendingGuests.map(u => (
+                            <div key={u.id} className="flex items-center gap-4 bg-white rounded-2xl p-4 border border-amber-100 shadow-sm">
+                                <Avatar className="h-10 w-10 rounded-2xl shrink-0 shadow-sm">
+                                    <AvatarFallback className="font-black text-sm text-white bg-amber-500">
+                                        {u.displayName?.charAt(0).toUpperCase() || 'G'}
+                                    </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold text-slate-800 truncate">{u.displayName || 'Sin nombre'}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 truncate tracking-wide">{u.email}</p>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-9 w-9 rounded-xl text-amber-500 hover:text-amber-700 hover:bg-amber-50 transition-colors shrink-0"
+                                    onClick={() => { setEditingUser({ ...u }); setEditUserOpen(true); }}
+                                    title="Activar usuario"
+                                >
+                                    <Settings className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Companies grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

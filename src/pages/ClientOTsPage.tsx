@@ -124,6 +124,29 @@ const ClientOTsPage = () => {
         </p>
       </div>
 
+      {/* Stat cards */}
+      {(() => {
+        const activeCount    = ots.filter(o => o.stage !== 'finalizado').length;
+        const pendingCount   = ots.reduce((acc, o) => acc + countIncomplete(o), 0);
+        const finalizedCount = ots.filter(o => o.stage === 'finalizado').length;
+        return (
+          <div className="grid grid-cols-3 gap-4">
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Activas</span>
+              <span className="text-3xl font-black text-slate-900">{activeCount}</span>
+            </div>
+            <div className={`rounded-2xl border shadow-sm p-5 flex flex-col gap-1 ${pendingCount > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-slate-100'}`}>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${pendingCount > 0 ? 'text-red-500' : 'text-slate-400'}`}>Pendientes</span>
+              <span className={`text-3xl font-black ${pendingCount > 0 ? 'text-red-600' : 'text-slate-900'}`}>{pendingCount}</span>
+            </div>
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 flex flex-col gap-1">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Finalizadas</span>
+              <span className="text-3xl font-black text-emerald-600">{finalizedCount}</span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Progress summary */}
       <ClientProgressSummary ots={ots} documents={documents} />
 

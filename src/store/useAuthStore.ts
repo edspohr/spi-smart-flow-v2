@@ -8,6 +8,7 @@ import {
   signInWithPopup,
 } from 'firebase/auth';
 import {
+  addDoc,
   collection,
   doc,
   getDoc,
@@ -128,6 +129,13 @@ const useAuthStore = create<AuthState>((set) => ({
         };
         try {
           await setDoc(docRef, guestDoc);
+          // Notify admins — write a system log entry they can query
+          await addDoc(collection(db, 'guest_signups'), {
+            uid:       firebaseUser.uid,
+            email:     firebaseUser.email,
+            createdAt: new Date().toISOString(),
+            resolved:  false,
+          });
         } catch (e) {
           console.warn("No se pudo crear el perfil de usuario:", e);
         }

@@ -152,6 +152,15 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // ── Guest signups (admin notification queue) ──────────────────────────────
+    // Written by any authenticated user (new guest on first sign-in).
+    // Read + delete by admins only.
+    match /guest_signups/{docId} {
+      allow create: if isAuthenticated();
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+
     // ── Default: deny everything else ────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;

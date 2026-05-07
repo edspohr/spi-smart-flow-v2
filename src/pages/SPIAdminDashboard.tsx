@@ -23,6 +23,7 @@ import {
   Search,
   FlaskConical,
   Scale,
+  UserPlus,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -284,7 +285,7 @@ const SPIAdminDashboard = () => {
   const { ots, loading, subscribeToAllOTs, updateOTStage } = useOTStore();
   const { updateDocumentStatus } = useDocumentStore();
   const { subscribeToAll: subscribeToProcedureTypes } = useProcedureTypeStore();
-  const { companies, subscribeToCompanies } = useAdminStore();
+  const { companies, users, subscribeToCompanies, subscribeToUsers } = useAdminStore();
 
   const navigate = useNavigate();
   const [selectedOT, setSelectedOT] = useState<OT | null>(null);
@@ -313,8 +314,9 @@ const SPIAdminDashboard = () => {
     const u1 = subscribeToAllOTs();
     const u2 = subscribeToProcedureTypes();
     const u3 = subscribeToCompanies();
-    return () => { u1(); u2(); u3(); };
-  }, [subscribeToAllOTs, subscribeToProcedureTypes, subscribeToCompanies]);
+    const u4 = subscribeToUsers();
+    return () => { u1(); u2(); u3(); u4(); };
+  }, [subscribeToAllOTs, subscribeToProcedureTypes, subscribeToCompanies, subscribeToUsers]);
 
   // ── DnD ────────────────────────────────────────────────────────────────────
 
@@ -350,6 +352,13 @@ const SPIAdminDashboard = () => {
       ? pendingDocs
       : pendingDocs.filter((d) => d.otId && filteredOTIds.has(d.otId))),
     [pendingDocs, filteredOTIds, areaFilter],
+  );
+
+  // ── Pending guests ─────────────────────────────────────────────────────────
+
+  const pendingGuests = useMemo(
+    () => users.filter((u) => u.role === 'guest'),
+    [users],
   );
 
   // ── Stats ──────────────────────────────────────────────────────────────────
@@ -456,6 +465,32 @@ const SPIAdminDashboard = () => {
           Crear OT Manual
         </Button>
       </div>
+
+      {/* ── Pending guests banner ── */}
+      {pendingGuests.length > 0 && (
+        <div className="flex items-center justify-between gap-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl px-5 py-4">
+          <div className="flex items-center gap-3">
+            <UserPlus className="h-5 w-5 text-amber-400 shrink-0" />
+            <div>
+              <p className="text-sm font-black text-amber-300">
+                {pendingGuests.length === 1
+                  ? '1 usuario pendiente de activación'
+                  : `${pendingGuests.length} usuarios pendientes de activación`}
+              </p>
+              <p className="text-[11px] text-amber-400/70 font-medium mt-0.5">
+                {pendingGuests.map((g) => g.email).join(', ')}
+              </p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => navigate('/spi-admin/empresas')}
+            className="shrink-0 h-9 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-[10px] uppercase tracking-widest"
+          >
+            Activar
+          </Button>
+        </div>
+      )}
 
       {/* ── Stat cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">

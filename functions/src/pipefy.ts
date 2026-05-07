@@ -3,6 +3,7 @@ import { logger } from "firebase-functions";
 import { Firestore } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import * as Sentry from "@sentry/node";
+import { randomUUID } from "crypto";
 
 // OTs with orphaned: true must be resolved manually by admin — see admin panel (future phase)
 
@@ -10,11 +11,12 @@ type OTStage = 'solicitud' | 'pago_adelanto' | 'gestion' | 'pago_cierre' | 'fina
 
 // ── Phase → Stage mapping (real Pipefy pipe phase names) ──────────────────────
 const PHASE_TO_STAGE: Array<{ keywords: string[]; stage: OTStage }> = [
-  { keywords: ['asignando'],  stage: 'solicitud'     },
-  { keywords: ['en proceso'], stage: 'pago_adelanto' },
-  { keywords: ['en espera'],  stage: 'gestion'       },
-  { keywords: ['hecho'],      stage: 'finalizado'    },
-  { keywords: ['cancelado'],  stage: 'finalizado'    },
+  { keywords: ['asignando'],                             stage: 'solicitud'     },
+  { keywords: ['en proceso'],                            stage: 'pago_adelanto' },
+  { keywords: ['en espera'],                             stage: 'gestion'       },
+  { keywords: ['pago final', 'pago cierre', 'cobro'],    stage: 'pago_cierre'   },
+  { keywords: ['hecho'],                                 stage: 'finalizado'    },
+  { keywords: ['cancelado'],                             stage: 'finalizado'    },
 ];
 
 function mapPhaseToStage(phaseName: string): OTStage | null {
@@ -199,20 +201,26 @@ async function findOrCreateSPIUser(
   let authLinked = true;
 
   try {
+    const tempPassword = randomUUID();
     const authUser = await auth.createUser({
       email:         normalizedEmail,
       displayName:   displayName || normalizedEmail,
-      password:      'SPI2026!',
+      password:      tempPassword,
       emailVerified: false,
     });
     authUid = authUser.uid;
-    console.log(
-      `[pipefy] Firebase Auth user created: ${authUid} (${normalizedEmail})` +
-      ` — temp password: SPI2026!`
-    );
+    console.log(`[pipefy] Firebase Auth user created: ${authUid} (${normalizedEmail})`);
 
     // Set custom claim so the frontend can read the role from the token
     await auth.setCustomUserClaims(authUid, { role: 'spi-staff' });
+
+    // Send password reset link so the new user can set their own password
+    try {
+      const resetLink = await auth.generatePasswordResetLink(normalizedEmail);
+      console.log(`[pipefy] Password reset link generated for ${normalizedEmail}: ${resetLink}`);
+    } catch (resetErr) {
+      console.warn(`[pipefy] Could not generate reset link for ${normalizedEmail}:`, resetErr);
+    }
 
   } catch (authError: any) {
 
